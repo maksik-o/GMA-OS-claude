@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>GMA-OS</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body data-surf="light" data-font="m">
+
+<div id="pullIndicator" class="pull-ind"><span class="pull-spin"></span></div>
+
+<div id="app">
+  <button id="syncAlert" class="sync-alert" type="button" hidden>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 19a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.7 8.6 4.7 4.7 0 0 1 17.5 19h-11zM11 8v5h2V8h-2zm0 7v2h2v-2h-2z"/></svg>
+      <span class="sa-text"></span>
+    </button>
+  <header class="topbar glass">
+    <div id="modes" class="modes"></div>
+    <div class="wn-center">
+      <button id="prevWeek" class="icon-btn" type="button" title="Прошлая неделя">‹</button>
+      <button id="weekLabel" type="button" title="Сегодня"></button>
+      <button id="nextWeek" class="icon-btn" type="button" title="Следующая неделя">›</button>
+    </div>
+    <div class="wn-right">
+      <button type="button" id="widgetsBtn" class="icon-btn" title="Панель виджетов"></button>
+      <button id="searchBtn" class="icon-btn" type="button" title="Поиск">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button id="kbBtn" class="icon-btn" type="button" title="База знаний">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h11a3 3 0 0 1 3 3v16a1 1 0 0 1-1 1H6a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zm0 2a1 1 0 0 0-1 1v11.17c.31-.11.65-.17 1-.17h12V5a1 1 0 0 0-1-1H6zm0 14a1 1 0 0 0 0 2h12v-2H6z"/></svg>
+      </button>
+      <button id="finBtn" class="icon-btn" type="button" title="Финансы">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 7H5a1 1 0 0 1 0-2h15a1 1 0 0 0 0-2H5a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zm-3 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>
+      </button>
+      <button id="ctBtn" class="icon-btn" type="button" title="Контакты">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </button>
+      <button id="settingsBtn" class="icon-btn" type="button" title="Настройки">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94 0 .31.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+      </button>
+      <button id="syncBtn" class="sync" type="button" title="Синхронизация">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>
+        </svg>
+        <span class="dot"></span>
+      </button>
+    </div>
+  </header>
+  
+  <div id="dockTop" class="dock"></div>
+  <div id="grid" class="week2"></div>
+  <section id="contactsView" class="contacts-view glass" hidden></section>
+  <section id="financeView" class="finance-view" hidden></section>
+  <section id="kbView" class="kb-view" hidden></section>
+<div id="dockBottom" class="dock">
+  <section id="notesPanel" class="notes-panel dock-panel glass"></section>
+  <section id="focusPanel" class="focus-panel dock-panel glass"></section>
+</div>
+<nav id="bottomNav" class="bottomnav">
+  <button data-view="week" class="on" type="button">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+  </button>
+  <button data-view="contacts" type="button">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+  </button>
+  <button data-view="kb" type="button" title="База знаний">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h11a3 3 0 0 1 3 3v16a1 1 0 0 1-1 1H6a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zm0 2a1 1 0 0 0-1 1v11.17c.31-.11.65-.17 1-.17h12V5a1 1 0 0 0-1-1H6zm0 14a1 1 0 0 0 0 2h12v-2H6z"/></svg>
+  </button>
+  <button data-view="finance" type="button">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 7H5a1 1 0 0 1 0-2h15a1 1 0 0 0 0-2H5a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zm-3 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>
+  </button>
+</nav>
+
+<button id="addBtn" class="fab" type="button" title="Добавить задачу">+</button>
+<div id="backdrop" class="backdrop"></div>
+
+<form id="sheet" class="sheet">
+  <div id="sheetGrip" class="grip"></div>
+  <div class="sheet-scroll">
+    <textarea id="fTitle" class="f-title" rows="1" placeholder="Новая задача…" maxlength="400"></textarea>
+    <div class="q-days" id="fDays"></div>
+    <div class="q-row2">
+      <button type="button" id="fNoDate" class="q-sq">Без даты</button>
+      <button type="button" id="fCustom" class="q-sq">Календарь</button>
+    </div>
+    <div id="fCal" class="q-cal" hidden></div>
+  </div>
+  <div class="sheet-actions">
+    <button type="button" class="btn" onclick="document.getElementById('sheet').classList.remove('open')">Отмена</button>
+    <span class="spacer"></span>
+    <button type="submit" class="btn primary">Добавить</button>
+  </div>
+</form>
+
+<div id="editor" class="editor">
+  <header class="ed-head">
+    <span class="ed-title">Задача</span>
+  </header>
+  <div class="ed-scroll">
+    <div class="ed-card">
+      <h4>Название</h4>
+      <textarea id="edTitle" class="f-title" rows="1" maxlength="400" placeholder="Название задачи"></textarea>
+    </div>
+    <div class="ed-card ed-plan-card">
+      <h4>Планирование</h4>
+      <div id="edPlans" class="plan-list"></div>
+      <button type="button" id="edPlanAdd" class="btn mini">＋ Строка плана</button>
+    </div>
+    <div class="ed-card">
+      <h4>Дни</h4>
+      <div class="q-days" id="edDays"></div>
+      <div class="q-row2">
+        <button type="button" id="edNoDate" class="q-sq">Без даты</button>
+        <button type="button" id="edCustom" class="q-sq">Календарь</button>
+      </div>
+      <div id="edCal" class="q-cal" hidden></div>
+    </div>
+    <div class="ed-card">
+      <h4>Приоритет</h4>
+      <div class="chip-row" id="edPrio"></div>
+    </div>
+    <div class="ed-card">
+      <h4>Тип</h4>
+      <div class="chip-row" id="edType"></div>
+    </div>
+    <div class="ed-card">
+      <h4>Подзадачи</h4>
+      <div id="edSub"></div>
+      <div class="chip-row" style="margin-top: 8px;">
+        <input id="edSubInput" class="chip-input" type="text" placeholder="+ подзадача">
+        <button id="edSubAdd" class="btn mini" type="button">＋</button>
+      </div>
+    </div>
+    <div class="ed-card">
+      <h4>Потраченное время</h4>
+      <div class="time-sessions" id="edSessions"></div>
+    </div>
+    <div class="ed-card">
+      <h4>Теги</h4>
+      <div class="chip-row" id="edTags"></div>
+      <div class="chip-row" style="margin-top: 8px;">
+        <input id="edTagInput" class="chip-input" type="text" placeholder="+ тег">
+      </div>
+    </div>
+    <div class="ed-card">
+      <h4>Ссылки</h4>
+      <div class="chip-row" id="edLinks"></div>
+    </div>
+    <div class="ed-card notes-card">
+      <h4>Заметки</h4>
+      <textarea id="edNotes" class="f-title notes-area" rows="3" placeholder="Заметки, ссылки, идеи…"></textarea>
+    </div>
+    <div class="ed-card">
+      <h4>Файлы</h4>
+      <div id="edFiles"></div>
+    </div>
+  </div>
+  <div class="ed-actions">
+    <button id="edDelete" class="btn danger ed-fab-del" type="button" title="Удалить задачу" aria-label="Удалить задачу">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>
+    <span class="spacer"></span>
+    <button id="edConfirm" class="btn primary ed-btn-equal" type="button" title="Сохранить" aria-label="Сохранить">✓</button>
+  </div>
+</div>
+
+<div id="daySheet" class="sheet">
+  <div id="dayGrip" class="grip"></div>
+  <header class="ed-head">
+    <span id="daySheetTitle" class="ed-title"></span>
+    <span class="spacer"></span>
+    <button id="dayClose" class="btn" type="button">✕</button>
+  </header>
+  <div class="sheet-scroll">
+    <p id="daySheetEmpty" class="empty">Нет задач на этот день</p>
+    <ul id="daySheetList" class="tasks"></ul>
+  </div>
+</div>
+
+<aside id="drawer" class="drawer glass">
+  <div id="drawerMain">
+    <h3>Настройки</h3>
+    <button id="setThemes" class="set-item" type="button">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8 0-.29.02-.58.05-.86 2.11 2.06 5.05 3.35 8.31 3.35 2.87 0 5.49-1.01 7.58-2.68C19.01 16.77 15.87 20 12 20z"/></svg>
+      <span>Оформление</span><span class="chev">›</span>
+    </button>
+    <button id="setTags" class="set-item" type="button">
+      <svg viewBox="0 0 24 24"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></svg>
+      <span>Теги</span><span class="chev">›</span>
+    </button>
+    <button id="setSync" class="set-item" type="button">
+      <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+      <span>Синхронизация</span><span class="chev">›</span>
+    </button>
+    <button id="setKeys" class="set-item" type="button">
+      <svg viewBox="0 0 24 24"><path d="M20 5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 6H8v-2h8v2zm1-3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg>
+      <span>Горячие клавиши</span><span class="chev">›</span>
+    </button>
+    <p class="drawer-note">GMA-OS · v6.1</p>
+  </div>
+
+  <div id="drawerTheme" hidden>
+  <header class="drawer-sync-head">
+    <button id="themeBack" class="btn mini" type="button">←</button>
+    <h3>Оформление</h3>
+  </header>
+  <div class="set-sub">Тема</div>
+  <div class="theme-row" id="themeRow"></div>
+  <div class="set-sub">Фон (цвет)</div>
+  <div class="bg-row" id="bgRow"></div>
+  <div class="bg-custom">
+    <input type="color" id="bgColor">
+    <button id="bgReset" class="btn mini" type="button">Сброс</button>
+  </div>
+  <div class="set-sub">Фон (градиенты)</div>
+  <div class="bg-presets" id="bgPresets"></div>
+  <div class="set-sub">Фон (изображение)</div>
+  <div class="bg-upload-row">
+    <button id="bgUploadBtn" class="bg-upload-btn" type="button">Загрузить картинку</button>
+    <input id="bgFileInput" type="file" accept="image/*" hidden>
+    <button id="bgClearBtn" class="btn mini" type="button">✕</button>
+  </div>
+  <div class="bg-opacity-row">
+    <span class="bg-opacity-label" id="bgOpacityLabel">30%</span>
+    <input id="bgOpacitySlider" class="bg-opacity-slider" type="range" min="0" max="1" step="0.05">
+  </div>
+  <div class="set-sub">Размер текста</div>
+  <div class="font-row" id="fontRow"></div>
+  <div class="set-sub" id="modeSettingsCap">Настройки режимов</div>
+  <div id="modeSettings" class="mode-settings-list"></div>
+</div>
+
+  <div id="drawerTags" hidden>
+    <header class="drawer-sync-head">
+      <button id="tagsBack" class="btn mini" type="button">←</button>
+      <h3>Теги</h3>
+    </header>
+    <textarea id="tagsBulk" class="tag-field" placeholder="Введите наименование тега..."></textarea>
+    <div class="chip-row">
+      <button id="tagsAdd" class="btn primary" type="button">Добавить теги</button>
+    </div>
+    <div class="tags-list" id="tagsList"></div>
+  </div>
+
+  <div id="drawerSync" hidden>
+    <header class="drawer-sync-head">
+      <button id="syncBack" class="btn mini" type="button">←</button>
+      <h3>Синхронизация</h3>
+    </header>
+    <div id="syncPanel"></div>
+  </div>
+
+  <div id="drawerKeys" hidden>
+    <header class="drawer-sync-head">
+      <button id="keysBack" class="btn mini" type="button">←</button>
+      <h3>Горячие клавиши</h3>
+    </header>
+    <div id="keysRows"></div>
+    <p class="hint">Кликни по клавише, чтобы переназначить. Нажми Esc, чтобы сбросить.</p>
+  </div>
+</aside>
+
+<div id="searchPanel" class="searchpanel">
+  <div class="search-head">
+    <input id="searchInput" class="search-input" type="text" placeholder="Поиск по задачам, тегам, заметкам…" autocomplete="off">
+    <button id="searchClose" class="icon-btn" type="button" title="Закрыть">✕</button>
+  </div>
+  <div id="searchTags" class="search-tags"></div>
+  <div id="searchList" class="search-list"></div>
+</div>
+
+<div id="cellMenu" class="cmenu"></div>
+<div id="tagColorMenu" class="cmenu"></div>
+<div id="toast" class="toast"></div>
+
+<div id="timerPill" class="tpill">
+  <span class="tp-dot"></span>
+  <span class="tp-title"></span>
+  <span class="tp-time"></span>
+  <span class="tp-pom"></span>
+  <span class="spacer"></span>
+  <button class="tp-btn stop" type="button" title="Стоп">
+    <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+  </button>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
