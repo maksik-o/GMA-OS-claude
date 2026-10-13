@@ -1,4 +1,4 @@
-const CACHE = 'rl-v249';
+const CACHE = 'rl-v250';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает
@@ -21,7 +21,7 @@ const SHELL = [
   './js/week.js', './js/sheet.js', './js/notes.js', './js/focus.js',
   './js/widgets.js', './js/cal.js', './js/contacts.js', './js/kanban.js',
   './js/finance.js', './js/finimport.js', './js/anim.js',
-  './js/timeline.js', './js/kb.js', './js/charts.js',
+  './js/timeline.js', './js/kb.js', './js/kbgraph.js', './js/charts.js',
   './images/sky.jpg', './images/sunset.jpg', './images/waves.jpg',
   './images/mountains.jpg', './images/winter.jpg'
 ];
