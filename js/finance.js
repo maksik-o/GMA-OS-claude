@@ -120,7 +120,6 @@ export async function removeItem(id) {
 
 /* ── Синхронизация (совместимо с остальными модулями) ── */
 export const getFinanceForSync = () => state.items;
-export const getFinanceTombstones = () => state.items.filter(i => i.deleted).map(i => i.id);
 export async function applyFinanceMerged(list) {
   const remote = Array.isArray(list) ? list : [];
   const byId = new Map();
@@ -351,13 +350,6 @@ export function renderFinanceView(el) {
   else if (tab === 'acc') renderAccounts(body);
   else renderPlans(body);
 }
-function animateBody(el, dir) {
-  const body = el.querySelector('.fin-body');
-  if (!body) return;
-  const cards = body.querySelectorAll('.fin-hero, .fs-card, .fin-card, .ftx-day');
-  if (cards.length) stagger(cards, dir, { shift: 22, step: 18, max: 12 });
-  else slideIn(body, dir);
-}
 const rerender = () => { if (_host) renderFinanceView(_host); };
 
 /* ── Обзор ── */
@@ -411,7 +403,9 @@ function renderDash(box) {
     </div>
     <div class="fh-right">
       <div class="fh-cap">Динамика баланса за месяц</div>
-      <div class="ch-host" data-ch="trend"></div>
+      ${txsInMonth(curM).length
+        ? '<div class="ch-host" data-ch="trend"></div>'
+        : '<div class="fh-empty">Операций за этот месяц пока нет — нажмите «+», чтобы добавить первую.</div>'}
     </div>
   </section>
 

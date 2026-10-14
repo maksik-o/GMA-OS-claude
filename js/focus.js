@@ -15,7 +15,6 @@ let choosing = false;
 let _built = false;
 let _centerMode = '';
 let _lastPoms = -1;
-export const isChoosing = () => choosing;
 
 const ICON_PLAY_S = '<svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></svg>';
 const ICON_PAUSE_S = '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
@@ -45,9 +44,10 @@ function scaleLabels() {
 }
 
 /* ── Шаровая молния: хромокей + перекраска в цвет режима + радиальный блюр ── */
-const FX_SOURCES = ['videos/lightning.mp4', 'videos/lightning.webm', 'videos/lightning.mov'];
+const FX_SOURCES = ['videos/lightning.mp4'];
 const FX_BLUR_PX = 3;    // максимум блюра в центре панели (7 размазывал ореол)
 const FX_DIM = 0.75;     // приглушение яркости молнии
+let _fxLoad = null;
 let _fxVideo = null, _fxCanvas = null, _fxOn = false, _fxRaf = 0, _fxLogged = false;
 let _gl = null, _glTex = null;
 let _uRes = null, _uVid = null, _uBlur = null, _uAccent = null, _uDim = null;
@@ -74,12 +74,12 @@ function ensureFx() {
   _fxVideo.loop = true;
   _fxVideo.playsInline = true;
   _fxVideo.setAttribute('playsinline', '');
-  _fxVideo.preload = 'auto';
+  _fxVideo.preload = 'auto';   // src ставится лишь при первом запуске — до этого ничего не качается
   let srcIdx = 0;
   const tryNext = () => {
     if (!_fxVideo) return;
     if (srcIdx >= FX_SOURCES.length) {
-      console.warn('[focus] Видео молнии НЕ НАЙДЕНО. Положи файл в репозиторий по пути videos/lightning.mp4 (или .webm / .mov) и обнови страницу.');
+      console.warn('[focus] Видео молнии не загрузилось — эффект отключён.');
       _fxVideo = null;
       return;
     }
@@ -95,7 +95,9 @@ function ensureFx() {
     }
     if (_fxOn && initGL()) startFxLoop();
   });
-  tryNext();
+  /* Видео тянем только при первом запуске фокусировки, а не на старте:
+     раньше каждый запуск приложения качал ролик целиком. */
+  _fxLoad = tryNext;
   return _fxCanvas;
 }
 function initGL() {
@@ -202,7 +204,9 @@ function setFx(on) {
   _fxOn = on;
   if (on) {
     refreshAccent();
-    if (!ensureFx() || !_fxVideo || !initGL()) return;
+    if (!ensureFx() || !_fxVideo) return;
+    if (_fxLoad) { const load = _fxLoad; _fxLoad = null; load(); return; }   // запустит canplay
+    if (!initGL()) return;
     startFxLoop();
   } else {
     cancelAnimationFrame(_fxRaf);

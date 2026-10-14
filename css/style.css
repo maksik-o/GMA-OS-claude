@@ -1,3 +1,15 @@
+/* Comfortaa лежит рядом с приложением: не ждём Google Fonts при запуске
+   и не теряем шрифт офлайн. Вариативный файл — все начертания 300–700. */
+@font-face {
+  font-family: "Comfortaa"; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url(../fonts/comfortaa-cyrillic.woff2) format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Comfortaa"; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url(../fonts/comfortaa-latin.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 input, textarea, [contenteditable="true"] { user-select: text; -webkit-user-select: text; }
 [hidden] { display: none !important; }
@@ -47,8 +59,7 @@ html, body,
 .set-item, .file-line, .assignment-row,
 .key-line, .kbd,
 .search-input, .key-input, .tag-rename, .tag-field,
-.theme-dot, .bg-dot, .font-btn, .font-btn.on,
-.contact-avatar, .a-status,
+.theme-dot, .bg-dot, .font-btn, .font-btn.on, .a-status,
 .sub-panel, .notes-area, .ed-card,
 .pull-spin, .sync .dot,
 .mode-blob, .modes button,
@@ -94,11 +105,13 @@ body[data-surf="dark"] {
   --inner-glow: inset 0 1px 0 rgba(255,255,255,.10);
   --panel-solid: #232b3a;
 }
+/* Фон: лёгкий отсвет цвета режима + пятна темы (--bg-mesh) + базовый цвет.
+   Раньше отсвет режима был в 42% и перекрашивал всю тему в красный. */
 html {
   background:
-    radial-gradient(720px 520px at 10% 6%, color-mix(in srgb, var(--accent) 42%, transparent), transparent 70%),
-    radial-gradient(560px 420px at 90% 14%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%),
+    radial-gradient(720px 520px at 10% 6%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
     radial-gradient(900px 600px at 50% 100%, var(--time-atmosphere), transparent 70%),
+    var(--bg-mesh, none),
     var(--bg);
   transition: background var(--dur-mode) var(--ease-mode);
 }
@@ -370,9 +383,7 @@ body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head {
   user-select: text; -webkit-user-select: text;
 }
 .sub-edit:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
-.sub-add { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-.sub-add .chip-input { flex: 1; }
-.add-sub { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; color: var(--c-done); background: color-mix(in srgb, var(--c-done) 15%, transparent); font-size: 15px; font-weight: 800; display: grid; place-items: center; }
+
 .note-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c-done); }
 .r-row.st-done .g-title, .r-row.st-skipped .g-title { text-decoration: line-through; opacity: .55; }
 /* ── CELL: границы только для семантики статусов ── */
@@ -644,17 +655,6 @@ body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head {
 .key-input:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
 .set-sub { font-size: 11.5px; color: var(--dim); margin: 16px 0 10px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
 /* ── Темы/фоны/шрифты в оформлении ── */
-.theme-row { display: flex; gap: 10px; justify-content: flex-start; flex-wrap: wrap; }
-.theme-dot {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  flex: none;
-  border: 0;
-  padding: 0;
-  box-shadow: var(--shadow), var(--inner-glow);
-}
-.theme-dot:hover { transform: scale(1.08); }
-.theme-dot.on { box-shadow: 0 0 0 2.5px var(--accent), var(--inner-glow); }
 .bg-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
 .bg-dot {
   width: 32px; height: 32px;
@@ -897,8 +897,7 @@ input[type="color"]:hover { transform: scale(1.05); }
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 .key-line:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.key-line .ki { width: 20px; height: 20px; color: var(--dim); flex: none; }
-.key-line .ki svg { width: 20px; height: 20px; fill: currentColor; }
+
 .key-line .kl { flex: 1; text-align: left; font-size: 14px; font-weight: 600; }
 .kbd {
   min-width: 58px;
@@ -1053,7 +1052,7 @@ input[type="color"]:hover { transform: scale(1.05); }
 }
 .tpill.on { transform: translate(-50%, 0) scale(1); opacity: 1; pointer-events: auto; }
 .tpill.shut { clip-path: inset(-40px 50% -40px 50% round 999px); }
-.tpill.flash { box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-time) 35%, transparent); }
+
 .tpill.paused .tp-time { color: var(--c-started); }
 .tpill.paused .tp-dot { animation: none; background: var(--c-started); }
 .tp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-time); animation: pulse 1.2s infinite; flex: none; }
@@ -1074,8 +1073,7 @@ input[type="color"]:hover { transform: scale(1.05); }
 .tp-btn svg { width: 13px; height: 13px; fill: currentColor; }
 .tp-btn.stop { color: var(--c-skipped); }
 .tp-btn.pause { color: var(--c-started); }
-.pill-btn { cursor: pointer; }
-.pill-btn.pop { animation: pillpop .5s var(--ease-bounce); }
+
 @keyframes pillpop {
   0%   { transform: scale(.4); }
   55%  { transform: scale(1.18); }
@@ -1182,7 +1180,7 @@ input[type="color"]:hover { transform: scale(1.05); }
   user-select: text;
   -webkit-user-select: text;
 }
-.ed-title-area { white-space: normal; overflow: hidden; }
+
 .notes-area { min-height: 44px; user-select: text; -webkit-user-select: text; }
 .notes-area::placeholder, .tag-field::placeholder { color: var(--dim); }
 .ed-card.notes-card {
@@ -1395,10 +1393,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
 /* ── Контакты ── */
 .contacts-view { padding: 16px 8px; display: flex; flex-direction: column; gap: 14px; min-height: 60vh; overflow-y: auto; }
 .contacts-view[hidden] { display: none !important; }
-.contacts-empty { text-align: center; padding: 40px 16px; color: var(--dim); }
-.contacts-add-row { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
-.contacts-add-row .chip-input { flex: 1; }
-.contacts-add-row .f-title { flex: 1; font-size: 15px; min-height: 22px; }
+
 .contact-card {
   border-radius: var(--r-lg);
   padding: 14px;
@@ -1407,35 +1402,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   border: 0;
 }
 .contact-card:hover { transform: translateY(-2px); }
-.contact-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.contact-avatar {
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  background: var(--accent-deep);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-size: 20px;
-  font-weight: 800;
-  flex: none;
-  border: 0;
-  box-shadow:
-    0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent),
-    inset 0 1px 0 rgba(255,255,255,.25);
-}
-.contact-info { flex: 1; min-width: 0; }
-.contact-name { font-weight: 700; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.contact-meta { font-size: 12px; color: var(--dim); margin-top: 2px; }
-.contact-sub { font-size: 12px; color: var(--dim); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.contact-note {
-  font-size: 13px;
-  color: var(--dim);
-  padding: 6px 10px;
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-  border-radius: 8px;
-  margin-bottom: 10px;
-}
-.contact-assignments { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+
 .assignment-row {
   display: flex;
   align-items: flex-start;
@@ -1527,7 +1494,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   min-width: 0;
   width: auto;
 }
-.notes-panel.resizing { transition: none; }
+
 .notes-header { display: flex; align-items: center; gap: 10px; padding: 2px 0 8px 0; border-bottom: 1px solid var(--brd); margin-bottom: 6px; }
 .notes-day-label {
   flex: 1; min-width: 0;
@@ -1541,13 +1508,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
 .notes-actions { display: flex; gap: 6px; }
 .notes-actions .icon-btn { font-size: 16px; }
 .notes-actions .icon-btn.on { background: var(--accent-deep); color: #fff; }
-.note-title {
-  width: 100%; border: 0; background: transparent; outline: none;
-  font: inherit; font-size: 17px; font-weight: 800; color: var(--text);
-  padding: 2px 0 6px;
-  user-select: text; -webkit-user-select: text;
-}
-.note-title::placeholder { color: var(--dim); font-weight: 600; font-size: 13px; }
+
 .notes-editor {
   flex: 1;
   min-height: 100px;
@@ -1569,29 +1530,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   font-size: 13px;
 }
 .notes-editor:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
-.notes-resize-handle {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 12px;
-  cursor: ns-resize;
-  touch-action: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background .2s;
-}
-@media (pointer: coarse) { .notes-resize-handle { height: 16px; } }
-.notes-resize-handle::before {
-  content: '';
-  width: 40px;
-  height: 3px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--text) 25%, transparent);
-  transition: background .2s;
-}
-.notes-resize-handle:hover::before { background: var(--accent); }
+
 /* Тулбар заметок поверх редактора */
 .notes-toolbar {
   position: absolute; left: 10px; right: 10px; bottom: 16px; top: auto; z-index: 7;
@@ -1704,7 +1643,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
 .nli-meta { font-size: 12px; color: var(--dim); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nli-del { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--card); display: grid; place-items: center; box-shadow: var(--shadow), var(--inner-glow); }
 .nli-del:hover { transform: scale(1.08); background: color-mix(in srgb, var(--c-skipped) 12%, var(--card)); }
-.ne-title { margin-bottom: 4px; }
+
 .ne-body { min-height: 160px; max-height: 46dvh; }
 .ne-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 /* ── Панель «Фокус» ── */
@@ -1768,17 +1707,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   z-index: 0;
 }
 .fp-video.on { opacity: .8; }
-.fp-tint {
-  position: absolute; inset: 0;
-  border-radius: inherit;
-  background: var(--accent);
-  mix-blend-mode: color;
-  opacity: 0;
-  transition: opacity .45s ease;
-  pointer-events: none;
-  z-index: 1;
-}
-.focus-panel.fx-on .fp-tint { opacity: .35; }
+
 .focus-panel .fp-poms,
 .focus-panel .fp-total { position: relative; z-index: 2; }
 /* Выбор фокуса: подсвечиваем только подходящие задачи */
@@ -1796,7 +1725,7 @@ body.dock-drag .dock[data-mode="empty"] { display: none; }
 .dock[data-mode="center"] { justify-content: center; }
 .dock[data-mode="right"] { justify-content: flex-end; }
 .dock-panel { border-radius: var(--r-lg); transition: transform .25s var(--ease-spring), opacity .2s ease; }
-.dock-panel.stretched { flex: 1 1 320px; min-width: 0; }
+
 .dock-dragging { transition: none !important; opacity: .92; z-index: 6; box-shadow: 0 20px 44px rgba(0,0,0,.28), var(--inner-glow); }
 .dock.drop-hover { outline: none; background: transparent; }
 .dock-panel.yield-right { transform: translateX(18px); }
@@ -1927,36 +1856,7 @@ body.dock-drag #widgetsBtn::after {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
   border-radius: var(--r-lg);
 }
-/* ── Календарь: оверлей, виджет, инлайн ── */
-.cal-overlay {
-  position: fixed; inset: 0;
-  z-index: 46;
-  display: flex; align-items: center; justify-content: center;
-  padding: 16px;
-  background: rgba(2, 8, 23, .35);
-  opacity: 0; pointer-events: none;
-  transition: opacity .25s ease;
-}
-.cal-overlay.open { opacity: 1; pointer-events: auto; }
-.cal-box {
-  width: min(560px, 100%);
-  max-height: 86dvh;
-  overflow-y: auto;
-  border-radius: var(--r-lg);
-  padding: 14px 16px;
-  display: block;
-}
-.cal-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.cal-sp { flex: 1; }
-.cal-navbtn {
-  width: 32px; height: 32px; border-radius: 50%; border: 0;
-  background: var(--card); font-size: 18px;
-  box-shadow: var(--shadow), var(--inner-glow);
-}
-.cal-navbtn:hover { transform: scale(1.08); }
-.cal-weekrow { display: grid; grid-template-columns: 34px repeat(7, 1fr); gap: 4px; width: fit-content; margin-bottom: 4px; }
-.cal-weekrow span { text-align: center; font-size: 10.5px; font-weight: 800; color: var(--dim); }
-.cal-weekrow span.we { color: color-mix(in srgb, var(--c-skipped) 70%, var(--dim)); }
+
 .cal-row { display: grid; grid-template-columns: 34px repeat(7, 1fr); gap: 4px; width: fit-content; margin-bottom: 4px; }
 .cal-weekbtn {
   border: 0; border-radius: 8px;
@@ -1994,11 +1894,7 @@ body.dock-drag #widgetsBtn::after {
 .cd-dot.open { background: var(--c-started); box-shadow: none; }
 .cd-dot.done { background: var(--c-done); box-shadow: none; }
 .cal-day.out .cd-dot { display: none; }
-.cal-legend { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11.5px; color: var(--dim); flex-wrap: wrap; }
-.cal-legend .lg { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.cal-legend .lg-open { background: var(--c-started); }
-.cal-legend .lg-done { background: var(--c-done); }
-.cal-hint { font-size: 10.5px; opacity: .7; }
+
 /* Полоска-календарь в низу липкой шапки */
 .head-cal-strip {
   position: absolute;
@@ -2035,10 +1931,7 @@ body.dock-drag #widgetsBtn::after {
 #grid:not(.cal-open) .inline-cal { display: none; }
 #grid.cal-open .sq-rows { display: none; }
 .inline-cal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; justify-content: center; }
-.inline-cal .cal-weekrow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 6px; width: 100%; justify-content: center; }
-.inline-cal .cal-weekrow span { text-align: center; font-size: 11px; font-weight: 800; color: var(--dim); }
-.inline-cal .cal-weekrow span.we { color: color-mix(in srgb, var(--c-skipped) 70%, var(--dim)); }
-.inline-cal .cal-grid2 { display: flex; flex-direction: column; gap: 3px; width: auto; align-items: center; }
+
 .inline-cal .cal-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; width: 100%; margin-bottom: 0; }
 .inline-cal .cal-day { width: auto; height: 28px; min-height: 0; font-size: 12.5px; border-radius: 7px; }
 .inline-cal .cal-weekbtn { font-size: 10px; }
@@ -2058,7 +1951,7 @@ body.dock-drag #widgetsBtn::after {
 .sq-rows > * { min-height: 0; }
 #grid.cal-open .sq-rows { grid-template-rows: 0fr; }
 #grid.cal-open .sq-rows > * { overflow: hidden; }
-.pane.cal-anim { transition: height .32s cubic-bezier(.4, 0, .2, 1); }
+
 /* Барабан месяцев */
 .cal-drum {
   position: relative;
@@ -2068,7 +1961,7 @@ body.dock-drag #widgetsBtn::after {
   -webkit-user-select: none;
 }
 .cal-month { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
-.cal-m-title { height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+
 .cal-m-week { height: 18px; display: grid; gap: 4px; margin-bottom: 4px; }
 .cal-m-week span { align-self: center; text-align: center; font-size: 10.5px; font-weight: 800; color: var(--dim); }
 .cal-m-week span.we { color: color-mix(in srgb, var(--c-skipped) 70%, var(--dim)); }
@@ -2088,61 +1981,22 @@ body.dock-drag #widgetsBtn::after {
   border-radius: var(--r-lg);
   min-width: 300px;
 }
-.dock-panel.calendar-panel.stretched { flex: 0 1 auto; min-width: 0; }
+
 .cal-w-head { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px; flex: none; }
 .cal-w-title { font-weight: 800; font-size: 13px; min-width: 108px; text-align: center; cursor: pointer; }
 .cal-w-title:hover { color: var(--accent); }
-.cal-w-head .cal-navbtn { width: 28px; height: 28px; font-size: 16px; }
+
 .cal-w-week { display: grid; grid-template-columns: 28px repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 4px; width: 100%; flex: none; }
 .cal-w-week span { text-align: center; font-size: 10.5px; font-weight: 800; color: var(--dim); }
 .cal-w-week span.we { color: color-mix(in srgb, var(--c-skipped) 70%, var(--dim)); }
 .cal-w-drum { height: 216px; }
-.cal-w-grid { display: flex; flex-direction: column; gap: 4px; flex: 1; min-height: 0; overflow-y: auto; width: 100%; }
-.cal-w-grid .cal-row { display: grid; grid-template-columns: 28px repeat(7, minmax(0, 1fr)); gap: 4px; width: 100%; margin: 0; }
-.cal-w-grid .cal-day { width: auto; height: 32px; min-height: 0; font-size: 13px; border-radius: 8px; }
-.cal-w-grid .cal-weekbtn {
-  border: 0; border-radius: 8px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-  color: var(--dim); font-size: 10px; font-weight: 800;
-}
-.cal-w-grid .cal-weekbtn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
-.cal-w-grid .cal-weekbtn.on { background: var(--accent-deep); color: #fff; }
-.cal-w-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
-.cal-w-weeknum { font-size: 11px; font-weight: 700; color: var(--dim); cursor: pointer; }
-.cal-w-weeknum:hover { color: var(--accent); }
+
 .calendar-panel .cal-m-week { grid-template-columns: 28px repeat(7, minmax(0, 1fr)); width: 100%; }
 .calendar-panel .cal-drum .cal-row { grid-template-columns: 28px repeat(7, minmax(0, 1fr)); width: 100%; }
 .calendar-panel .cal-drum .cal-day { width: auto; height: 32px; }
 .calendar-panel .cal-weekbtn { font-size: 10px; }
-.cal-resize-handle {
-  position: absolute; right: 0; bottom: 0;
-  width: 18px; height: 18px;
-  cursor: nwse-resize; touch-action: none; z-index: 6;
-}
-.cal-resize-handle::before {
-  content: ''; position: absolute; right: 4px; bottom: 4px;
-  width: 8px; height: 8px;
-  border-right: 2px solid color-mix(in srgb, var(--text) 35%, transparent);
-  border-bottom: 2px solid color-mix(in srgb, var(--text) 35%, transparent);
-  border-radius: 2px;
-}
-.cal-resize-handle:hover::before { border-color: var(--accent); }
+
 /* ── ТЕМЫ: 5 обоев + 10 цветов (единственный блок) ── */
-:root[data-theme="sky"]{--bg:#cfdcf2;--tint:#2563eb;}
-:root[data-theme="sunset"]{--bg:#2b1024;--tint:#fb7185;}
-:root[data-theme="waves"]{--bg:#0a1428;--tint:#60a5fa;}
-:root[data-theme="mountains"]{--bg:#e2f0d9;--tint:#16a34a;}
-:root[data-theme="winter"]{--bg:#e9eef2;--tint:#64748b;}
-:root[data-theme="light"]{--bg:#eef2f7;--tint:#38bdf8;}
-:root[data-theme="dark"]{--bg:#0b1220;--tint:#6366f1;}
-:root[data-theme="ocean"]{--bg:linear-gradient(135deg,#062b3a,#0a4d68);--tint:#22d3ee;}
-:root[data-theme="amber"]{--bg:linear-gradient(135deg,#fff7e6,#ffe0b3);--tint:#f59e0b;}
-:root[data-theme="lava"]{--bg:linear-gradient(135deg,#1a0505,#7f1d1d);--tint:#ef4444;}
-:root[data-theme="plum"]{--bg:linear-gradient(135deg,#221129,#4a1d5f);--tint:#e879f9;}
-:root[data-theme="forest"]{--bg:linear-gradient(135deg,#0f2417,#1a4028);--tint:#4ade80;}
-:root[data-theme="nord"]{--bg:#2e3440;--tint:#88c0d0;}
-:root[data-theme="paper"]{--bg:#f5f1e8;--tint:#d4a574;}
-:root[data-theme="aurora"]{--bg:linear-gradient(135deg,#003b3a,#006d77,#8b5cf6);--tint:#34d399;}
 /* ── ПК: неделя — центр шапки задач, поиск — правый край ── */
 @media (min-width: 721px) {
   .r-head { position: relative; }
@@ -2176,8 +2030,8 @@ body.dock-drag #widgetsBtn::after {
 body, button, input, textarea, select,
 .chip, .btn, .kbd, .tag-pill, .sub-chip, .sub-text,
 .g-title, .g-meta, .t-title, .t-meta, .s-title, .s-meta,
-.notes-day-label, .note-title, .notes-editor,
-.cal-title, .cal-w-title, .cal-m-title,
+.notes-day-label, .notes-editor,
+.cal-title, .cal-w-title,
 .fp-caption, .fp-choose, .fp-time, .fp-total,
 .tp-title, .tp-time,
 .mode-label-input, .key-line .kl,
@@ -2197,7 +2051,6 @@ body, button, input, textarea, select,
   /* Док: панели на всю ширину вертикально */
   .dock { flex-direction: column; width: 100%; gap: 10px; }
   .dock-panel,
-  .dock-panel.stretched,
   .notes-panel,
   .calendar-panel,
   .focus-panel {
@@ -2301,8 +2154,7 @@ body, button, input, textarea, select,
 .kb-seg { display: flex; gap: 3px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--text) 7%, transparent); }
 .kb-seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: 12.5px; color: var(--dim); white-space: nowrap; }
 .kb-seg button.on { background: var(--accent-deep); color: #fff; }
-.kb-periods { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
-.kb-periods .chip { padding: 5px 10px; font-size: 12px; }
+
 .kb-addcol { border: 0; background: var(--card); border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 12px; box-shadow: var(--shadow), var(--inner-glow); }
 .kb-addcol.on { color: var(--accent); }
 .kb-addcol:hover { transform: scale(1.04); }
@@ -2356,7 +2208,7 @@ body, button, input, textarea, select,
 body.kb-drag { user-select: none; -webkit-user-select: none; }
 @media (max-width: 720px) {
   .kb-col { flex: 0 0 82%; max-width: none; }
-  .kb-periods { margin-left: 0; }
+
 }
 /* ── Канбан: кнопка и меню видов ── */
 @media (max-width: 720px) { #kanbanBtn { display: none; } }
@@ -2497,12 +2349,7 @@ body.kb-drag { user-select: none; -webkit-user-select: none; }
 }
 .ed-row-cal > .ed-card:has(#edPrio) #edPrio .chip { width: 100%; text-align: center; }
 .ed-row-half > .ed-card { flex: 1 1 50%; }
-.ed-card-bleed {
-  margin-left: -16px;
-  margin-right: -16px;
-  width: calc(100% + 32px);
-  border-radius: 0;
-}
+
 @media (max-width: 720px) {
   .ed-row { flex-direction: column; }
   .ed-row-cal > .ed-card:has(#edPrio) { aspect-ratio: auto; }
@@ -2604,8 +2451,7 @@ body.kb-drag { user-select: none; -webkit-user-select: none; }
 /* ── Заметки: высота по тексту (+1 строка), тулбар только по выделению ── */
 .notes-panel { transition: height .3s var(--ease-spring); min-height: 0; }
 .notes-editor { min-height: 24px; }
-/* ── Заметки: заголовок = первая строка, тулбар над выделением, без плейсхолдеров ── */
-.note-title { display: none; }
+
 .notes-editor:empty::before { content: none; }
 .notes-editor .nn-h { font-size: 17px; font-weight: 800; }
 .notes-toolbar {
@@ -2701,7 +2547,7 @@ body.kb-drag { user-select: none; -webkit-user-select: none; }
 }
 /* ── Инлайн-календарь: плавная высота без рывков ── */
 .inline-cal-container, .sq-rows { transition: grid-template-rows .38s cubic-bezier(.4, 0, .2, 1); }
-#grid.cal-closing .sq-rows > * { overflow: hidden; }
+
 /* ── Мобилка: редактор задачи во весь экран, верх — по линии липкой шапки ── */
 @media (max-width: 720px) {
   .editor {
@@ -3166,7 +3012,7 @@ body.row-swiping, body.row-swiping #app { touch-action: none; overscroll-behavio
 .fk-l { display: block; font-size: 10.5px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: .07em; }
 .fk-v { font-size: 16px; font-weight: 800; }
 .fh-right { display: flex; flex-direction: column; min-width: 0; }
-.fin-spark { width: 100%; height: 100%; min-height: 110px; margin-top: 6px; }
+.fh-empty { margin-top: 10px; padding: 18px 14px; border-radius: var(--r-md); font-size: 13px; line-height: 1.5; color: var(--dim); text-align: center; border: 1.5px dashed color-mix(in srgb, var(--text) 14%, transparent); }
 
 /* Три показателя */
 .fin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
@@ -3174,43 +3020,10 @@ body.row-swiping, body.row-swiping #app { touch-action: none; overscroll-behavio
 .fs-cap { font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
 .fs-val { font-size: 26px; font-weight: 800; margin: 6px 0; letter-spacing: -.01em; }
 .fs-sub { font-size: 11.5px; color: var(--dim); }
-.fs-bar { height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--text) 10%, transparent); overflow: hidden; margin-bottom: 7px; }
-.fs-bar i { display: block; height: 100%; border-radius: 999px; background: var(--c-done); }
 
-/* Кольца */
-.fc-donut-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.fin-donut { width: 150px; height: 150px; flex: none; color: var(--text); }
 .fd-top { font-size: 8.5px; font-weight: 800; fill: var(--dim); letter-spacing: .1em; text-transform: uppercase; }
-.fd-main { font-size: 15px; font-weight: 800; fill: var(--text); }
-.fd-sub { font-size: 9px; font-weight: 700; fill: var(--dim); }
-.fc-legend { flex: 1; min-width: 190px; display: flex; flex-direction: column; gap: 6px; }
-.fl-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
-.fl-row > i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
 .fl-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.fl-pct { color: var(--dim); font-variant-numeric: tabular-nums; }
-.fl-sum { font-weight: 700; font-variant-numeric: tabular-nums; }
-
-/* Тепловая карта месяцев */
-.fin-heat { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
-.fin-heat .fh-cell {
-  border: 0; border-radius: 12px; padding: 9px 4px;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  color: var(--text);
-}
-.fin-heat .fh-cell b { font-size: 13px; font-weight: 800; }
-.fin-heat .fh-cell span { font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; }
-.fin-heat .fh-cell.on { box-shadow: inset 0 0 0 2px var(--accent); }
-
-/* Столбики по месяцам */
-.fin-bars { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; height: 150px; align-items: end; }
-.fb-col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
-.fb-stack { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 4px; width: 100%; }
-.fb-bar { width: 42%; max-width: 20px; border-radius: 5px 5px 0 0; min-height: 2px; }
-.fb-bar.exp { background: var(--c-skipped); }
-.fb-bar.inc { background: var(--c-done); }
-.fb-lab { font-size: 10.5px; color: var(--dim); font-weight: 700; white-space: nowrap; }
-.fin-legend { display: flex; gap: 14px; justify-content: center; margin-top: 10px; font-size: 11.5px; color: var(--dim); }
-.fin-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
 
 /* Рейтинги */
 .fin-rank { display: flex; flex-direction: column; gap: 10px; }
@@ -3219,7 +3032,6 @@ body.row-swiping, body.row-swiping #app { touch-action: none; overscroll-behavio
 .fr-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .fr-cnt { font-size: 11px; color: var(--dim); }
 .fr-sum { font-weight: 800; font-variant-numeric: tabular-nums; }
-.fr-bar { position: absolute; left: 26px; bottom: 0; height: 3px; border-radius: 999px; opacity: .85; }
 
 /* Счета */
 .fin-accs { display: flex; flex-direction: column; gap: 10px; }
@@ -3228,7 +3040,7 @@ body.row-swiping, body.row-swiping #app { touch-action: none; overscroll-behavio
 .fa-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fa-name i { display: block; font-style: normal; font-size: 11px; font-weight: 600; color: var(--dim); }
 .fa-sum { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 13px; }
-.fa-bar { position: absolute; left: 40px; bottom: 0; height: 3px; border-radius: 999px; opacity: .8; }
+
 .fin-sumrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .fin-sumrow > div { padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 5%, transparent); }
 .fin-sumrow span { display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--dim); }
@@ -3305,17 +3117,15 @@ input.fin-in[type="color"] { height: 42px; padding: 4px; }
 @media (max-width: 720px) {
   .fin-hero { grid-template-columns: minmax(0, 1fr); padding: 14px; gap: 12px; }
   .fh-sum { font-size: 30px; margin: 4px 0 10px; }
-  .fin-spark { min-height: 84px; }
+
   .fin-grid { grid-template-columns: minmax(0, 1fr); }
   .fin-card, .fs-card { padding: 12px 13px; }
-  .fin-donut { width: 128px; height: 128px; }
-  .fc-legend { min-width: 150px; }
-  .fin-heat { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
   .fin-head { padding: 7px 8px; gap: 8px; }
   .fin-tab { font-size: 12px; padding: 6px 10px; }
   .fin-monthnav { margin-left: auto; }
   .fin-sumrow { grid-template-columns: minmax(0, 1fr); }
-  .fin-bars { height: 120px; gap: 6px; }
+
   #bottomNav button { padding: 0 14px; }
 }
 
@@ -3424,7 +3234,7 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head { background: 
 .fw-title { font-weight: 800; font-size: 14px; }
 .fw-month { font-size: 11.5px; color: var(--dim); margin-left: auto; }
 .fw-main { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.fw-main .fin-donut { width: 116px; height: 116px; flex: none; }
+
 .fw-lines { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 4px; }
 .fw-line { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; }
 .fw-line span { color: var(--dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3478,7 +3288,7 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head { background: 
   .cgroup { padding: 10px 11px; }
   .cgroup-name { font-size: 14px; }
   .finance-panel { padding: 10px 12px; }
-  .fw-main .fin-donut { width: 104px; height: 104px; }
+
 }
 /* Кнопка «+» прячется в режиме финансов (там своя круглая кнопка) */
 .fab[hidden] { display: none !important; }
@@ -3527,8 +3337,8 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head {
   /* Растягиваем по самому высокому в ряду, но не ниже виджета
      фокусировки. Жёсткая высота в 254px обрезала бы календарь:
      месяц в барабане занимает 216px плюс шапка. */
-  .dock, .dock-row { align-items: stretch; }
-  .dock > .dock-panel, .dock-row > .dock-panel {
+  .dock { align-items: stretch; }
+  .dock > .dock-panel {
     height: auto !important;
     min-height: var(--focus-size);
     align-self: stretch;
@@ -3766,7 +3576,7 @@ body[data-surf="dark"] {
 .calendar-panel .cal-drum .cal-day { height: 27px; min-height: 0; font-size: 12px; }
 .calendar-panel .cal-w-drum { height: 186px; }
 .calendar-panel .cal-w-head { margin-bottom: 4px; }
-.finance-panel .fw-main .fin-donut { width: 96px; height: 96px; }
+
 .fw-cats { --fw-row: 25px; }
 .notes-panel { min-height: 0; }
 .notes-editor { min-height: calc(4.8em + 20px); }
@@ -3786,99 +3596,6 @@ body[data-surf="light"] .notes-editor.is-empty:not(:focus) {
 body[data-surf="dark"] .notes-editor.is-empty:not(:focus) {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24'%3E%3Cline x1='0' y1='23.5' x2='9' y2='23.5' stroke='%23f1f5f9' stroke-opacity='0.13' stroke-width='1'/%3E%3C/svg%3E");
 }
-
-/* ══════════════ 3. РЕЖИМ «ДЕНЬ» ══════════════ */
-.dayview { display: flex; flex-direction: column; min-height: 0; }
-.dv-head {
-  display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  margin-bottom: var(--sp-2);
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--panel-solid) 62%, transparent);
-  -webkit-backdrop-filter: blur(30px) saturate(1.8);
-  backdrop-filter: blur(30px) saturate(1.8);
-  box-shadow: var(--elev-1), var(--inner-glow);
-}
-.dv-nav { display: flex; align-items: center; gap: var(--sp-1); }
-.dv-arrow {
-  width: 30px; height: 30px; min-width: 30px; border: 0; border-radius: 50%;
-  background: var(--card); color: var(--dim); font-size: 16px; font-weight: 800;
-  display: grid; place-items: center; box-shadow: var(--elev-1);
-}
-.dv-arrow:hover { color: var(--accent); }
-.dv-title { border: 0; background: transparent; color: var(--text); font-weight: 800; font-size: 15px; padding: 2px 8px; }
-.dv-sum { margin-left: auto; font-size: 11.5px; color: var(--dim); }
-.dv-loose {
-  display: flex; align-items: flex-start; gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-2);
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-}
-.dv-loose-cap { flex: none; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--dim); padding-top: 5px; }
-.dv-loose-row { display: flex; flex-wrap: wrap; gap: 5px; }
-.dv-chip {
-  border: 0; border-radius: 999px; padding: 5px 11px;
-  font-size: 12.5px; font-weight: 600;
-  background: var(--card); color: var(--text); box-shadow: var(--elev-1);
-  max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.dv-chip.done { opacity: .5; text-decoration: line-through; }
-.dv-scroll {
-  flex: 1; min-height: 0;
-  max-height: calc(100dvh - 210px);
-  overflow-y: auto; overscroll-behavior: contain;
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--panel-solid) 40%, transparent);
-  -webkit-backdrop-filter: blur(22px) saturate(1.6);
-  backdrop-filter: blur(22px) saturate(1.6);
-  box-shadow: var(--elev-1), var(--inner-glow);
-}
-.dv-grid { position: relative; padding-left: 54px; }
-.dv-hours { position: absolute; left: 0; top: 0; width: 54px; height: 100%; }
-.dv-hour { position: absolute; left: 0; width: 54px; transform: translateY(-50%); }
-.dv-hour span { display: block; padding-right: 8px; text-align: right; font-size: 10.5px; font-weight: 700; color: var(--dim); font-variant-numeric: tabular-nums; }
-.dv-lines { position: absolute; left: 54px; right: 0; top: 0; height: 100%; pointer-events: none; }
-.dv-lines i { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--text) 9%, transparent); }
-.dv-lines i.half { background: color-mix(in srgb, var(--text) 4%, transparent); }
-.dv-area { position: relative; height: 100%; margin-right: 8px; }
-.dv-block {
-  position: absolute;
-  border-radius: var(--r-sm);
-  padding: 5px 9px;
-  overflow: hidden;
-  cursor: grab;
-  touch-action: none;
-  color: #fff;
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--rowc, var(--accent)) 88%, #000),
-    color-mix(in srgb, var(--rowc, var(--accent)) 58%, #000));
-  box-shadow: var(--elev-1), inset 0 1px 0 rgba(255, 255, 255, .22);
-  transition: box-shadow .16s ease, opacity .16s ease;
-}
-.dv-block.dragging { cursor: grabbing; box-shadow: var(--elev-2); opacity: .94; z-index: 6; }
-.dv-block.done { opacity: .52; }
-.dv-block.done .dvb-title { text-decoration: line-through; }
-.dv-block.p1 { box-shadow: var(--elev-1), inset 3px 0 0 var(--p1), inset 0 1px 0 rgba(255,255,255,.22); }
-.dv-block.p3 { opacity: .86; }
-.dvb-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; pointer-events: none; }
-.dvb-title { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dvb-time { font-size: 10.5px; opacity: .85; font-variant-numeric: tabular-nums; }
-.dv-block.short { padding: 2px 9px; }
-.dv-block.short .dvb-body { flex-direction: row; align-items: baseline; gap: 6px; }
-.dvb-grip { position: absolute; left: 0; right: 0; height: 9px; cursor: ns-resize; }
-.dvb-grip.top { top: 0; }
-.dvb-grip.bottom { bottom: 0; }
-.dvb-grip::after {
-  content: ''; position: absolute; left: 50%; width: 26px; height: 3px;
-  margin-left: -13px; border-radius: 999px;
-  background: rgba(255, 255, 255, .45); opacity: 0; transition: opacity .15s;
-}
-.dvb-grip.top::after { top: 2px; }
-.dvb-grip.bottom::after { bottom: 2px; }
-.dv-block:hover .dvb-grip::after { opacity: 1; }
-.dv-now { position: absolute; left: -6px; right: 0; height: 2px; background: var(--c-skipped); z-index: 7; pointer-events: none; }
-.dv-now i { position: absolute; left: 0; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--c-skipped); }
-body.dv-dragging, body.dv-dragging #app { touch-action: none; -webkit-user-select: none; user-select: none; }
 
 /* ══════════════ 5. БАЗА ЗНАНИЙ ══════════════ */
 .kb-view { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: var(--sp-3); align-items: start; }
@@ -3928,10 +3645,7 @@ body.dv-dragging, body.dv-dragging #app { touch-action: none; -webkit-user-selec
   font-style: normal; font-size: 11px; color: var(--dim);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.kb-new {
-  border: 0; border-radius: var(--r-sm); padding: 10px;
-  background: var(--accent-deep); color: #fff; font-weight: 700; font-size: 13px;
-}
+
 .kb-main { display: flex; flex-direction: column; gap: var(--sp-2); min-height: 320px; }
 .kb-blank { display: flex; flex-direction: column; gap: 6px; padding: var(--sp-5); text-align: center; color: var(--dim); }
 .kb-blank b { font-size: 16px; color: var(--text); }
@@ -3990,13 +3704,7 @@ body.dv-dragging, body.dv-dragging #app { touch-action: none; -webkit-user-selec
   .kb-list { max-height: 260px; }
   .kb-title { font-size: 17px; }
   .kb-editor { min-height: 180px; }
-  .dv-scroll { max-height: calc(100dvh - 240px); }
-  .dv-head { padding: 6px 8px; }
-  .dv-title { font-size: 13.5px; }
-  .dv-sum { display: none; }
-  .dv-grid { padding-left: 44px; }
-  .dv-hours, .dv-hour { width: 44px; }
-  .dv-lines { left: 44px; }
+
   .topbar.kb-active {
     display: flex; flex-direction: row; align-items: center;
     padding: 6px 10px; margin-bottom: 6px;
@@ -4042,12 +3750,12 @@ body::before {
 .calendar-panel .cal-w-week span { font-size: 10px; }
 .calendar-panel { padding: 10px 12px; }
 .calendar-panel .cal-w-title { font-size: 13px; }
-.finance-panel .fw-main .fin-donut { width: 86px; height: 86px; }
+
 .fw-cats { --fw-row: 23px; }
 .fw-line { font-size: 12px; }
 .focus-panel { padding: 10px 12px 12px; }
 @media (min-width: 721px) {
-  .dock > .dock-panel, .dock-row > .dock-panel { min-height: var(--focus-size); }
+  .dock > .dock-panel { min-height: var(--focus-size); }
 }
 
 /* ── 7. Заголовок виджета финансов — к левому краю ── */
@@ -4210,8 +3918,8 @@ body.cc-dragging, body.cc-dragging #app { touch-action: none; }
    друг на друга. Прежнее правило тянуло весь ряд по самому высокому —
    убираем его. ── */
 @media (min-width: 721px) {
-  .dock, .dock-row { align-items: flex-start; }
-  .dock > .dock-panel, .dock-row > .dock-panel {
+  .dock { align-items: flex-start; }
+  .dock > .dock-panel {
     height: 260px !important;
     min-height: 0;
     max-height: 260px;
@@ -4232,7 +3940,7 @@ body.cc-dragging, body.cc-dragging #app { touch-action: none; }
   padding: 10px 12px 12px;
   display: flex; flex-direction: column;
 }
-.focus-panel .fp-ring, .focus-panel .fp-dial, .focus-panel svg { max-height: 100%; }
+.focus-panel .fp-ring, .focus-panel svg { max-height: 100%; }
 .focus-panel > * { min-height: 0; }
 @media (min-width: 721px) {
   .focus-panel { width: 254px; }
@@ -4244,7 +3952,7 @@ body.cc-dragging, body.cc-dragging #app { touch-action: none; }
 .finance-panel .fw-title { font-size: 13.5px; }
 .finance-panel .fw-month { font-size: 11px; }
 .finance-panel .fw-body { gap: 7px; height: 100%; }
-.finance-panel .fw-main .fin-donut { width: 104px; height: 104px; }
+
 .finance-panel .fw-line { font-size: 11.5px; }
 .finance-panel .fw-cats { --fw-row: 22px; max-height: calc(var(--fw-row) * 3); }
 .finance-panel .fw-open { padding: 6px 10px; font-size: 12px; margin-top: auto; }
@@ -4357,7 +4065,7 @@ body.tl-dragging, body.tl-dragging #app { touch-action: none; -webkit-user-selec
 .ed-row-cal { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, .8fr); gap: 10px; }
 
 @media (max-width: 720px) {
-  .dock > .dock-panel, .dock-row > .dock-panel { height: auto !important; max-height: none; }
+  .dock > .dock-panel { height: auto !important; max-height: none; }
   .focus-panel, .finance-panel, .calendar-panel, .notes-panel { height: 260px !important; width: 100%; }
   .ed-row-cal { grid-template-columns: minmax(0, 1fr); }
   .tl-col { min-width: 96px; }
@@ -4423,10 +4131,10 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head {
 .calendar-panel .cal-w-drum { flex: none; }
 .calendar-panel { height: auto !important; max-height: 260px; justify-content: flex-start; }
 @media (min-width: 721px) {
-  .dock > .calendar-panel, .dock-row > .calendar-panel { height: auto !important; max-height: 260px; }
+  .dock > .calendar-panel { height: auto !important; max-height: 260px; }
 }
 @media (max-width: 720px) {
-  .dock > .calendar-panel, .dock-row > .calendar-panel { height: auto !important; max-height: 260px; }
+  .dock > .calendar-panel { height: auto !important; max-height: 260px; }
 }
 
 /* ── 3. Кнопка перехода в финансы вернулась: раскладка панели больше
@@ -4436,15 +4144,6 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head {
 .finance-panel .fw-cats { flex: 1 1 auto; min-height: 0; }
 .finance-panel .fw-empty { flex: 1 1 auto; margin: 0; display: flex; align-items: center; }
 .finance-panel .fw-open { flex: none; margin-top: 6px; }
-
-/* ── 5. Точка режима у заметки ── */
-.nn-mode {
-  width: 9px; height: 9px; flex: none;
-  border-radius: 50%;
-  background: var(--nc, var(--dim));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--nc, var(--dim)) 22%, transparent);
-  margin-right: 7px;
-}
 
 /* ── 7. Пилюля уведомлений о синхронизации ── */
 .sync-alert {
@@ -4476,7 +4175,7 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head {
    Правило .dock > .dock-panel (специфичнее, чем .focus-panel) гасило
    высоту в auto, и панель фокусировки схлопывалась в строку. ── */
 @media (max-width: 720px) {
-  .dock > .dock-panel, .dock-row > .dock-panel {
+  .dock > .dock-panel {
     height: 260px !important;
     max-height: 260px;
     width: 100%;
@@ -4612,10 +4311,10 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head {
 /* ── 4. Календарь по высоте равен финансам, контент чуть просторнее ── */
 .calendar-panel { height: 260px !important; max-height: 260px; }
 @media (min-width: 721px) {
-  .dock > .calendar-panel, .dock-row > .calendar-panel { height: 260px !important; max-height: 260px; }
+  .dock > .calendar-panel { height: 260px !important; max-height: 260px; }
 }
 @media (max-width: 720px) {
-  .dock > .calendar-panel, .dock-row > .calendar-panel { height: 260px !important; max-height: 260px; }
+  .dock > .calendar-panel { height: 260px !important; max-height: 260px; }
 }
 .calendar-panel .cal-w-drum { height: 198px !important; }
 .calendar-panel .cal-drum .cal-day { height: 29px; min-height: 0; font-size: 12.5px; }
@@ -4637,7 +4336,7 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head {
 }
 /* Дата в шапке панели заметок снова прижата к левому краю */
 .notes-day-label { margin-left: 0; }
-.notes-panel .notes-header, .notes-panel .nd-row { justify-content: flex-start; }
+.notes-panel .notes-header { justify-content: flex-start; }
 
 /* ── 2. База знаний: раскрывающиеся группы и перенос заметок ── */
 .kb-gwrap { display: flex; flex-direction: column; border-radius: var(--r-sm); }
@@ -4701,15 +4400,6 @@ body:not([data-view="week"]) #viewBtn { display: none !important; }
 .tl-area { flex: none; }
 .tl-gutter { border-right: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
 
-/* Неразмещённые задачи дня — чипами под шапкой колонки */
-.tl-unplanned {
-  position: sticky; top: 42px; z-index: 2;
-  display: flex; flex-wrap: wrap; gap: 4px;
-  padding: 5px 6px;
-  background: color-mix(in srgb, var(--panel-solid) 88%, transparent);
-  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-  border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-}
 .tl-chip {
   max-width: 100%;
   border: 0; border-radius: 999px;
@@ -4741,11 +4431,6 @@ body:not([data-view="week"]) #viewBtn { display: none !important; }
    v6.3 — Timeline: ровная сетка и лоток задач без времени
    ══════════════════════════════════════════════════════════════════ */
 
-/* Сетка сбивалась из-за чипов внутри колонок: они занимали место в
-   потоке, и колонки с задачами уезжали вниз относительно соседних и
-   относительно шкалы часов. Чипы переехали в общий лоток, а у шапок
-   колонки и шкалы теперь одинаковая фиксированная высота. */
-.tl-unplanned { display: none !important; }
 :root { --tl-head-h: 42px; }
 .tl-corner, .tl-colhead {
   height: var(--tl-head-h);
@@ -5103,7 +4788,7 @@ body:not([data-view="week"]) #viewBtn { display: none !important; }
    «распирающего» содержимого) сжималась до 40px. Для колонки основа
    должна быть auto и без сжатия — тогда работает заданная высота. */
 @media (max-width: 720px) {
-  .dock > .dock-panel, .dock-row > .dock-panel { flex: 0 0 auto !important; }
+  .dock > .dock-panel { flex: 0 0 auto !important; }
 }
 
 /* На телефоне режимы переключает нижняя пилюля — кнопку «Задачи» в
@@ -5266,7 +4951,7 @@ body {
 }
 .focus-panel { min-height: 260px; }
 @media (max-width: 720px) {
-  .focus-panel, .dock > .focus-panel, .dock-row > .focus-panel {
+  .focus-panel, .dock > .focus-panel {
     min-height: 260px !important;
     height: 260px !important;
   }
@@ -5366,4 +5051,142 @@ body {
 @media (max-width: 720px) {
   .kb-graph-wrap { height: 62dvh; min-height: 300px; }
   .kb-ghint { display: none; }
+}
+
+/* ══════════════ Оформление: карточки тем ══════════════
+   На телефоне нет наведения, поэтому подпись видна сразу. */
+.theme-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 10px; }
+.theme-dot {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 0; border: 0; background: none; cursor: pointer; color: inherit;
+}
+.theme-sw {
+  display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 14px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent), var(--shadow);
+  transition: transform .2s var(--ease-spring), box-shadow .2s;
+}
+.theme-dot:hover .theme-sw { transform: translateY(-2px); }
+.theme-dot.on .theme-sw { box-shadow: 0 0 0 2.5px var(--accent), var(--shadow); }
+.theme-name { font-size: 11.5px; font-weight: 700; color: var(--dim); }
+.theme-dot.on .theme-name { color: var(--text); }
+
+/* ══════════════════════════════════════════════════════════════════
+   iPhone / узкие экраны — итоговый слой.
+
+   Стоит последним и сводит воедино десятки разрозненных мобильных
+   правил выше: одна строка шапки на всех экранах, без «карточки на
+   карточке», крупные зоны нажатия, меньше тяжёлого блюра.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Липкие шапки: прозрачные на месте, плотные — когда прилипли
+   (класс is-stuck ставит app.js по прокрутке). Работает везде, а не
+   только на телефоне: на ПК была та же просвечивающая шапка. */
+.l-head, .m-head, .kb-head, .fin-head,
+body[data-surf] .l-head, body[data-surf] .m-head, body[data-surf] .kb-head, body[data-surf] .fin-head {
+  transition: background-color .2s ease, box-shadow .2s ease;
+}
+body[data-surf] .l-head.is-stuck, body[data-surf] .m-head.is-stuck,
+body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
+  background: color-mix(in srgb, var(--panel-solid) 90%, var(--tint, transparent));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .12), 0 1px 0 var(--brd);
+}
+.l-head.is-stuck::after, .m-head.is-stuck::after, .kb-head.is-stuck::after, .fin-head.is-stuck::after { display: none; }
+
+@media (max-width: 720px) {
+  /* ── Шапка: название раздела слева, кнопки справа, режимы — второй строкой ── */
+  .topbar, .topbar.finance-active, .topbar.kb-active, .topbar.contacts-active {
+    display: flex !important; flex-direction: row !important; flex-wrap: wrap;
+    align-items: center; gap: 8px;
+    padding: 8px 8px 8px 16px; margin-bottom: 10px; min-height: 0;
+  }
+  .topbar::before {
+    order: 0; flex: 1 1 auto; min-width: 0;
+    font-size: 19px !important; font-weight: 800; letter-spacing: -.01em;
+    padding: 0 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  body[data-view="week"] .topbar::before { content: 'Задачи'; }
+  .topbar .wn-right {
+    order: 1; flex: none; width: auto !important; margin-left: auto;
+    justify-content: flex-end; gap: 4px; padding: 3px;
+  }
+  .topbar .wn-right .icon-btn, .topbar .wn-right .sync { width: 38px; height: 38px; min-width: 38px; }
+  .topbar .modes { order: 2; flex: 1 0 100%; margin: 0; }
+  .topbar .modes button { padding: 9px 2px; font-size: 14.5px; }
+  .topbar .wn-center { order: 3; }
+
+  /* ── Плашка синхронизации: компактнее, с крестиком ── */
+  .sync-alert { padding: 8px 10px 8px 14px; font-size: 12.5px; margin-bottom: 8px; justify-content: flex-start; }
+  .sync-alert .sa-text { flex: 1; text-align: left; }
+  .sa-x {
+    flex: none; display: grid; place-items: center; width: 26px; height: 26px; margin: -4px -2px -4px 0;
+    border-radius: 50%; background: rgba(255, 255, 255, .18); font-size: 12px;
+  }
+
+  /* ── Неделя: шапка карточки не рисует вторую подложку ── */
+  body[data-surf] .p-mobile .m-head:not(.is-stuck) {
+    background: transparent; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .p-mobile .m-head:not(.is-stuck)::after { display: none; }
+  .p-mobile .m-head { border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
+  .p-mobile:has(.sq-rows:empty) .m-head { border-bottom: 0; }
+  .m-head-nav #prevWeek, .m-head-nav #nextWeek { width: 34px; height: 34px; min-width: 34px; }
+  .p-mobile #viewBtn.view-toggle { min-width: 24px; min-height: 32px; justify-content: center; }
+
+  /* ── Контакты: карточки сами стеклянные, общий контейнер-стекло лишний ── */
+  .contacts-view.glass {
+    background: transparent; box-shadow: none; padding: 0; min-height: 0;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+
+  /* ── Виджеты дока: ручка переноса не выглядит как обломанный угол ── */
+  .dock-handle { opacity: .28; }
+  .dock-handle:active { opacity: 1; }
+  /* Заметки дня: высота по содержимому, а не фиксированные 260 px
+     с пустой «тетрадкой» на пол-экрана */
+  .dock > .notes-panel { height: auto !important; max-height: 70dvh; }
+  .notes-panel .notes-edit-wrap { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+  .notes-panel .notes-editor { min-height: 96px; }
+  .focus-panel, .dock > .focus-panel { max-height: 340px; }
+  .kb-list .empty { padding: 14px 8px; }
+
+  /* ── Зоны нажатия не меньше 36–44 px (рекомендация Apple — 44) ── */
+  .m-head-nav #weekLabel { min-height: 34px; transform: none; }
+  .fin-tab { min-height: 36px; }
+  .fin-arrow, .fin-io { width: 36px; height: 36px; }
+  .q-sq { min-height: 38px; }
+  /* Нижнее меню центрируем в полосе слева от кнопки «+», чтобы они не сталкивались */
+  .bottomnav {
+    height: 56px; padding: 5px;
+    left: calc((100% - 84px - env(safe-area-inset-right)) / 2);
+  }
+  .fin-fab { right: max(14px, env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); width: 56px; height: 56px; }
+  .bottomnav button { height: 46px; padding: 0 20px; }
+  .bottomnav svg { width: 20px; height: 20px; }
+  #app { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  .fab { width: 56px; height: 56px; font-size: 26px; }
+
+  /* ── Поля ввода: 16 px, иначе iOS приближает страницу при фокусе ── */
+  input[type="text"], input[type="search"], input[type="number"], input[type="email"],
+  input:not([type]), textarea, select, .kb-editor, .notes-editor, .f-title { font-size: 16px; }
+
+  /* ── Производительность: блюр — самая дорогая вещь при прокрутке в Safari.
+     На телефоне делаем его легче, вложенные слои стекла — без блюра. ── */
+  .glass {
+    -webkit-backdrop-filter: blur(calc(18px * var(--panel-blur-k, 1))) saturate(1.6);
+    backdrop-filter: blur(calc(18px * var(--panel-blur-k, 1))) saturate(1.6);
+  }
+  .glass .glass { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+  /* Прокрутка без «резинки» всей страницы и с инерцией внутри списков */
+  .kb-list, .notes-list-content, .ed-scroll, .sheet-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+}
+
+/* Тачскрин: hover-эффекты «залипают» после касания — отключаем подъём */
+@media (hover: none) {
+  .glass:hover, .contact-card:hover, .note-list-item:hover { transform: none; }
+}
+/* Пользователь попросил меньше движения — гасим долгие переходы */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }

@@ -43,15 +43,11 @@ let sqMode = SQ_MODES.includes(localStorage.getItem('rl_sq_mode'))
   ? localStorage.getItem('rl_sq_mode')
   : (localStorage.getItem('rl_hide_squares') === '1' ? 'hidden' : 'full');
 export const squaresMode = () => sqMode;
-export const squaresHidden = () => sqMode === 'hidden';
 export function setSquaresMode(m) {
   if (!SQ_MODES.includes(m)) return;
   sqMode = m;
   try { localStorage.setItem('rl_sq_mode', m); } catch (e) {}
   renderAll();
-}
-export function toggleSquares() {
-  setSquaresMode(sqMode === 'hidden' ? 'full' : sqMode === 'full' ? 'bars' : 'hidden');
 }
 /* ── Иконки пункта «квадраты недели» ── */
 const ICON_GRID = '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="4" height="14" rx="1.5"/><rect x="10" y="5" width="4" height="14" rx="1.5"/><rect x="16" y="5" width="4" height="14" rx="1.5"/></svg>';
@@ -234,9 +230,6 @@ export function shiftWeek(dir) {
     state.weekStart = addDays(state.weekStart, dir * 7);
     renderAll();
   }, { dir });
-}
-export function animatePage(dir) {
-  contentFade(() => renderAll(), { dir });
 }
 export function goToday() {
   const d = parseISO(today());

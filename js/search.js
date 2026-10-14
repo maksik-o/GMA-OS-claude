@@ -1,4 +1,4 @@
-import { state, visibleTasks, isDone, fmtD, esc, getTagColor, getTask } from './store.js';
+import { visibleTasks, isDone, fmtD, esc, getTagColor, getTask } from './store.js';
 import { openSheet } from './sheet.js';
 import { openDay, closeCellMenu } from './week.js';
 

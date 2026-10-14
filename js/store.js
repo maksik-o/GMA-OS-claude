@@ -53,7 +53,6 @@ export function haptic(pattern = 8) {
 }
 export const hapticLight = () => haptic(6);
 export const hapticMedium = () => haptic(12);
-export const hapticHeavy = () => haptic([15, 30, 15]);
 export const hapticSuccess = () => haptic([8, 40, 8]);
 
 const TOMBSTONES_KEY = 'rl_tombstones';
@@ -77,7 +76,6 @@ function pruneTombstones() {
   tombstones = tombstones.filter(t => t.deletedAt && t.deletedAt >= cutoff);
   if (tombstones.length !== before) saveTombstones();
 }
-export function getTombstones() { return tombstones.map(t => t.id); }
 export function getTombstonesFull() { return tombstones.slice(); }
 export function addTombstone(id) {
   if (!id) return;
@@ -97,17 +95,10 @@ export function mergeTombstones(server) {
   tombstones = [...map.values()];
   pruneTombstones();
 }
-export function isTombstoned(id) { return tombstones.some(t => t.id === id); }
 export function removeTombstone(id) {
   const before = tombstones.length;
   tombstones = tombstones.filter(t => t.id !== id);
   if (tombstones.length !== before) saveTombstones();
-}
-export function clearTombstones(ids) {
-  if (!ids || !ids.length) return;
-  const set = new Set(ids);
-  tombstones = tombstones.filter(t => !set.has(t.id));
-  saveTombstones();
 }
 loadTombstones();
 

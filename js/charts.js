@@ -14,7 +14,6 @@
    в оригинале. Цвета — CSS-переменные --chart-1…5, так что графики
    следуют за темой и цветом режима.
    ══════════════════════════════════════════════════════════════════ */
-const NS = 'http://www.w3.org/2000/svg';
 const EASE = 'cubic-bezier(.85, 0, .15, 1)';
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 let uidN = 0;

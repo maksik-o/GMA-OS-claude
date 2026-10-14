@@ -15,7 +15,6 @@ let _selBound = false;
 const TEXT_COLORS = ['#000000', '#ffffff', '#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#2563eb', '#7c3aed', '#db2777'];
 const HILITE_COLORS = ['#fef08a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff'];
 
-export const notesSubscribe = fn => listeners.push(fn);
 let pending = false;
 const notify = () => {
   if (pending) return;
@@ -81,7 +80,6 @@ export function getNote(ws, day) {
 }
 const safeSort = arr => arr.slice().sort((a, b) => String(b.day || '').localeCompare(String(a.day || '')));
 export const getAllNotes = () => safeSort(state.notes.filter(n => !n.deleted));
-export const getNoteById = id => state.notes.find(n => n.id === id && !n.deleted);
 /* Точечное обновление заметки снаружи (используется базой знаний) */
 export async function updateNoteById(id, patch) {
   const n = state.notes.find(x => x.id === id);

@@ -19,8 +19,8 @@ import {
   isoWeek, MONTHS, MONTHS_FULL, esc, fmtD, hapticLight,
 } from './store.js';
 import { openSheet } from './sheet.js';
-import { squaresMode, setSquaresMode, blockSwap, renderAll } from './week.js';
-import { renderTimeline, refreshTimeline, setTimelineRange, timelineRange, shiftTimeline, toggleExpanded, timelineExpanded, setTimelineHooks, TL_RANGES } from './timeline.js';
+import { squaresMode, setSquaresMode, renderAll } from './week.js';
+import { renderTimeline, setTimelineRange, timelineRange, shiftTimeline, toggleExpanded, timelineExpanded, setTimelineHooks, TL_RANGES } from './timeline.js';
 import { contentFade } from './anim.js';
 
 
@@ -509,7 +509,6 @@ const VIEW_ICON_WEEK = '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="3.6" h
 const ICON_BARS = '<svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="2.6" rx="1.3"/><rect x="3" y="13" width="18" height="2.6" rx="1.3"/></svg>';
 const ICON_GRID_OFF2 = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><line x1="5" y1="19" x2="19" y2="5"/></svg>';
 const ICON_EXPAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 0 1 1-1h4"/><path d="M20 9V5a1 1 0 0 0-1-1h-4"/><path d="M4 15v4a1 1 0 0 0 1 1h4"/><path d="M20 15v4a1 1 0 0 1-1 1h-4"/></svg>';
-const ICON_SQUARES = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/></svg>';
 const VIEW_ICON_DAY = '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.4" fill="none" stroke="currentColor" stroke-width="2"/><rect x="6" y="7.5" width="9" height="3" rx="1.2"/><rect x="6" y="13" width="12" height="3" rx="1.2"/></svg>';
 const VIEW_ICON_KANBAN = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="4.6" height="16" rx="1.6"/><rect x="9.7" y="4" width="4.6" height="10.5" rx="1.6"/><rect x="15.4" y="4" width="4.6" height="13.5" rx="1.6"/></svg>';
 function openViewMenu(anchor) {
@@ -774,7 +773,6 @@ function ensurePanel() {
 const visiblePane = (grid, sel) => { const el = grid.querySelector(sel); return el && el.offsetWidth > 0 ? el : null; };
 const setTopbarKb = on => { const tb = document.querySelector('.topbar'); if (tb) tb.classList.toggle('kanban-active', on); };
 export const toggleKanbanView = () => setBlock(blockKind === 'kanban' ? 'week' : 'kanban');
-export const toggleDayBlock = () => setBlock(blockKind === 'day' ? 'week' : 'day');
 
 /* ── Блоки недели: Running-list, Канбан и День ──
    Все три живут на одном месте и сменяют друг друга одним движением:

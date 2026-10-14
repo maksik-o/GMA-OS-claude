@@ -11,7 +11,7 @@
    иначе один вложенный PDF раздул бы полезную нагрузку sync.
    ══════════════════════════════════════════════════════════════════ */
 import { dbAll, dbPut, dbBulk, dbGet, dbDel } from './db.js';
-import { uid, esc, today, MODES } from './store.js';
+import { uid, esc, MODES } from './store.js';
 import { getAllNotes, updateNoteById, deleteNote } from './notes.js';
 import { createGraph } from './kbgraph.js';
 
@@ -264,7 +264,6 @@ export function renderKbView(el) {
   renderSide();
   renderMain();
 }
-export const refreshKbView = () => { if (_host && !_host.hidden) renderKbView(_host); };
 
 function buildShell(el) {
   el.innerHTML = `
