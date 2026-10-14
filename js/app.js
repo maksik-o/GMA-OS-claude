@@ -23,24 +23,50 @@ import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanba
 
 const $ = id => document.getElementById(id);
 
-/* ── ТЕМЫ: 5 обоев + 10 однотонных/градиентных ── */
+/* ── ТЕМЫ ──
+   Вместо фотообоев — фоны, нарисованные самим CSS: несколько мягких
+   радиальных пятен поверх базового цвета («mesh»). Ничего не нужно
+   скачивать (обои весили 4,7 МБ и грузились при каждой установке),
+   картинка чёткая на любом экране и не «плывёт» при смене размера.
+   «Авто» следует светлой/тёмной теме iPhone. */
+const blob = (w, h, x, y, c) => `radial-gradient(${w}% ${h}% at ${x}% ${y}%, ${c} 0%, transparent 70%)`;
 const THEMES = [
-  { id: 'sky',       label: 'Небо',    img: 'images/sky.jpg',       surf: 'light', tint: '#2563eb', bg: '#cfdcf2' },
-  { id: 'sunset',    label: 'Закат',   img: 'images/sunset.jpg',    surf: 'dark',  tint: '#fb7185', bg: '#2b1024' },
-  { id: 'waves',     label: 'Волны',   img: 'images/waves.jpg',     surf: 'dark',  tint: '#60a5fa', bg: '#0a1428' },
-  { id: 'mountains', label: 'Горы',    img: 'images/mountains.jpg', surf: 'light', tint: '#16a34a', bg: '#e2f0d9' },
-  { id: 'winter',    label: 'Зима',    img: 'images/winter.jpg',    surf: 'light', tint: '#64748b', bg: '#e9eef2' },
-  { id: 'light',  label: 'Светлая', surf: 'light', tint: '#38bdf8', bg: '#eef2f7' },
-  { id: 'dark',   label: 'Тёмная',  surf: 'dark',  tint: '#6366f1', bg: '#0b1220' },
-  { id: 'ocean',  label: 'Океан',  surf: 'dark',  tint: '#22d3ee', bg: 'linear-gradient(135deg,#062b3a,#0a4d68)' },
-  { id: 'amber',  label: 'Янтарь', surf: 'light', tint: '#f59e0b', bg: 'linear-gradient(135deg,#fff7e6,#ffe0b3)' },
-  { id: 'lava',   label: 'Лава',   surf: 'dark',  tint: '#ef4444', bg: 'linear-gradient(135deg,#1a0505,#7f1d1d)' },
-  { id: 'plum',   label: 'Слива',  surf: 'dark',  tint: '#e879f9', bg: 'linear-gradient(135deg,#221129,#4a1d5f)' },
-  { id: 'forest', label: 'Лес',    surf: 'dark',  tint: '#4ade80', bg: 'linear-gradient(135deg,#0f2417,#1a4028)' },
-  { id: 'nord',   label: 'Nord',   surf: 'dark',  tint: '#88c0d0', bg: '#2e3440' },
-  { id: 'paper',  label: 'Бумага', surf: 'light', tint: '#d4a574', bg: '#f5f1e8' },
-  { id: 'aurora', label: 'Аврора', surf: 'dark',  tint: '#34d399', bg: 'linear-gradient(135deg,#003b3a,#006d77,#8b5cf6)' },
+  { id: 'auto', label: 'Авто', auto: true },
+  { id: 'mist', label: 'Туман', surf: 'light', tint: '#6366f1', bg: '#edf0f5',
+    mesh: [blob(65, 55, 0, 0, '#c7d3fb'), blob(55, 50, 100, 8, '#f1d8f3'), blob(75, 60, 60, 108, '#d3eee8')] },
+  { id: 'dawn', label: 'Рассвет', surf: 'light', tint: '#f97316', bg: '#f8efe8',
+    mesh: [blob(60, 50, 8, 0, '#ffd2b5'), blob(55, 50, 100, 18, '#f3c5dc'), blob(75, 60, 40, 110, '#d8d1fb')] },
+  { id: 'mint', label: 'Мята', surf: 'light', tint: '#10b981', bg: '#e9f4f0',
+    mesh: [blob(60, 50, 0, 0, '#bde8d9'), blob(55, 50, 100, 15, '#cde5fb'), blob(75, 60, 50, 110, '#ecf4c7')] },
+  { id: 'sand', label: 'Песок', surf: 'light', tint: '#b45309', bg: '#f3ede4',
+    mesh: [blob(60, 50, 0, 0, '#ead8c0'), blob(55, 50, 100, 20, '#f6e3cf'), blob(75, 60, 50, 110, '#e5ddcf')] },
+  { id: 'lavender', label: 'Лаванда', surf: 'light', tint: '#8b5cf6', bg: '#efedf8',
+    mesh: [blob(60, 50, 0, 0, '#d6cdfd'), blob(55, 50, 100, 15, '#c8ddfb'), blob(75, 60, 50, 110, '#f2d3ea')] },
+  { id: 'graphite', label: 'Графит', surf: 'dark', tint: '#94a3b8', bg: '#15171c',
+    mesh: [blob(70, 55, 15, 0, '#2a2f3a'), blob(70, 60, 100, 100, '#1e242f')] },
+  { id: 'midnight', label: 'Полночь', surf: 'dark', tint: '#818cf8', bg: '#0a0f1f',
+    mesh: [blob(65, 55, 0, 0, '#1f2b6e'), blob(55, 50, 100, 18, '#0f3c5b'), blob(75, 60, 50, 110, '#2a1a5d')] },
+  { id: 'aurora', label: 'Аврора', surf: 'dark', tint: '#34d399', bg: '#06141a',
+    mesh: [blob(65, 55, 10, 0, '#0c5a4d'), blob(55, 50, 100, 25, '#2a2978'), blob(75, 60, 40, 110, '#0b3a51')] },
+  { id: 'cherry', label: 'Вишня', surf: 'dark', tint: '#fb7185', bg: '#160c12',
+    mesh: [blob(65, 55, 0, 0, '#5a1730'), blob(55, 50, 100, 20, '#3a1450'), blob(75, 60, 50, 110, '#2b0f1d')] },
+  { id: 'oled', label: 'Чёрная', surf: 'dark', tint: '#64748b', bg: '#000000', mesh: [] },
 ];
+/* Старые id тем → ближайшие новые, чтобы у всех сохранился «характер» */
+const THEME_MIGRATE = {
+  sky: 'mist', winter: 'mist', light: 'mist', mountains: 'mint', amber: 'sand', paper: 'sand',
+  sunset: 'cherry', lava: 'cherry', plum: 'cherry', waves: 'midnight', ocean: 'midnight',
+  dark: 'graphite', nord: 'graphite', forest: 'aurora', aurora: 'aurora',
+};
+const mqDark = matchMedia('(prefers-color-scheme: dark)');
+const resolveTheme = id => {
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  return t.auto ? THEMES.find(x => x.id === (mqDark.matches ? 'midnight' : 'mist')) : t;
+};
+const themeSwatch = t => {
+  if (t.auto) return 'linear-gradient(135deg, #edf0f5 0 50%, #0a0f1f 50% 100%)';
+  return [...t.mesh, t.bg].join(', ');
+};
 const BG_GRADIENT_PRESETS = [
   { id: 'sunset-grad', c: 'linear-gradient(135deg,#ff6b6b,#feca57,#48dbfb)' },
   { id: 'ocean-grad', c: 'linear-gradient(135deg,#667eea,#764ba2)' },
@@ -53,7 +79,7 @@ const BG_PRESETS = ['#eef2f7', '#f8e8d4', '#0b1220', '#04222e', '#221129', '#101
 const FONTS = [{ id: 's', label: 'S' }, { id: 'm', label: 'M' }, { id: 'l', label: 'L' }];
 const TAG_COLORS = ['#ef4444', '#f59e0b', '#10b981', '#2563eb', '#8b5cf6', '#ec4899'];
 
-let storedTheme = 'sky';
+let storedTheme = 'auto';
 let storedBg = '';
 let storedBgImage = '';
 let storedBgOpacity = 0.3;
@@ -65,7 +91,6 @@ const isDark = hex => {
   const r = parseInt(n.slice(0, 2), 16), g = parseInt(n.slice(2, 4), 16), b = parseInt(n.slice(4, 6), 16);
   return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
 };
-const currentTheme = () => THEMES.find(t => t.id === storedTheme) || THEMES[0];
 
 function applyPanelAlpha() {
   const def = document.body.dataset.surf === 'dark' ? 0.35 : 0.45;
@@ -84,15 +109,20 @@ async function setPanelAlpha(v) {
   applyPanelAlpha();
 }
 function applyTheme() {
-  const th = THEMES.find(t => t.id === storedTheme) || THEMES[0];
-  document.documentElement.dataset.theme = th.id;
-  if (storedBg) {
-    document.documentElement.style.setProperty('--bg', storedBg);
-    document.body.dataset.surf = isDark(storedBg) ? 'dark' : 'light';
-  } else {
-    document.documentElement.style.removeProperty('--bg');
-    document.body.dataset.surf = th.surf;
-  }
+  const th = resolveTheme(storedTheme);
+  const root = document.documentElement;
+  root.dataset.theme = th.id;
+  root.style.setProperty('--tint', th.tint);
+  /* Свой цвет фона перекрывает тему целиком — вместе с пятнами */
+  const bg = storedBg || th.bg;
+  const mesh = storedBg ? 'none' : (th.mesh.join(', ') || 'none');
+  const surf = storedBg ? (isDark(storedBg) ? 'dark' : 'light') : th.surf;
+  root.style.setProperty('--bg', bg);
+  root.style.setProperty('--bg-mesh', mesh);
+  document.body.dataset.surf = surf;
+  /* Тот же фон — в localStorage: скрипт в <head> поставит его до
+     первой отрисовки, и при запуске не мигает тема по умолчанию. */
+  try { localStorage.setItem('rl_boot_theme', JSON.stringify({ id: th.id, bg, mesh, surf, tint: th.tint })); } catch {}
   applyPanelAlpha();
   applyBgImage(); // тема ставит и обои
   requestAnimationFrame(() => {
@@ -101,8 +131,7 @@ function applyTheme() {
   });
 }
 function applyBgImage() {
-  const th = THEMES.find(t => t.id === storedTheme) || THEMES[0];
-  const img = storedBgImage || th.img || ''; // своя картинка → иначе обои темы
+  const img = storedBgImage;
   /* Относительный путь внутри var() Chrome разрешает относительно
      таблицы стилей (css/style.css), а не документа — отсюда были
      запросы вида css/images/sunset.jpg. Отдаём абсолютный URL. */
@@ -171,14 +200,24 @@ async function setFont(id) {
 async function handleBgImageUpload(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { alert('Выберите изображение'); return; }
-  const reader = new FileReader();
-  reader.onload = async e => {
-    storedBgImage = e.target.result;
-    await dbSetKV('bgImage', storedBgImage);
-    applyBgImage();
-    renderLookPanel();
-  };
-  reader.readAsDataURL(file);
+  /* Фото с телефона весит мегабайты и целиком лежало бы в базе и в
+     памяти как data:URL. Ужимаем до 2048 px по длинной стороне. */
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, 2048 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * k);
+    c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    storedBgImage = c.toDataURL('image/jpeg', 0.82);
+  } catch { alert('Не удалось открыть изображение'); return; }
+  finally { URL.revokeObjectURL(url); }
+  if (storedBgOpacity < 0.2) storedBgOpacity = 1;
+  await dbSetKV('bgImage', storedBgImage);
+  await dbSetKV('bgOpacity', storedBgOpacity);
+  applyBgImage();
+  renderLookPanel();
 }
 async function clearBgImage() {
   storedBgImage = '';
@@ -208,23 +247,14 @@ function renderLookPanel() {
       for (const t of THEMES) {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'theme-dot' + (t.id === storedTheme ? ' on' : '');
+        b.className = 'theme-dot' + (t.id === storedTheme && !storedBg ? ' on' : '');
         b.title = t.label;
-        /* шорткат принимает и hex, и linear-gradient; обои кладём слоем поверх —
-           без preload-обмена, поэтому кружки не мигают */
-        b.style.background = t.bg;
-        if (t.img) {
-          b.style.backgroundImage = `url(${t.img})`;
-          b.style.backgroundSize = 'cover';
-          b.style.backgroundPosition = 'center';
-        }
+        b.innerHTML = `<span class="theme-sw" style="background:${themeSwatch(t)}"></span><span class="theme-name">${t.label}</span>`;
         b.onclick = async () => {
           storedTheme = t.id;
+          storedBg = '';   // выбор темы снимает свой цвет фона
           await dbSetKV('theme', t.id);
-          if (t.img) { // тема с обоями → обои на 100%
-            storedBgOpacity = 1;
-            await dbSetKV('bgOpacity', 1);
-          }
+          await dbSetKV('bg', '');
           applyTheme();
           renderLookPanel();
         };
@@ -277,7 +307,7 @@ function renderLookPanel() {
     }
     if (bgClearBtn) {
       bgClearBtn.onclick = clearBgImage;
-      bgClearBtn.disabled = !storedBgImage && !currentTheme().img;
+      bgClearBtn.disabled = !storedBgImage;
     }
     if (bgOpacitySlider) {
       bgOpacitySlider.min = 0;
@@ -637,6 +667,30 @@ function renderCurrent() {
     }
   }
 }
+/* ── Липкие шапки (неделя, канбан, финансы) ──
+   Пока шапка стоит на своём месте, она прозрачная и сливается с
+   карточкой — иначе выглядела «карточкой на карточке». Прилипнув к
+   верху, становится плотной: полупрозрачная пропускала текст задач,
+   и он читался прямо поверх дней недели. */
+(function bindStuckHeads() {
+  const app = $('app');
+  if (!app) return;
+  let raf = 0;
+  const check = () => {
+    raf = 0;
+    const pad = parseFloat(getComputedStyle(app).paddingTop) || 0;
+    document.querySelectorAll('.m-head, .l-head, .kb-head, .fin-head').forEach(h => {
+      if (!h.offsetParent) return;
+      const top = parseFloat(getComputedStyle(h).top);
+      if (Number.isNaN(top)) return;
+      h.classList.toggle('is-stuck', app.scrollTop > 0 && h.getBoundingClientRect().top <= top + pad + 0.5);
+    });
+  };
+  const queue = () => { if (!raf) raf = requestAnimationFrame(check); };
+  app.addEventListener('scroll', queue, { passive: true });
+  document.addEventListener('grid-rendered', queue);
+  addEventListener('resize', queue);
+})();
 (function bindPull() {
   const app = $('app');
   const ind = $('pullIndicator');
@@ -687,7 +741,9 @@ async function boot() {
   await loadModeColors();
   await hk.loadKeys();
   const t = await dbGetKV('theme');
-  if (THEMES.some(x => x.id === t)) storedTheme = t;
+  const tm = THEME_MIGRATE[t] || t;
+  if (THEMES.some(x => x.id === tm)) storedTheme = tm;
+  mqDark.addEventListener('change', () => { if (storedTheme === 'auto') applyTheme(); });
   storedBg = (await dbGetKV('bg')) || '';
   storedBgImage = (await dbGetKV('bgImage')) || '';
   storedBgOpacity = parseFloat(await dbGetKV('bgOpacity')) || 0.3;
@@ -1026,11 +1082,30 @@ function activeFab() {
   const ab = $('addBtn');
   return ab && !ab.hidden ? ab : null;
 }
+/* «Не вошли» и «не настроено» — осознанный выбор, а не сбой: такую
+   плашку можно закрыть, и она не вернётся, пока состояние то же.
+   Сеть и ошибки показываем всегда — они временные. */
+const SYNC_DISMISSABLE = ['auth', 'off'];
+const SA_KEY = 'rl_sync_alert_hidden';
 function showSyncAlert(stateName) {
   const el = $('syncAlert');
   if (!el) return;
-  const msg = SYNC_MSG[stateName];
+  let msg = SYNC_MSG[stateName];
+  let hiddenFor = '';
+  try { hiddenFor = localStorage.getItem(SA_KEY) || ''; } catch {}
+  if (hiddenFor && !msg) { try { localStorage.removeItem(SA_KEY); } catch {} }   // всё наладилось — в следующий раз покажем снова
+  if (msg && SYNC_DISMISSABLE.includes(stateName) && hiddenFor === stateName) msg = '';
   el.hidden = !msg;
+  const x = el.querySelector('.sa-x');
+  if (x) {
+    x.hidden = !SYNC_DISMISSABLE.includes(stateName);
+    x.onclick = e => {
+      e.stopPropagation();
+      try { localStorage.setItem(SA_KEY, stateName); } catch {}
+      el.classList.remove('on');
+      setTimeout(() => { el.hidden = true; }, 250);
+    };
+  }
   if (!msg) { el.classList.remove('on'); return; }
   const t = el.querySelector('.sa-text');
   if (t) t.textContent = msg;

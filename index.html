@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
   <meta name="theme-color" content="#0b1220">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,12 +12,25 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preload" href="fonts/comfortaa-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    /* Тема — до первой отрисовки, иначе при запуске мелькает фон по умолчанию */
+    try {
+      var bt = JSON.parse(localStorage.getItem('rl_boot_theme') || 'null');
+      if (bt) {
+        var r = document.documentElement;
+        r.dataset.theme = bt.id;
+        r.dataset.bootSurf = bt.surf;
+        r.style.setProperty('--bg', bt.bg);
+        r.style.setProperty('--bg-mesh', bt.mesh || 'none');
+        if (bt.tint) r.style.setProperty('--tint', bt.tint);
+      }
+    } catch (e) {}
+  </script>
 </head>
 <body data-surf="light" data-font="m" data-view="week">
+<script>try { var bs = document.documentElement.dataset.bootSurf; if (bs) document.body.dataset.surf = bs; } catch (e) {}</script>
 
 <div id="pullIndicator" class="pull-ind"><span class="pull-spin"></span></div>
 
@@ -25,6 +38,7 @@
   <button id="syncAlert" class="sync-alert" type="button" hidden>
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 19a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.7 8.6 4.7 4.7 0 0 1 17.5 19h-11zM11 8v5h2V8h-2zm0 7v2h2v-2h-2z"/></svg>
       <span class="sa-text"></span>
+      <span class="sa-x" title="Скрыть" aria-label="Скрыть">✕</span>
     </button>
   <header class="topbar glass">
     <div id="modes" class="modes"></div>

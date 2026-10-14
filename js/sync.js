@@ -22,7 +22,6 @@ let lastError = '';
 let fails = 0;
 const MAX_FAILS = 3;
 export const syncPaused = () => fails >= MAX_FAILS;
-export function resumeSync() { fails = 0; }
 
 export const configured = () => API_URL.startsWith('https://') && CLIENT_ID.includes('.apps.googleusercontent.com');
 export const signedIn = () => !!(localStorage.getItem(TOKEN_KEY) || localStorage.getItem(KEY_KEY));
