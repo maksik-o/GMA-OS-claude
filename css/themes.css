@@ -16,6 +16,9 @@
 
    Свой цвет фона из «Оформления» ставится инлайн на html и
    перекрывает --bg темы; цвета режимов, заданные вручную, — тоже.
+   Ползунки «Оформления» работают в любой теме: «Панели» задаёт
+   --panel-a (прозрачность и размытие панелей), «Фон» — яркость слоя
+   с узором темы или своей картинкой (body::before).
    ══════════════════════════════════════════════════════════════════ */
 
 /* Поверхности, которые получают «материал» темы */
@@ -36,19 +39,14 @@
 :root[data-theme] .cgroup-name, :root[data-theme] .kb-blank b {
   font-family: var(--font-head);
 }
-/* Без стекла — без блюра: у матовых тем панели плотные */
-:root[data-theme="note"] *, :root[data-theme="brutal"] *, :root[data-theme="term"] *,
-:root[data-theme="swiss"] *, :root[data-theme="neon"] * {
-  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
-}
 
 /* ══════════════ 1. ТЕТРАДЬ ══════════════ */
 :root[data-theme="note"], :root[data-theme="note"] body, .tmini.t-note {
   --bg: #e2d9c6;
   --bg-mesh: radial-gradient(#cfc3a8 1px, transparent 1.4px) 0 0 / 16px 16px;
-  --tint: transparent;
+  --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
   --text: #2a2620; --dim: #857b6a; --c-todo: rgba(42, 38, 32, .5);
-  --glass: #fffcf4; --card: #f4eddf; --brd: #d6cbb4; --panel-solid: #fffcf4;
+  --glass: color-mix(in srgb, #fffcf4 calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, #f4eddf calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #d6cbb4; --panel-solid: #fffcf4;
   --shadow: 0 1px 0 #cfc2a6, 0 8px 20px rgba(90, 70, 30, .10);
   --inner-glow: 0 0 0 transparent;
   --t-bw: 1px; --r-lg: 8px; --r-md: 6px;
@@ -57,7 +55,7 @@
   --c-done: #2f7d4f; --c-started: #c98a12; --c-skipped: #b3261e; --c-postponed: #23408e;
   --accent-deep: var(--accent);
 }
-:root[data-theme="note"], .tmini.t-note { --mode-work: #b3261e; --mode-home: #2f7d4f; --mode-study: #23408e; --mode-all: #9a6b00; }
+:root[data-theme="note"], .tmini.t-note { --panel-a: 1; --mode-work: #b3261e; --mode-home: #2f7d4f; --mode-study: #23408e; --mode-all: #9a6b00; }
 :root[data-theme="note"] .topbar::before, :root[data-theme="note"] .kb-board-title,
 :root[data-theme="note"] .notes-day-label { font-style: italic; font-weight: 700; }
 :root[data-theme="note"] .mode-blob { background: transparent !important; box-shadow: inset 0 -2.5px 0 var(--accent) !important; border-radius: 0; }
@@ -78,9 +76,10 @@
 
 /* ══════════════ 2. БРУТАЛ ══════════════ */
 :root[data-theme="brutal"], :root[data-theme="brutal"] body, .tmini.t-brutal {
-  --bg: #ffd43b; --bg-mesh: none; --tint: transparent;
+  --bg: #ffd43b;
+  --bg-mesh: radial-gradient(#e8b800 1.3px, transparent 1.7px) 0 0 / 18px 18px; --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
   --text: #111; --dim: #3b3b3b; --c-todo: #111;
-  --glass: #ffffff; --card: #ffffff; --brd: #111; --panel-solid: #ffffff;
+  --glass: color-mix(in srgb, #ffffff calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, #ffffff calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #111; --panel-solid: #ffffff;
   --shadow: 4px 4px 0 #111; --inner-glow: 0 0 0 transparent;
   --t-bw: 2.5px; --r-lg: 14px; --r-md: 10px;
   --font-ui: "Manrope", -apple-system, sans-serif;
@@ -88,7 +87,7 @@
   --c-done: #18b26b; --c-started: #ff9f1c; --c-skipped: #ff3b3b; --c-postponed: #3b6cff;
   --accent-deep: var(--accent);
 }
-:root[data-theme="brutal"], .tmini.t-brutal { --mode-work: #ff5a36; --mode-home: #18b26b; --mode-study: #3b6cff; --mode-all: #b14cff; }
+:root[data-theme="brutal"], .tmini.t-brutal { --panel-a: 1; --mode-work: #ff5a36; --mode-home: #18b26b; --mode-study: #3b6cff; --mode-all: #b14cff; }
 :root[data-theme="brutal"] .topbar::before, :root[data-theme="brutal"] .kb-board-title { font-weight: 800; letter-spacing: -.02em; }
 :root[data-theme="brutal"] .icon-btn, :root[data-theme="brutal"] .sync, :root[data-theme="brutal"] .btn,
 :root[data-theme="brutal"] .fab, :root[data-theme="brutal"] .chip, :root[data-theme="brutal"] .fin-fab {
@@ -117,7 +116,7 @@
   --bg-mesh: radial-gradient(120% 70% at 50% 0%, #0b2414 0%, transparent 70%);
   --tint: #39ff88;
   --text: #a8ffc4; --dim: #4f8a62; --c-todo: rgba(168, 255, 196, .45);
-  --glass: #06100a; --card: #0a1a10; --brd: #1e5a32; --panel-solid: #06100a;
+  --glass: color-mix(in srgb, #06100a calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, #0a1a10 calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #1e5a32; --panel-solid: #06100a;
   --shadow: none; --inner-glow: 0 0 0 transparent;
   --t-bw: 1px; --r-lg: 0px; --r-md: 0px;
   --font-ui: "JetBrains Mono", ui-monospace, Menlo, monospace;
@@ -125,7 +124,7 @@
   --c-done: #39ff88; --c-started: #ffb000; --c-skipped: #ff5f56; --c-postponed: #4cc9ff;
   --accent-deep: var(--accent);
 }
-:root[data-theme="term"], .tmini.t-term { --mode-work: #39ff88; --mode-home: #ffb000; --mode-study: #4cc9ff; --mode-all: #d6d6d6; }
+:root[data-theme="term"], .tmini.t-term { --panel-a: 1; --mode-work: #39ff88; --mode-home: #ffb000; --mode-study: #4cc9ff; --mode-all: #d6d6d6; }
 :root[data-theme="term"] *, :root[data-theme="term"] *::before, :root[data-theme="term"] *::after { border-radius: 0 !important; }
 :root[data-theme="term"] body { font-size: 14px; }
 :root[data-theme="term"] #app::after {
@@ -159,7 +158,7 @@
     radial-gradient(80% 55% at 40% 102%, #0ea5e9 0%, transparent 70%);
   --tint: #a78bfa;
   --text: #ffffff; --dim: rgba(255, 255, 255, .64); --c-todo: rgba(255, 255, 255, .55);
-  --glass: rgba(20, 14, 44, .40); --card: rgba(255, 255, 255, .13); --brd: rgba(255, 255, 255, .22);
+  --glass: color-mix(in srgb, rgb(20 14 44) calc(var(--panel-a, 0.4) * 100%), transparent); --card: rgba(255, 255, 255, .13); --brd: rgba(255, 255, 255, .22);
   --panel-solid: #261c54;
   --shadow: 0 10px 30px rgba(0, 0, 0, .28); --inner-glow: inset 0 1px 0 rgba(255, 255, 255, .35);
   --t-bw: 1px; --r-lg: 26px; --r-md: 16px;
@@ -167,15 +166,16 @@
   --font-head: "Manrope", -apple-system, sans-serif;
   --c-done: #4ade80; --c-started: #fbbf24; --c-skipped: #ff7a7a; --c-postponed: #93c5fd;
 }
-:root[data-theme="glass"], .tmini.t-glass { --mode-work: #ff7a7a; --mode-home: #4ade80; --mode-study: #60a5fa; --mode-all: #fbbf24; }
+:root[data-theme="glass"], .tmini.t-glass { --panel-a: 0.4; --mode-work: #ff7a7a; --mode-home: #4ade80; --mode-study: #60a5fa; --mode-all: #fbbf24; }
 :root[data-theme="glass"] .topbar::before, :root[data-theme="glass"] .kb-board-title { font-weight: 800; letter-spacing: -.02em; }
 :root[data-theme="glass"] .icon-btn, :root[data-theme="glass"] .sync { border: 1px solid var(--brd); }
 
 /* ══════════════ 5. ШВЕЙЦАРСКИЙ ══════════════ */
 :root[data-theme="swiss"], :root[data-theme="swiss"] body, .tmini.t-swiss {
-  --bg: #e7e6e0; --bg-mesh: none; --tint: transparent;
+  --bg: #e7e6e0;
+  --bg-mesh: repeating-linear-gradient(0deg, rgba(0, 0, 0, .055) 0 1px, transparent 1px 32px), repeating-linear-gradient(90deg, rgba(0, 0, 0, .055) 0 1px, transparent 1px 32px); --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
   --text: #111111; --dim: #6f6d66; --c-todo: rgba(17, 17, 17, .5);
-  --glass: #ffffff; --card: #f3f2ee; --brd: #cfcdc5; --panel-solid: #ffffff;
+  --glass: color-mix(in srgb, #ffffff calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, #f3f2ee calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #cfcdc5; --panel-solid: #ffffff;
   --shadow: none; --inner-glow: 0 0 0 transparent;
   --t-bw: 1px; --r-lg: 3px; --r-md: 2px;
   --font-ui: "Golos Text", -apple-system, sans-serif;
@@ -183,7 +183,7 @@
   --c-done: #111111; --c-started: #f2a900; --c-skipped: #e4002b; --c-postponed: #0047bb;
   --accent-deep: var(--accent);
 }
-:root[data-theme="swiss"], .tmini.t-swiss { --mode-work: #e4002b; --mode-home: #00875a; --mode-study: #0047bb; --mode-all: #111111; }
+:root[data-theme="swiss"], .tmini.t-swiss { --panel-a: 1; --mode-work: #e4002b; --mode-home: #00875a; --mode-study: #0047bb; --mode-all: #111111; }
 :root[data-theme="swiss"] .topbar::before, :root[data-theme="swiss"] .kb-board-title { font-weight: 800; letter-spacing: -.04em; }
 :root[data-theme="swiss"] .icon-btn, :root[data-theme="swiss"] .sync, :root[data-theme="swiss"] .btn, :root[data-theme="swiss"] .chip {
   border-radius: 2px; box-shadow: none; border: 1px solid var(--brd); background: #fff;
@@ -211,7 +211,7 @@
     linear-gradient(#0d0620 0%, #1d0b3a 60%, #2a0b45 100%);
   --tint: #ff3ea5;
   --text: #f4eaff; --dim: #a58bd1; --c-todo: rgba(244, 234, 255, .5);
-  --glass: rgba(22, 10, 46, .88); --card: rgba(45, 226, 230, .07); --brd: rgba(255, 62, 165, .75);
+  --glass: color-mix(in srgb, rgb(22 10 46) calc(var(--panel-a, 0.88) * 100%), transparent); --card: rgba(45, 226, 230, .07); --brd: rgba(255, 62, 165, .75);
   --panel-solid: #1a0c36;
   --shadow: 0 0 16px rgba(255, 62, 165, .32); --inner-glow: inset 0 0 14px rgba(255, 62, 165, .08);
   --t-bw: 1px; --r-lg: 16px; --r-md: 10px;
@@ -220,7 +220,7 @@
   --c-done: #ff3ea5; --c-started: #ffd166; --c-skipped: #ff5c5c; --c-postponed: #2de2e6;
   --accent-deep: var(--accent);
 }
-:root[data-theme="neon"], .tmini.t-neon { --mode-work: #ff3ea5; --mode-home: #2de2e6; --mode-study: #ffd166; --mode-all: #b388ff; }
+:root[data-theme="neon"], .tmini.t-neon { --panel-a: 0.88; --mode-work: #ff3ea5; --mode-home: #2de2e6; --mode-study: #ffd166; --mode-all: #b388ff; }
 :root[data-theme="neon"] .topbar::before, :root[data-theme="neon"] .kb-board-title {
   text-transform: uppercase; font-weight: 800; letter-spacing: .04em;
   background: linear-gradient(90deg, #ff3ea5, #2de2e6); -webkit-background-clip: text; background-clip: text; color: transparent;
