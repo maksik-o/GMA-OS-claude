@@ -102,7 +102,6 @@ html {
   background:
     radial-gradient(720px 520px at 10% 6%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
     radial-gradient(900px 600px at 50% 100%, var(--time-atmosphere), transparent 70%),
-    var(--bg-mesh, none),
     var(--bg);
   transition: background var(--dur-mode) var(--ease-mode);
 }
@@ -3725,8 +3724,9 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background: var(--bg-image) center / cover no-repeat;
-  opacity: var(--bg-image-opacity, .3);
+  /* Узор темы или своя картинка; яркость — ползунок «Фон» */
+  background: var(--bg-layer, var(--bg-mesh, none));
+  opacity: var(--bg-image-opacity, 1);
   z-index: 0;
   pointer-events: none;
   transition: opacity .3s ease;

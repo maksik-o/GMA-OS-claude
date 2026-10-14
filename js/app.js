@@ -71,25 +71,31 @@ const TAG_COLORS = ['#ef4444', '#f59e0b', '#10b981', '#2563eb', '#8b5cf6', '#ec4
 let storedTheme = 'auto';
 let storedBg = '';
 let storedBgImage = '';
-let storedBgOpacity = 0.3;
-let storedPanelAlpha = null; // null = дефолт поверхности
+let storedBgOpacity = 1;      // яркость слоя фона: узор темы или своя картинка
+/* Прозрачность панелей — своя у каждой темы: у «Стекла» панели
+   полупрозрачные, у матовых тем плотные. Одно общее значение делало
+   бы «Брутал» прозрачным после настройки «Стекла». */
+let panelAlphaByTheme = {};
+const PANEL_ALPHA_DEFAULT = { glass: 0.4, neon: 0.88 };
+const panelAlphaFor = id => panelAlphaByTheme[id] ?? PANEL_ALPHA_DEFAULT[id] ?? 1;
 let storedFont = 'm';
 
 function applyPanelAlpha() {
-  const def = document.body.dataset.surf === 'dark' ? 0.35 : 0.45;
-  const v = storedPanelAlpha == null ? def : storedPanelAlpha;
+  const v = panelAlphaFor(resolveTheme(storedTheme).id);
   const r = document.documentElement.style;
-  r.setProperty('--panel-a', v);        // прозрачность стекла/карточек
-  r.setProperty('--panel-blur-k', v);   // блюр привязан к прозрачности, как было
+  r.setProperty('--panel-a', v);        // прозрачность панелей (css/themes.css)
+  /* Блюр привязан к прозрачности, как было; у плотных панелей он не
+     виден, поэтому его не считаем — меньше работы при прокрутке */
+  r.setProperty('--panel-blur-k', v >= 0.99 ? 0 : v);
   const s = $('panelOpacitySlider');
-  if (s) { s.min = 0; s.max = 1; s.value = v; }
+  if (s) { s.min = 0.1; s.max = 1; s.step = 0.05; s.value = v; }
   const l = $('panelOpacityLabel');
   if (l) l.textContent = Math.round(v * 100) + '%';
 }
 async function setPanelAlpha(v) {
-  storedPanelAlpha = v;
-  await dbSetKV('panelAlpha', v);
+  panelAlphaByTheme[resolveTheme(storedTheme).id] = v;
   applyPanelAlpha();
+  await dbSetKV('panelAlphaByTheme', panelAlphaByTheme);
 }
 function applyTheme() {
   const th = resolveTheme(storedTheme);
@@ -124,8 +130,12 @@ function applyBgImage() {
     try { url = /^(data:|blob:|https?:)/.test(img) ? img : new URL(img, document.baseURI).href; }
     catch { url = img; }
   }
-  document.documentElement.style.setProperty('--bg-image', url ? `url("${url}")` : 'none');
-  document.documentElement.style.setProperty('--bg-image-opacity', storedBgOpacity);
+  /* Своя картинка заменяет узор темы; без неё ползунок «Фон» меняет
+     яркость узора (body::before в style.css) */
+  const r = document.documentElement.style;
+  if (url) r.setProperty('--bg-layer', `url("${url}") center / cover no-repeat`);
+  else r.removeProperty('--bg-layer');
+  r.setProperty('--bg-image-opacity', storedBgOpacity);
 }
 function applyFont() { document.body.dataset.font = storedFont; }
 function updateTimeAtmosphere() {
@@ -199,7 +209,7 @@ async function handleBgImageUpload(file) {
   finally { URL.revokeObjectURL(url); }
   if (storedBgOpacity < 0.2) storedBgOpacity = 1;
   await dbSetKV('bgImage', storedBgImage);
-  await dbSetKV('bgOpacity', storedBgOpacity);
+  await dbSetKV('bgLayerOpacity', storedBgOpacity);
   applyBgImage();
   renderLookPanel();
 }
@@ -211,8 +221,8 @@ async function clearBgImage() {
 }
 async function setBgOpacity(val) {
   storedBgOpacity = parseFloat(val);
-  await dbSetKV('bgOpacity', storedBgOpacity);
   applyBgImage();
+  await dbSetKV('bgLayerOpacity', storedBgOpacity);
   const label = $('bgOpacityLabel');
   if (label) label.textContent = Math.round(storedBgOpacity * 100) + '%';
 }
@@ -308,19 +318,19 @@ function renderLookPanel() {
       const prow = document.createElement('div');
       prow.className = 'bg-opacity-row';
       prow.id = 'panelOpacityRow';
-      prow.innerHTML = '<span class="bg-opacity-label">Панели</span><input id="panelOpacitySlider" class="bg-opacity-slider" type="range" min="0.1" max="0.9" step="0.05"><span class="bg-opacity-label" id="panelOpacityLabel"></span>';
+      prow.innerHTML = '<span class="bg-opacity-label">Панели</span><input id="panelOpacitySlider" class="bg-opacity-slider" type="range" min="0.1" max="1" step="0.05"><span class="bg-opacity-label" id="panelOpacityLabel"></span>';
       bgOpRow.insertAdjacentElement('afterend', prow);
     }
     const pSlider = $('panelOpacitySlider');
     if (pSlider) pSlider.oninput = e => setPanelAlpha(parseFloat(e.target.value));
     applyPanelAlpha();
-    /* ── Заголовок «Размытие»: после строки загрузки, над ползунками ── */
+    /* ── Заголовок над ползунками: после строки загрузки ── */
     const uploadRow = document.querySelector('.bg-upload-row');
     if (uploadRow && !document.getElementById('blurHeading')) {
       const h = document.createElement('div');
       h.id = 'blurHeading';
       h.className = 'set-sub';
-      h.textContent = 'Размытие';
+      h.textContent = 'Фон и панели';
       uploadRow.insertAdjacentElement('afterend', h);
     }
     /* ── Верхний ползунок как «Панели»: слева «Фон», справа % ── */
@@ -331,10 +341,6 @@ function renderLookPanel() {
       lab.textContent = 'Фон';
       bgRowFirst.insertBefore(lab, bgRowFirst.firstChild);
     }
-    /* Прозрачность и размытие панелей есть только у «Стекла»: в
-       остальных темах панели плотные, ползунок ничего бы не менял */
-    const glassy = resolveTheme(storedTheme).id === 'glass';
-    ['panelOpacityRow', 'blurHeading'].forEach(id => { const el = $(id); if (el) el.hidden = !glassy; });
     const frow = $('fontRow');
     if (frow) {
       frow.innerHTML = '';
@@ -733,9 +739,10 @@ async function boot() {
   mqDark.addEventListener('change', () => { if (storedTheme === 'auto') applyTheme(); });
   storedBg = (await dbGetKV('bg')) || '';
   storedBgImage = (await dbGetKV('bgImage')) || '';
-  storedBgOpacity = parseFloat(await dbGetKV('bgOpacity')) || 0.3;
-  const pa = await dbGetKV('panelAlpha');
-  storedPanelAlpha = pa == null ? null : parseFloat(pa);
+  const bo = parseFloat(await dbGetKV('bgLayerOpacity'));
+  storedBgOpacity = Number.isFinite(bo) ? bo : 1;
+  const pab = await dbGetKV('panelAlphaByTheme');
+  if (pab && typeof pab === 'object') panelAlphaByTheme = pab;
   const f = await dbGetKV('fontSize');
   if (FONTS.some(x => x.id === f)) storedFont = f;
   applyTheme();
