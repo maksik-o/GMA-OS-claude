@@ -12,8 +12,9 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="preload" href="fonts/comfortaa-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/themes.css">
   <script>
     /* Тема — до первой отрисовки, иначе при запуске мелькает фон по умолчанию */
     try {
@@ -22,9 +23,11 @@
         var r = document.documentElement;
         r.dataset.theme = bt.id;
         r.dataset.bootSurf = bt.surf;
-        r.style.setProperty('--bg', bt.bg);
-        r.style.setProperty('--bg-mesh', bt.mesh || 'none');
-        if (bt.tint) r.style.setProperty('--tint', bt.tint);
+        if (bt.bg) { r.style.setProperty('--bg', bt.bg); r.style.setProperty('--bg-mesh', 'none'); }
+      } else {
+        var dk = matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.theme = dk ? 'glass' : 'swiss';
+        document.documentElement.dataset.bootSurf = dk ? 'dark' : 'light';
       }
     } catch (e) {}
   </script>
