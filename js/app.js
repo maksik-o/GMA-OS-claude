@@ -1,7 +1,7 @@
 import {
   init, state, addDays, today, MODES,
   getTagsDict, addTagsToDict, setTagColor, renameTag, deleteTag,
-  loadModeColors, getModeColors, setModeColor, resetModeColors, getDefaultModeColors,
+  loadModeColors, getModeColors, setModeColor, resetModeColor, resetModeColors,
   subscribe, getTimeAtmosphere, checkDayRollover,
   setModeLabel, resetModeLabel, resetAllModeLabels,
   rolloverDay, scheduleRollover,
@@ -24,49 +24,38 @@ import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanba
 const $ = id => document.getElementById(id);
 
 /* ── ТЕМЫ ──
-   Вместо фотообоев — фоны, нарисованные самим CSS: несколько мягких
-   радиальных пятен поверх базового цвета («mesh»). Ничего не нужно
-   скачивать (обои весили 4,7 МБ и грузились при каждой установке),
-   картинка чёткая на любом экране и не «плывёт» при смене размера.
+   Тема меняет весь вид приложения: шрифт, материал и форму панелей,
+   рамки, тени, кнопки, вкладки режимов, квадраты задач и палитру
+   режимов. Вся оформительская часть — в css/themes.css по
+   атрибуту data-theme; здесь только список и переключение.
    «Авто» следует светлой/тёмной теме iPhone. */
-const blob = (w, h, x, y, c) => `radial-gradient(${w}% ${h}% at ${x}% ${y}%, ${c} 0%, transparent 70%)`;
 const THEMES = [
-  { id: 'auto', label: 'Авто', auto: true },
-  { id: 'mist', label: 'Туман', surf: 'light', tint: '#6366f1', bg: '#edf0f5',
-    mesh: [blob(65, 55, 0, 0, '#c7d3fb'), blob(55, 50, 100, 8, '#f1d8f3'), blob(75, 60, 60, 108, '#d3eee8')] },
-  { id: 'dawn', label: 'Рассвет', surf: 'light', tint: '#f97316', bg: '#f8efe8',
-    mesh: [blob(60, 50, 8, 0, '#ffd2b5'), blob(55, 50, 100, 18, '#f3c5dc'), blob(75, 60, 40, 110, '#d8d1fb')] },
-  { id: 'mint', label: 'Мята', surf: 'light', tint: '#10b981', bg: '#e9f4f0',
-    mesh: [blob(60, 50, 0, 0, '#bde8d9'), blob(55, 50, 100, 15, '#cde5fb'), blob(75, 60, 50, 110, '#ecf4c7')] },
-  { id: 'sand', label: 'Песок', surf: 'light', tint: '#b45309', bg: '#f3ede4',
-    mesh: [blob(60, 50, 0, 0, '#ead8c0'), blob(55, 50, 100, 20, '#f6e3cf'), blob(75, 60, 50, 110, '#e5ddcf')] },
-  { id: 'lavender', label: 'Лаванда', surf: 'light', tint: '#8b5cf6', bg: '#efedf8',
-    mesh: [blob(60, 50, 0, 0, '#d6cdfd'), blob(55, 50, 100, 15, '#c8ddfb'), blob(75, 60, 50, 110, '#f2d3ea')] },
-  { id: 'graphite', label: 'Графит', surf: 'dark', tint: '#94a3b8', bg: '#15171c',
-    mesh: [blob(70, 55, 15, 0, '#2a2f3a'), blob(70, 60, 100, 100, '#1e242f')] },
-  { id: 'midnight', label: 'Полночь', surf: 'dark', tint: '#818cf8', bg: '#0a0f1f',
-    mesh: [blob(65, 55, 0, 0, '#1f2b6e'), blob(55, 50, 100, 18, '#0f3c5b'), blob(75, 60, 50, 110, '#2a1a5d')] },
-  { id: 'aurora', label: 'Аврора', surf: 'dark', tint: '#34d399', bg: '#06141a',
-    mesh: [blob(65, 55, 10, 0, '#0c5a4d'), blob(55, 50, 100, 25, '#2a2978'), blob(75, 60, 40, 110, '#0b3a51')] },
-  { id: 'cherry', label: 'Вишня', surf: 'dark', tint: '#fb7185', bg: '#160c12',
-    mesh: [blob(65, 55, 0, 0, '#5a1730'), blob(55, 50, 100, 20, '#3a1450'), blob(75, 60, 50, 110, '#2b0f1d')] },
-  { id: 'oled', label: 'Чёрная', surf: 'dark', tint: '#64748b', bg: '#000000', mesh: [] },
+  { id: 'auto',   label: 'Авто', auto: true },
+  { id: 'note',   label: 'Тетрадь', surf: 'light' },
+  { id: 'brutal', label: 'Брутал', surf: 'light' },
+  { id: 'term',   label: 'Терминал', surf: 'dark' },
+  { id: 'glass',  label: 'Стекло', surf: 'dark' },
+  { id: 'swiss',  label: 'Швейцарский', surf: 'light' },
+  { id: 'neon',   label: 'Неон', surf: 'dark' },
 ];
-/* Старые id тем → ближайшие новые, чтобы у всех сохранился «характер» */
+/* Прежние темы → ближайшие новые */
 const THEME_MIGRATE = {
-  sky: 'mist', winter: 'mist', light: 'mist', mountains: 'mint', amber: 'sand', paper: 'sand',
-  sunset: 'cherry', lava: 'cherry', plum: 'cherry', waves: 'midnight', ocean: 'midnight',
-  dark: 'graphite', nord: 'graphite', forest: 'aurora', aurora: 'aurora',
+  sky: 'swiss', winter: 'swiss', light: 'swiss', mist: 'swiss', mint: 'swiss', lavender: 'swiss',
+  mountains: 'note', amber: 'note', paper: 'note', dawn: 'note', sand: 'note',
+  waves: 'glass', ocean: 'glass', aurora: 'glass', forest: 'glass', midnight: 'glass', graphite: 'glass', dark: 'glass', nord: 'glass',
+  sunset: 'neon', lava: 'neon', plum: 'neon', cherry: 'neon', oled: 'term',
 };
 const mqDark = matchMedia('(prefers-color-scheme: dark)');
 const resolveTheme = id => {
   const t = THEMES.find(x => x.id === id) || THEMES[0];
-  return t.auto ? THEMES.find(x => x.id === (mqDark.matches ? 'midnight' : 'mist')) : t;
+  return t.auto ? THEMES.find(x => x.id === (mqDark.matches ? 'glass' : 'swiss')) : t;
 };
-const themeSwatch = t => {
-  if (t.auto) return 'linear-gradient(135deg, #edf0f5 0 50%, #0a0f1f 50% 100%)';
-  return [...t.mesh, t.bg].join(', ');
-};
+/* Мини-экран темы для «Оформления»: рисуется переменными самой темы */
+const themeMini = t => t.auto
+  ? '<span class="tmini t-auto"><b>A</b></span>'
+  : `<span class="tmini t-${t.id}"><span class="tm-title">Задачи</span>
+      <span class="tm-card"><i class="tm-chip"></i><i class="tm-line"></i><i class="tm-line s"></i></span>
+      <span class="tm-card"><span class="tm-sqs"><i class="d"></i><i class="d"></i><i class="s"></i><i></i></span></span></span>`;
 const BG_GRADIENT_PRESETS = [
   { id: 'sunset-grad', c: 'linear-gradient(135deg,#ff6b6b,#feca57,#48dbfb)' },
   { id: 'ocean-grad', c: 'linear-gradient(135deg,#667eea,#764ba2)' },
@@ -85,12 +74,6 @@ let storedBgImage = '';
 let storedBgOpacity = 0.3;
 let storedPanelAlpha = null; // null = дефолт поверхности
 let storedFont = 'm';
-
-const isDark = hex => {
-  const n = hex.replace('#', '');
-  const r = parseInt(n.slice(0, 2), 16), g = parseInt(n.slice(2, 4), 16), b = parseInt(n.slice(4, 6), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
-};
 
 function applyPanelAlpha() {
   const def = document.body.dataset.surf === 'dark' ? 0.35 : 0.45;
@@ -112,22 +95,23 @@ function applyTheme() {
   const th = resolveTheme(storedTheme);
   const root = document.documentElement;
   root.dataset.theme = th.id;
-  root.style.setProperty('--tint', th.tint);
-  /* Свой цвет фона перекрывает тему целиком — вместе с пятнами */
-  const bg = storedBg || th.bg;
-  const mesh = storedBg ? 'none' : (th.mesh.join(', ') || 'none');
-  const surf = storedBg ? (isDark(storedBg) ? 'dark' : 'light') : th.surf;
-  root.style.setProperty('--bg', bg);
-  root.style.setProperty('--bg-mesh', mesh);
-  document.body.dataset.surf = surf;
-  /* Тот же фон — в localStorage: скрипт в <head> поставит его до
-     первой отрисовки, и при запуске не мигает тема по умолчанию. */
-  try { localStorage.setItem('rl_boot_theme', JSON.stringify({ id: th.id, bg, mesh, surf, tint: th.tint })); } catch {}
+  root.style.removeProperty('--tint');
+  root.style.removeProperty('--bg-mesh');
+  /* Свой цвет фона заменяет только подложку; панели и текст остаются
+     от темы, поэтому surf (светлая/тёмная) всегда берём из темы. */
+  if (storedBg) {
+    root.style.setProperty('--bg', storedBg);
+    root.style.setProperty('--bg-mesh', 'none');
+  } else root.style.removeProperty('--bg');
+  document.body.dataset.surf = th.surf;
+  /* То же — в localStorage: скрипт в <head> поставит тему до первой
+     отрисовки, и при запуске не мигает тема по умолчанию. */
+  try { localStorage.setItem('rl_boot_theme', JSON.stringify({ id: th.id, surf: th.surf, bg: storedBg || '' })); } catch {}
   applyPanelAlpha();
   applyBgImage(); // тема ставит и обои
   requestAnimationFrame(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || th.bg;
+    if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#000';
   });
 }
 function applyBgImage() {
@@ -249,7 +233,7 @@ function renderLookPanel() {
         b.type = 'button';
         b.className = 'theme-dot' + (t.id === storedTheme && !storedBg ? ' on' : '');
         b.title = t.label;
-        b.innerHTML = `<span class="theme-sw" style="background:${themeSwatch(t)}"></span><span class="theme-name">${t.label}</span>`;
+        b.innerHTML = themeMini(t) + `<span class="theme-name">${t.label}</span>`;
         b.onclick = async () => {
           storedTheme = t.id;
           storedBg = '';   // выбор темы снимает свой цвет фона
@@ -347,6 +331,10 @@ function renderLookPanel() {
       lab.textContent = 'Фон';
       bgRowFirst.insertBefore(lab, bgRowFirst.firstChild);
     }
+    /* Прозрачность и размытие панелей есть только у «Стекла»: в
+       остальных темах панели плотные, ползунок ничего бы не менял */
+    const glassy = resolveTheme(storedTheme).id === 'glass';
+    ['panelOpacityRow', 'blurHeading'].forEach(id => { const el = $(id); if (el) el.hidden = !glassy; });
     const frow = $('fontRow');
     if (frow) {
       frow.innerHTML = '';
@@ -364,7 +352,6 @@ function renderLookPanel() {
     if (ms) {
       ms.innerHTML = '';
       const colors = getModeColors();
-      const defaults = getDefaultModeColors();
       for (const m of MODES) {
         const rowEl = document.createElement('div');
         rowEl.className = 'mode-setting-row';
@@ -376,7 +363,7 @@ function renderLookPanel() {
         colorInput.id = 'modeColor_' + m.id;
         colorInput.name = 'modeColor_' + m.id;
         colorInput.autocomplete = 'off';
-        colorInput.value = colors[m.id] || defaults[m.id] || '#888888';
+        colorInput.value = colors[m.id] || '#888888';
         colorInput.title = 'Цвет режима';
         colorInput.onchange = async () => {
           await setModeColor(m.id, colorInput.value);
@@ -413,7 +400,7 @@ function renderLookPanel() {
         resetBtn.textContent = '↺';
         resetBtn.onclick = async () => {
           await resetModeLabel(m.id);
-          await setModeColor(m.id, defaults[m.id]);
+          await resetModeColor(m.id);
           renderLookPanel();
           renderCurrent();
         };

@@ -461,33 +461,59 @@ export function checkDayRollover() {
   if (changed) { notify(); userChange(); }
 }
 
-const DEFAULT_MODE_COLORS = { work: '#dc2626', home: '#16a34a', study: '#2563eb', all: '#d4a017' };
-let modeColors = { ...DEFAULT_MODE_COLORS };
-export const getModeColors = () => ({ ...modeColors });
-export const getDefaultModeColors = () => ({ ...DEFAULT_MODE_COLORS });
+/* Цвета режимов по умолчанию задаёт тема (css/themes.css): у каждой
+   своя палитра. Здесь хранятся только цвета, которые пользователь
+   выбрал сам, — они ставятся инлайн и перекрывают тему. */
+const MODE_IDS = ['work', 'home', 'study', 'all'];
+const FALLBACK_MODE_COLORS = { work: '#dc2626', home: '#16a34a', study: '#2563eb', all: '#d4a017' };
+let customModeColors = {};
+const themeModeColor = m => {
+  const r = document.documentElement;
+  const inline = r.style.getPropertyValue('--mode-' + m);
+  if (inline) r.style.removeProperty('--mode-' + m);
+  const v = getComputedStyle(r).getPropertyValue('--mode-' + m).trim();
+  if (inline) r.style.setProperty('--mode-' + m, inline);
+  return /^#[0-9a-f]{6}$/i.test(v) ? v : FALLBACK_MODE_COLORS[m];
+};
+export const getDefaultModeColors = () => Object.fromEntries(MODE_IDS.map(m => [m, themeModeColor(m)]));
+export const getModeColors = () => ({ ...getDefaultModeColors(), ...customModeColors });
 export async function loadModeColors() {
   const saved = await dbGetKV('modeColors');
-  if (saved && typeof saved === 'object') modeColors = { ...DEFAULT_MODE_COLORS, ...saved };
+  const custom = await dbGetKV('modeColorsCustom');
+  /* Раньше сохранялся полный набор, включая стандартные цвета, — их
+     считаем не выбранными: иначе тема не смогла бы их сменить. */
+  if (custom && typeof custom === 'object') customModeColors = { ...custom };
+  else if (saved && typeof saved === 'object') {
+    for (const m of MODE_IDS) {
+      if (saved[m] && saved[m].toLowerCase() !== FALLBACK_MODE_COLORS[m]) customModeColors[m] = saved[m];
+    }
+  }
   applyModeColorsToCSS();
 }
 export async function setModeColor(mode, color) {
-  modeColors[mode] = color;
-  await dbSetKV('modeColors', modeColors);
+  customModeColors[mode] = color;
+  await dbSetKV('modeColorsCustom', customModeColors);
+  applyModeColorsToCSS();
+  userChange();
+}
+export async function resetModeColor(mode) {
+  delete customModeColors[mode];
+  await dbSetKV('modeColorsCustom', customModeColors);
   applyModeColorsToCSS();
   userChange();
 }
 export async function resetModeColors() {
-  modeColors = { ...DEFAULT_MODE_COLORS };
-  await dbSetKV('modeColors', modeColors);
+  customModeColors = {};
+  await dbSetKV('modeColorsCustom', customModeColors);
   applyModeColorsToCSS();
   userChange();
 }
 function applyModeColorsToCSS() {
   const r = document.documentElement;
-  r.style.setProperty('--mode-work', modeColors.work);
-  r.style.setProperty('--mode-home', modeColors.home);
-  r.style.setProperty('--mode-study', modeColors.study);
-  r.style.setProperty('--mode-all', modeColors.all);
+  for (const m of MODE_IDS) {
+    if (customModeColors[m]) r.style.setProperty('--mode-' + m, customModeColors[m]);
+    else r.style.removeProperty('--mode-' + m);
+  }
 }
 
 const normTag = t => (typeof t === 'string' ? { name: t, color: null } : { name: String((t && t.name) || ''), color: (t && t.color) || null });

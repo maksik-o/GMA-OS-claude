@@ -1,0 +1,267 @@
+/* ══════════════════════════════════════════════════════════════════
+   ТЕМЫ
+
+   Тема меняет не только фон, а весь вид: шрифт, материал и форму
+   панелей, рамки, тени, кнопки, вкладки режимов и квадраты задач.
+
+   Устройство:
+   1. Набор переменных. Пишется сразу на трёх селекторах:
+      :root[data-theme=…]       — фон страницы (html);
+      :root[data-theme=…] body  — всё остальное (body[data-surf]
+                                  тоже задаёт эти переменные, поэтому
+                                  нужен более сильный селектор);
+      .tmini.t-…                — мини-превью темы в «Оформлении».
+   2. Приёмы, которые переменными не выразить (рамки, жёсткие тени,
+      подчёркнутые вкладки, развёртка…) — отдельным блоком темы.
+
+   Свой цвет фона из «Оформления» ставится инлайн на html и
+   перекрывает --bg темы; цвета режимов, заданные вручную, — тоже.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Поверхности, которые получают «материал» темы */
+:root[data-theme] .glass, :root[data-theme] .kb-side, :root[data-theme] .kb-main,
+:root[data-theme] .sheet, :root[data-theme] .editor, :root[data-theme] .drawer,
+:root[data-theme] .bottomnav, :root[data-theme] .cmenu, :root[data-theme] .auth,
+:root[data-theme] .searchpanel, :root[data-theme] .person-editor, :root[data-theme] .toast,
+:root[data-theme] .tpill, :root[data-theme] .cgroup, :root[data-theme] .sub-panel {
+  border: var(--t-bw, 0) solid var(--brd);
+}
+
+/* Шрифт интерфейса и заголовков — от темы */
+:root[data-theme] body, :root[data-theme] button, :root[data-theme] input,
+:root[data-theme] textarea, :root[data-theme] select { font-family: var(--font-ui); }
+:root[data-theme] .topbar::before, :root[data-theme] .kb-board-title, :root[data-theme] .notes-day-label,
+:root[data-theme] .drawer h3, :root[data-theme] .notes-list-head h3, :root[data-theme] .kb-title,
+:root[data-theme] .ed-title, :root[data-theme] .fh-big, :root[data-theme] .fin-hero b,
+:root[data-theme] .cgroup-name, :root[data-theme] .kb-blank b {
+  font-family: var(--font-head);
+}
+/* Без стекла — без блюра: у матовых тем панели плотные */
+:root[data-theme="note"] *, :root[data-theme="brutal"] *, :root[data-theme="term"] *,
+:root[data-theme="swiss"] *, :root[data-theme="neon"] * {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+
+/* ══════════════ 1. ТЕТРАДЬ ══════════════ */
+:root[data-theme="note"], :root[data-theme="note"] body, .tmini.t-note {
+  --bg: #e2d9c6;
+  --bg-mesh: radial-gradient(#cfc3a8 1px, transparent 1.4px) 0 0 / 16px 16px;
+  --tint: transparent;
+  --text: #2a2620; --dim: #857b6a; --c-todo: rgba(42, 38, 32, .5);
+  --glass: #fffcf4; --card: #f4eddf; --brd: #d6cbb4; --panel-solid: #fffcf4;
+  --shadow: 0 1px 0 #cfc2a6, 0 8px 20px rgba(90, 70, 30, .10);
+  --inner-glow: 0 0 0 transparent;
+  --t-bw: 1px; --r-lg: 8px; --r-md: 6px;
+  --font-ui: "Nunito", -apple-system, sans-serif;
+  --font-head: "PT Serif", Georgia, serif;
+  --c-done: #2f7d4f; --c-started: #c98a12; --c-skipped: #b3261e; --c-postponed: #23408e;
+  --accent-deep: var(--accent);
+}
+:root[data-theme="note"], .tmini.t-note { --mode-work: #b3261e; --mode-home: #2f7d4f; --mode-study: #23408e; --mode-all: #9a6b00; }
+:root[data-theme="note"] .topbar::before, :root[data-theme="note"] .kb-board-title,
+:root[data-theme="note"] .notes-day-label { font-style: italic; font-weight: 700; }
+:root[data-theme="note"] .mode-blob { background: transparent !important; box-shadow: inset 0 -2.5px 0 var(--accent) !important; border-radius: 0; }
+:root[data-theme="note"] .modes { background: transparent; border-radius: 0; border-bottom: 1px solid var(--brd); }
+:root[data-theme="note"] .modes button { border-radius: 0; }
+:root[data-theme="note"] .modes button.on { color: var(--accent); text-shadow: none; }
+:root[data-theme="note"] .g-hd.today { background: linear-gradient(transparent 52%, #ffe27a 52%); border-radius: 2px; }
+:root[data-theme="note"] .g-hd.today b { color: #b3261e; }
+:root[data-theme="note"] .cell { border-radius: 999px; }
+:root[data-theme="note"] .notes-editor, :root[data-theme="note"] .kb-editor {
+  background-image: repeating-linear-gradient(transparent 0 calc(1.65em - 1px), #e8dcc6 calc(1.65em - 1px) 1.65em);
+  line-height: 1.65em;
+}
+:root[data-theme="note"] .icon-btn, :root[data-theme="note"] .sync, :root[data-theme="note"] .btn {
+  border: 1px solid var(--brd); box-shadow: 0 1px 0 #cfc2a6;
+}
+:root[data-theme="note"] .fab { box-shadow: 0 2px 0 color-mix(in srgb, var(--accent) 60%, #000), 0 8px 18px rgba(60, 40, 10, .25); }
+
+/* ══════════════ 2. БРУТАЛ ══════════════ */
+:root[data-theme="brutal"], :root[data-theme="brutal"] body, .tmini.t-brutal {
+  --bg: #ffd43b; --bg-mesh: none; --tint: transparent;
+  --text: #111; --dim: #3b3b3b; --c-todo: #111;
+  --glass: #ffffff; --card: #ffffff; --brd: #111; --panel-solid: #ffffff;
+  --shadow: 4px 4px 0 #111; --inner-glow: 0 0 0 transparent;
+  --t-bw: 2.5px; --r-lg: 14px; --r-md: 10px;
+  --font-ui: "Manrope", -apple-system, sans-serif;
+  --font-head: "Unbounded", "Manrope", sans-serif;
+  --c-done: #18b26b; --c-started: #ff9f1c; --c-skipped: #ff3b3b; --c-postponed: #3b6cff;
+  --accent-deep: var(--accent);
+}
+:root[data-theme="brutal"], .tmini.t-brutal { --mode-work: #ff5a36; --mode-home: #18b26b; --mode-study: #3b6cff; --mode-all: #b14cff; }
+:root[data-theme="brutal"] .topbar::before, :root[data-theme="brutal"] .kb-board-title { font-weight: 800; letter-spacing: -.02em; }
+:root[data-theme="brutal"] .icon-btn, :root[data-theme="brutal"] .sync, :root[data-theme="brutal"] .btn,
+:root[data-theme="brutal"] .fab, :root[data-theme="brutal"] .chip, :root[data-theme="brutal"] .fin-fab {
+  border: 2px solid #111 !important; box-shadow: 3px 3px 0 #111 !important; color: #111;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+:root[data-theme="brutal"] .icon-btn:active, :root[data-theme="brutal"] .sync:active, :root[data-theme="brutal"] .btn:active,
+:root[data-theme="brutal"] .fab:active, :root[data-theme="brutal"] .chip:active, :root[data-theme="brutal"] .fin-fab:active {
+  transform: translate(3px, 3px) !important; box-shadow: 0 0 0 #111 !important;
+}
+:root[data-theme="brutal"] .btn.primary, :root[data-theme="brutal"] .fab, :root[data-theme="brutal"] .fin-fab { color: #111; }
+:root[data-theme="brutal"] .modes { background: #fff; border: 2.5px solid #111; }
+:root[data-theme="brutal"] .mode-blob { box-shadow: inset 0 0 0 2px #111 !important; }
+:root[data-theme="brutal"] .modes button.on { color: #111; text-shadow: none; font-weight: 800; }
+:root[data-theme="brutal"] .bottomnav button.on { color: #111; box-shadow: inset 0 0 0 2px #111; }
+:root[data-theme="brutal"] .g-hd.today { background: #7cf5c4; box-shadow: inset 0 0 0 2px #111; }
+:root[data-theme="brutal"] .g-hd.today b { color: #111; }
+:root[data-theme="brutal"] .cell { border-radius: 4px; border-width: 2px; }
+:root[data-theme="brutal"] .cell.none { border: 2px solid #111; opacity: .25; }
+:root[data-theme="brutal"] .cell.c-done { background: var(--c-done); }
+:root[data-theme="brutal"] .sync-alert { border: 2.5px solid #111; box-shadow: 4px 4px 0 #111; }
+
+/* ══════════════ 3. ТЕРМИНАЛ ══════════════ */
+:root[data-theme="term"], :root[data-theme="term"] body, .tmini.t-term {
+  --bg: #040804;
+  --bg-mesh: radial-gradient(120% 70% at 50% 0%, #0b2414 0%, transparent 70%);
+  --tint: #39ff88;
+  --text: #a8ffc4; --dim: #4f8a62; --c-todo: rgba(168, 255, 196, .45);
+  --glass: #06100a; --card: #0a1a10; --brd: #1e5a32; --panel-solid: #06100a;
+  --shadow: none; --inner-glow: 0 0 0 transparent;
+  --t-bw: 1px; --r-lg: 0px; --r-md: 0px;
+  --font-ui: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --font-head: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --c-done: #39ff88; --c-started: #ffb000; --c-skipped: #ff5f56; --c-postponed: #4cc9ff;
+  --accent-deep: var(--accent);
+}
+:root[data-theme="term"], .tmini.t-term { --mode-work: #39ff88; --mode-home: #ffb000; --mode-study: #4cc9ff; --mode-all: #d6d6d6; }
+:root[data-theme="term"] *, :root[data-theme="term"] *::before, :root[data-theme="term"] *::after { border-radius: 0 !important; }
+:root[data-theme="term"] body { font-size: 14px; }
+:root[data-theme="term"] #app::after {
+  content: ""; position: fixed; inset: 0; z-index: 200; pointer-events: none;
+  background: repeating-linear-gradient(rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, .22) 2px 3px);
+}
+:root[data-theme="term"] .topbar::before, :root[data-theme="term"] .kb-board-title,
+:root[data-theme="term"] .notes-day-label { text-shadow: 0 0 8px rgba(57, 255, 136, .55); text-transform: lowercase; }
+:root[data-theme="term"] .mode-blob { background: transparent !important; box-shadow: inset 0 0 0 1px var(--accent) !important; }
+:root[data-theme="term"] .modes { background: transparent; border: 1px solid var(--brd); }
+:root[data-theme="term"] .modes button { text-transform: uppercase; font-size: 12px; letter-spacing: .04em; }
+:root[data-theme="term"] .modes button.on { color: var(--accent); text-shadow: 0 0 6px var(--accent); }
+:root[data-theme="term"] .icon-btn, :root[data-theme="term"] .sync, :root[data-theme="term"] .btn, :root[data-theme="term"] .chip {
+  background: transparent; border: 1px solid var(--brd); box-shadow: none;
+}
+:root[data-theme="term"] .btn.primary, :root[data-theme="term"] .fab, :root[data-theme="term"] .fin-fab,
+:root[data-theme="term"] .bottomnav button.on {
+  color: #031006; box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+:root[data-theme="term"] .g-hd.today { background: transparent; box-shadow: inset 0 -2px 0 var(--accent); }
+:root[data-theme="term"] .g-hd.today b { color: var(--accent); text-shadow: 0 0 6px var(--accent); }
+:root[data-theme="term"] .cell.c-done { box-shadow: 0 0 8px color-mix(in srgb, var(--c-done) 60%, transparent); }
+:root[data-theme="term"] ::selection { background: #39ff88; color: #031006; }
+
+/* ══════════════ 4. ЖИДКОЕ СТЕКЛО ══════════════ */
+:root[data-theme="glass"], :root[data-theme="glass"] body, .tmini.t-glass {
+  --bg: #1b1340;
+  --bg-mesh:
+    radial-gradient(70% 45% at 12% 8%, #ff7a59 0%, transparent 70%),
+    radial-gradient(60% 50% at 96% 30%, #8b5cf6 0%, transparent 70%),
+    radial-gradient(80% 55% at 40% 102%, #0ea5e9 0%, transparent 70%);
+  --tint: #a78bfa;
+  --text: #ffffff; --dim: rgba(255, 255, 255, .64); --c-todo: rgba(255, 255, 255, .55);
+  --glass: rgba(20, 14, 44, .40); --card: rgba(255, 255, 255, .13); --brd: rgba(255, 255, 255, .22);
+  --panel-solid: #261c54;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .28); --inner-glow: inset 0 1px 0 rgba(255, 255, 255, .35);
+  --t-bw: 1px; --r-lg: 26px; --r-md: 16px;
+  --font-ui: "Manrope", -apple-system, sans-serif;
+  --font-head: "Manrope", -apple-system, sans-serif;
+  --c-done: #4ade80; --c-started: #fbbf24; --c-skipped: #ff7a7a; --c-postponed: #93c5fd;
+}
+:root[data-theme="glass"], .tmini.t-glass { --mode-work: #ff7a7a; --mode-home: #4ade80; --mode-study: #60a5fa; --mode-all: #fbbf24; }
+:root[data-theme="glass"] .topbar::before, :root[data-theme="glass"] .kb-board-title { font-weight: 800; letter-spacing: -.02em; }
+:root[data-theme="glass"] .icon-btn, :root[data-theme="glass"] .sync { border: 1px solid var(--brd); }
+
+/* ══════════════ 5. ШВЕЙЦАРСКИЙ ══════════════ */
+:root[data-theme="swiss"], :root[data-theme="swiss"] body, .tmini.t-swiss {
+  --bg: #e7e6e0; --bg-mesh: none; --tint: transparent;
+  --text: #111111; --dim: #6f6d66; --c-todo: rgba(17, 17, 17, .5);
+  --glass: #ffffff; --card: #f3f2ee; --brd: #cfcdc5; --panel-solid: #ffffff;
+  --shadow: none; --inner-glow: 0 0 0 transparent;
+  --t-bw: 1px; --r-lg: 3px; --r-md: 2px;
+  --font-ui: "Golos Text", -apple-system, sans-serif;
+  --font-head: "Golos Text", -apple-system, sans-serif;
+  --c-done: #111111; --c-started: #f2a900; --c-skipped: #e4002b; --c-postponed: #0047bb;
+  --accent-deep: var(--accent);
+}
+:root[data-theme="swiss"], .tmini.t-swiss { --mode-work: #e4002b; --mode-home: #00875a; --mode-study: #0047bb; --mode-all: #111111; }
+:root[data-theme="swiss"] .topbar::before, :root[data-theme="swiss"] .kb-board-title { font-weight: 800; letter-spacing: -.04em; }
+:root[data-theme="swiss"] .icon-btn, :root[data-theme="swiss"] .sync, :root[data-theme="swiss"] .btn, :root[data-theme="swiss"] .chip {
+  border-radius: 2px; box-shadow: none; border: 1px solid var(--brd); background: #fff;
+}
+:root[data-theme="swiss"] .btn.primary, :root[data-theme="swiss"] .fab, :root[data-theme="swiss"] .fin-fab {
+  border-radius: 2px; box-shadow: none; border: 0; background: var(--accent);
+}
+:root[data-theme="swiss"] .modes { background: transparent; border-radius: 0; border-bottom: 1px solid var(--brd); gap: 14px; }
+:root[data-theme="swiss"] .modes button { border-radius: 0; padding-inline: 0; }
+:root[data-theme="swiss"] .mode-blob { background: transparent !important; box-shadow: inset 0 -2.5px 0 var(--accent) !important; border-radius: 0; }
+:root[data-theme="swiss"] .modes button.on { color: #111; text-shadow: none; font-weight: 700; }
+:root[data-theme="swiss"] .bottomnav button { border-radius: 0; }
+:root[data-theme="swiss"] .bottomnav button.on { background: transparent; color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+:root[data-theme="swiss"] .g-hd.today { background: transparent; border-radius: 0; box-shadow: inset 0 2px 0 var(--accent); }
+:root[data-theme="swiss"] .g-hd b { font-weight: 800; }
+:root[data-theme="swiss"] .cell { border-radius: 1px; border-width: 1.5px; }
+:root[data-theme="swiss"] .cell.c-done { background: #111; }
+
+/* ══════════════ 6. НЕОН ══════════════ */
+:root[data-theme="neon"], :root[data-theme="neon"] body, .tmini.t-neon {
+  --bg: #12082a;
+  --bg-mesh:
+    linear-gradient(transparent 0 62%, rgba(255, 62, 165, .12) 62%, transparent 100%),
+    repeating-linear-gradient(90deg, rgba(45, 226, 230, .08) 0 1px, transparent 1px 42px),
+    linear-gradient(#0d0620 0%, #1d0b3a 60%, #2a0b45 100%);
+  --tint: #ff3ea5;
+  --text: #f4eaff; --dim: #a58bd1; --c-todo: rgba(244, 234, 255, .5);
+  --glass: rgba(22, 10, 46, .88); --card: rgba(45, 226, 230, .07); --brd: rgba(255, 62, 165, .75);
+  --panel-solid: #1a0c36;
+  --shadow: 0 0 16px rgba(255, 62, 165, .32); --inner-glow: inset 0 0 14px rgba(255, 62, 165, .08);
+  --t-bw: 1px; --r-lg: 16px; --r-md: 10px;
+  --font-ui: "Exo 2", -apple-system, sans-serif;
+  --font-head: "Exo 2", -apple-system, sans-serif;
+  --c-done: #ff3ea5; --c-started: #ffd166; --c-skipped: #ff5c5c; --c-postponed: #2de2e6;
+  --accent-deep: var(--accent);
+}
+:root[data-theme="neon"], .tmini.t-neon { --mode-work: #ff3ea5; --mode-home: #2de2e6; --mode-study: #ffd166; --mode-all: #b388ff; }
+:root[data-theme="neon"] .topbar::before, :root[data-theme="neon"] .kb-board-title {
+  text-transform: uppercase; font-weight: 800; letter-spacing: .04em;
+  background: linear-gradient(90deg, #ff3ea5, #2de2e6); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+:root[data-theme="neon"] .icon-btn, :root[data-theme="neon"] .sync, :root[data-theme="neon"] .chip {
+  background: transparent; border: 1px solid rgba(45, 226, 230, .55); color: #2de2e6; box-shadow: 0 0 10px rgba(45, 226, 230, .18);
+}
+:root[data-theme="neon"] .btn.primary, :root[data-theme="neon"] .fab, :root[data-theme="neon"] .fin-fab,
+:root[data-theme="neon"] .bottomnav button.on {
+  color: #12082a; box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+:root[data-theme="neon"] .mode-blob { box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 70%, transparent) !important; }
+:root[data-theme="neon"] .modes button.on { color: #12082a; text-shadow: none; }
+:root[data-theme="neon"] .g-hd.today { background: rgba(45, 226, 230, .14); box-shadow: 0 0 10px rgba(45, 226, 230, .35); }
+:root[data-theme="neon"] .g-hd.today b { color: #2de2e6; }
+:root[data-theme="neon"] .cell.c-done { box-shadow: 0 0 9px color-mix(in srgb, var(--c-done) 70%, transparent); }
+
+/* ══════════════ Мини-превью тем в «Оформлении» ══════════════
+   Маленький экран приложения на переменных своей темы. */
+.tmini {
+  display: flex; flex-direction: column; gap: 5px; width: 100%; aspect-ratio: 3 / 4; padding: 7px;
+  border-radius: 14px; overflow: hidden; position: relative;
+  background: var(--bg-mesh, none), var(--bg);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+  color: var(--text); font-family: var(--font-ui); text-align: left;
+}
+.tm-title { font: 800 13px/1 var(--font-head); padding: 2px 2px 0; white-space: nowrap; overflow: hidden; }
+.tm-card {
+  display: flex; flex-direction: column; gap: 4px; padding: 5px;
+  background: var(--glass); border: var(--t-bw, 0) solid var(--brd); border-radius: var(--r-md); box-shadow: var(--shadow);
+}
+.tm-chip { width: 52%; height: 7px; border-radius: var(--r-md); background: var(--mode-work); }
+.tm-line { height: 4px; border-radius: 2px; background: var(--text); opacity: .35; }
+.tm-line.s { width: 70%; }
+.tm-sqs { display: flex; gap: 3px; }
+.tm-sqs i { flex: 1; height: 8px; border-radius: min(var(--r-md), 3px); border: 1.5px solid var(--c-todo); }
+.tm-sqs i.d { background: var(--c-done); border-color: var(--c-done); }
+.tm-sqs i.s { border-color: var(--c-started); }
+.tmini.t-glass .tm-card { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.tmini.t-brutal .tm-card { box-shadow: 2px 2px 0 #111; }
+.tmini.t-neon .tm-title { background: linear-gradient(90deg, #ff3ea5, #2de2e6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.tmini.t-note .tm-title { font-style: italic; }
+.tmini.t-auto { background: linear-gradient(135deg, #e7e6e0 0 50%, #1b1340 50% 100%); display: grid; place-items: center; }
+.tmini.t-auto b { font: 800 22px/1 "Manrope", sans-serif; color: #fff; mix-blend-mode: difference; }

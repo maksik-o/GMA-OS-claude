@@ -1,4 +1,4 @@
-const CACHE = 'rl-v251';
+const CACHE = 'rl-v252';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает
@@ -22,7 +22,7 @@ const SHELL = [
   './js/widgets.js', './js/cal.js', './js/contacts.js', './js/kanban.js',
   './js/finance.js', './js/finimport.js', './js/anim.js',
   './js/timeline.js', './js/kb.js', './js/kbgraph.js', './js/charts.js',
-  './fonts/comfortaa-cyrillic.woff2', './fonts/comfortaa-latin.woff2'
+  './css/fonts.css', './css/themes.css'
 ];
 
 self.addEventListener('install', e => {
