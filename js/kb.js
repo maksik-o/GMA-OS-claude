@@ -284,8 +284,8 @@ function buildShell(el) {
       <div class="kb-notes-in">
         <header class="kb-notes-head"><span class="kb-notes-dot"></span><b class="kb-notes-title"></b><span class="kb-notes-n"></span></header>
         <div class="kb-list"></div>
+        <button type="button" class="kb-notes-grip" title="Свернуть список заметок" aria-label="Свернуть список заметок"></button>
       </div>
-      <button type="button" class="kb-notes-grip" title="Свернуть список заметок" aria-label="Свернуть список заметок"></button>
     </section>
     <main class="kb-main"></main>`;
   const side = el.querySelector('.kb-side');
@@ -298,7 +298,38 @@ function buildShell(el) {
   };
   side.addEventListener('click', onSideClick);
   el.querySelector('.kb-notes').addEventListener('click', onSideClick);
+  bindNotesGrip(el);
   bindNoteDrag(el, el);
+}
+
+/* Ручка колонки заметок: тап — свернуть, свайп влево — колонка едет
+   за пальцем и уезжает, если протянули достаточно далеко. */
+function bindNotesGrip(el) {
+  const grip = el.querySelector('.kb-notes-grip');
+  const panel = el.querySelector('.kb-notes-in');
+  let sx = 0, dx = 0, pid = null, moved = false;
+  grip.addEventListener('pointerdown', e => {
+    pid = e.pointerId; sx = e.clientX; dx = 0; moved = false;
+    try { grip.setPointerCapture(pid); } catch {}
+  });
+  grip.addEventListener('pointermove', e => {
+    if (e.pointerId !== pid) return;
+    dx = Math.min(0, e.clientX - sx);
+    if (!moved && dx > -6) return;
+    moved = true;
+    panel.style.transition = 'none';
+    panel.style.transform = `translateX(${dx}px)`;
+  });
+  const end = e => {
+    if (e.pointerId !== pid) return;
+    pid = null;
+    panel.style.transition = '';
+    panel.style.transform = '';
+    /* Тап или достаточно длинный свайп — сворачиваем; короткий — пружиним назад */
+    if (!moved || dx < -50) { notesOpen = false; renderSide(); }
+  };
+  grip.addEventListener('pointerup', end);
+  grip.addEventListener('pointercancel', end);
 }
 
 /* На телефоне основная область стоит под списком — подкручиваем к ней */
@@ -331,7 +362,7 @@ function onSideClick(e) {
     if (view === 'graph') revealMain();
     return;
   }
-  if (t.closest('.kb-notes-grip')) { notesOpen = false; renderSide(); return; }
+  if (t.closest('.kb-notes-grip')) return;   // сворачивает обработчик ручки (тап и свайп)
   if (t.closest('.kb-g-new')) { openGroupSheet(null, _host); return; }
   const item = t.closest('.kb-item');
   if (item) { openNote(item.dataset.id); return; }
