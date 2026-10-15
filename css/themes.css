@@ -40,6 +40,41 @@
   font-family: var(--font-head);
 }
 
+/* ══════════════ Акцент режима ══════════════
+   Работа / Дом / Учёба / Все должны узнаваться с первого взгляда в
+   любой теме. --accent — цвет текущего режима; он красит:
+   • «шапку» основных панелей — цветная кромка сверху;
+   • заголовки разделов и блока недели;
+   • отсвет фона (сила — --mode-glow, у каждой темы своя);
+   • прилипшие шапки, выделение текста, курсор, флажки и ползунки.
+   Темы ниже могут переопределить любой пункт в своей манере. */
+:root[data-theme] { --mode-glow: 22%; --mode-edge: 3px; }
+html[data-theme] {
+  background:
+    radial-gradient(760px 520px at 8% 0%, color-mix(in srgb, var(--accent) var(--mode-glow), transparent), transparent 72%),
+    radial-gradient(620px 460px at 100% 100%, color-mix(in srgb, var(--accent) calc(var(--mode-glow) * .55), transparent), transparent 72%),
+    radial-gradient(900px 600px at 50% 100%, var(--time-atmosphere), transparent 70%),
+    var(--bg);
+}
+:root[data-theme] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-main, .fin-hero, .fs-card, .fin-card, .tl-wrap) {
+  border-top: var(--mode-edge) solid var(--accent);
+  transition: border-color var(--dur-mode) var(--ease-mode);
+}
+:root[data-theme] .topbar::before, :root[data-theme] :is(.kb-board-title, .kb-title, .ed-title) { color: var(--accent); transition: color var(--dur-mode) var(--ease-mode); }
+:root[data-theme] :is(.l-head, .m-head, .kb-head, .fin-head).is-stuck { background: color-mix(in srgb, var(--panel-solid) 88%, var(--accent)); }
+:root[data-theme] ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+:root[data-theme] :is(input, textarea, [contenteditable="true"]) { caret-color: var(--accent); accent-color: var(--accent); }
+:root[data-theme] .r-row:hover, :root[data-theme] .m-task:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+
+/* Сила отсвета и кромки по темам */
+:root[data-theme="brutal"] { --mode-glow: 0%; --mode-edge: 6px; }
+:root[data-theme="swiss"]  { --mode-glow: 9%;  --mode-edge: 4px; }
+:root[data-theme="note"]   { --mode-glow: 14%; }
+:root[data-theme="term"]   { --mode-glow: 16%; --mode-edge: 2px; }
+:root[data-theme="glass"]  { --mode-glow: 34%; }
+:root[data-theme="neon"]   { --mode-glow: 26%; --mode-edge: 2px; }
+:root[data-theme="coral"]  { --mode-glow: 18%; --mode-edge: 2px; }
+
 /* ══════════════ 1. ТЕТРАДЬ ══════════════ */
 :root[data-theme="note"], :root[data-theme="note"] body, .tmini.t-note {
   --bg: #e2d9c6;
@@ -62,8 +97,8 @@
 :root[data-theme="note"] .modes { background: transparent; border-radius: 0; border-bottom: 1px solid var(--brd); }
 :root[data-theme="note"] .modes button { border-radius: 0; }
 :root[data-theme="note"] .modes button.on { color: var(--accent); text-shadow: none; }
-:root[data-theme="note"] .g-hd.today { background: linear-gradient(transparent 52%, #ffe27a 52%); border-radius: 2px; }
-:root[data-theme="note"] .g-hd.today b { color: #b3261e; }
+:root[data-theme="note"] .g-hd.today { background: linear-gradient(transparent 52%, color-mix(in srgb, var(--accent) 30%, transparent) 52%); border-radius: 2px; }
+:root[data-theme="note"] .g-hd.today b { color: var(--accent); }
 :root[data-theme="note"] .cell { border-radius: 999px; }
 :root[data-theme="note"] .notes-editor, :root[data-theme="note"] .kb-editor {
   background-image: repeating-linear-gradient(transparent 0 calc(1.65em - 1px), #e8dcc6 calc(1.65em - 1px) 1.65em);
@@ -103,9 +138,12 @@
 :root[data-theme="brutal"] .mode-blob { box-shadow: inset 0 0 0 2px #111 !important; }
 :root[data-theme="brutal"] .modes button.on { color: #111; text-shadow: none; font-weight: 800; }
 :root[data-theme="brutal"] .bottomnav button.on { color: #111; box-shadow: inset 0 0 0 2px #111; }
-:root[data-theme="brutal"] .g-hd.today { background: #7cf5c4; box-shadow: inset 0 0 0 2px #111; }
+:root[data-theme="brutal"] .g-hd.today { background: color-mix(in srgb, var(--accent) 55%, #fff); box-shadow: inset 0 0 0 2px #111; }
 :root[data-theme="brutal"] .g-hd.today b { color: #111; }
 :root[data-theme="brutal"] .cell { border-radius: 4px; border-width: 2px; }
+/* Цвет режима — плашкой: полоса-кромка и заголовок на цветном ярлыке */
+:root[data-theme="brutal"] .kb-board-title { color: #111; background: var(--accent); padding: 2px 10px; border: 2px solid #111; border-radius: 8px; box-shadow: 2px 2px 0 #111; }
+:root[data-theme="brutal"] .topbar::before { color: #111; text-decoration: underline var(--accent) 5px; text-underline-offset: 4px; }
 :root[data-theme="brutal"] .cell.none { border: 2px solid #111; opacity: .25; }
 :root[data-theme="brutal"] .cell.c-done { background: var(--c-done); }
 :root[data-theme="brutal"] .sync-alert { border: 2.5px solid #111; box-shadow: 4px 4px 0 #111; }
@@ -132,7 +170,7 @@
   background: repeating-linear-gradient(rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, .22) 2px 3px);
 }
 :root[data-theme="term"] .topbar::before, :root[data-theme="term"] .kb-board-title,
-:root[data-theme="term"] .notes-day-label { text-shadow: 0 0 8px rgba(57, 255, 136, .55); text-transform: lowercase; }
+:root[data-theme="term"] .notes-day-label { text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); text-transform: lowercase; }
 :root[data-theme="term"] .mode-blob { background: transparent !important; box-shadow: inset 0 0 0 1px var(--accent) !important; }
 :root[data-theme="term"] .modes { background: transparent; border: 1px solid var(--brd); }
 :root[data-theme="term"] .modes button { text-transform: uppercase; font-size: 12px; letter-spacing: .04em; }
@@ -223,7 +261,10 @@
 :root[data-theme="neon"], .tmini.t-neon { --panel-a: 0.88; --mode-work: #ff3ea5; --mode-home: #2de2e6; --mode-study: #ffd166; --mode-all: #b388ff; }
 :root[data-theme="neon"] .topbar::before, :root[data-theme="neon"] .kb-board-title {
   text-transform: uppercase; font-weight: 800; letter-spacing: .04em;
-  background: linear-gradient(90deg, #ff3ea5, #2de2e6); -webkit-background-clip: text; background-clip: text; color: transparent;
+  background: linear-gradient(90deg, var(--accent), #2de2e6); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+:root[data-theme="neon"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-main, .fin-hero, .fs-card, .fin-card) {
+  box-shadow: 0 -2px 14px -4px var(--accent), var(--shadow), var(--inner-glow);
 }
 :root[data-theme="neon"] .icon-btn, :root[data-theme="neon"] .sync, :root[data-theme="neon"] .chip {
   background: transparent; border: 1px solid rgba(45, 226, 230, .55); color: #2de2e6; box-shadow: 0 0 10px rgba(45, 226, 230, .18);
@@ -234,8 +275,8 @@
 }
 :root[data-theme="neon"] .mode-blob { box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 70%, transparent) !important; }
 :root[data-theme="neon"] .modes button.on { color: #12082a; text-shadow: none; }
-:root[data-theme="neon"] .g-hd.today { background: rgba(45, 226, 230, .14); box-shadow: 0 0 10px rgba(45, 226, 230, .35); }
-:root[data-theme="neon"] .g-hd.today b { color: #2de2e6; }
+:root[data-theme="neon"] .g-hd.today { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent); }
+:root[data-theme="neon"] .g-hd.today b { color: var(--accent); }
 :root[data-theme="neon"] .cell.c-done { box-shadow: 0 0 9px color-mix(in srgb, var(--c-done) 70%, transparent); }
 
 /* ══════════════ 7. КОРАЛЛ ══════════════
@@ -290,7 +331,8 @@
   box-shadow: rgba(0, 0, 0, .03) 0 7px 3px 0, rgba(0, 0, 0, .25) 0 4px 4px 0;
 }
 :root[data-theme="coral"] .btn.primary, :root[data-theme="coral"] .fin-fab { border-radius: 8px; }
-:root[data-theme="coral"] .fab { border-radius: 16px; }
+:root[data-theme="coral"] .fab { border-radius: 16px; box-shadow: 0 0 0 2px var(--accent), rgba(0, 0, 0, .25) 0 4px 4px 0; }
+:root[data-theme="coral"] .bottomnav button.on { box-shadow: inset 0 -2px 0 var(--accent); }
 :root[data-theme="coral"] .icon-btn, :root[data-theme="coral"] .sync, :root[data-theme="coral"] .btn:not(.primary),
 :root[data-theme="coral"] .chip {
   background: #111214; color: #e6e6e6;
@@ -307,8 +349,8 @@
   background: var(--accent); vertical-align: middle; transform: translateY(-1px);
 }
 /* Сегодня — коралловая метка */
-:root[data-theme="coral"] .g-hd.today { background: #452324; box-shadow: rgba(255, 99, 99, .35) 0 0 0 1px inset; }
-:root[data-theme="coral"] .g-hd.today b { color: #ff6363; }
+:root[data-theme="coral"] .g-hd.today { background: color-mix(in srgb, var(--accent) 20%, #07080a); box-shadow: color-mix(in srgb, var(--accent) 45%, transparent) 0 0 0 1px inset; }
+:root[data-theme="coral"] .g-hd.today b { color: var(--accent); }
 /* Поля ввода — колодцы: белая дымка 5%, радиус 8 */
 :root[data-theme="coral"] input[type="text"], :root[data-theme="coral"] input[type="search"],
 :root[data-theme="coral"] textarea, :root[data-theme="coral"] select,
