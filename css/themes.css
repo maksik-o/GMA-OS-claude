@@ -63,8 +63,9 @@ html[data-theme] {
     inset 0 1px 0 color-mix(in srgb, var(--accent) calc(var(--mode-inner) * 1.6), transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--accent) calc(var(--mode-inner) * .6), transparent),
     inset 0 34px 46px -30px color-mix(in srgb, var(--accent) var(--mode-inner), transparent);
-  transition: box-shadow var(--dur-mode) var(--ease-mode);
 }
+/* Плавная смена свечения — без своего transition: он затирал анимации
+   самих панелей (выезд колонки заметок, сдвиги блоков недели) */
 :root[data-theme] .topbar::before, :root[data-theme] :is(.kb-board-title, .kb-title, .ed-title) { color: var(--accent); transition: color var(--dur-mode) var(--ease-mode); }
 :root[data-theme] :is(.l-head, .m-head, .kb-head, .fin-head).is-stuck { background: color-mix(in srgb, var(--panel-solid) 88%, var(--accent)); }
 :root[data-theme] ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
@@ -340,7 +341,8 @@ html[data-theme] {
   background: var(--accent); color: #07080a;
   box-shadow: rgba(0, 0, 0, .03) 0 7px 3px 0, rgba(0, 0, 0, .25) 0 4px 4px 0;
 }
-:root[data-theme="coral"] .btn.primary, :root[data-theme="coral"] .fin-fab { border-radius: 8px; }
+:root[data-theme="coral"] .btn.primary { border-radius: 8px; }
+:root[data-theme="coral"] .fin-fab { border-radius: 16px; }
 :root[data-theme="coral"] .fab { border-radius: 16px; }
 :root[data-theme="coral"] .icon-btn, :root[data-theme="coral"] .sync, :root[data-theme="coral"] .btn:not(.primary),
 :root[data-theme="coral"] .chip {
@@ -368,15 +370,22 @@ html[data-theme] {
 :root[data-theme="coral"] .kb-q, :root[data-theme="coral"] .kb-editor, :root[data-theme="coral"] .ed-card {
   background-color: rgba(255, 255, 255, .05); border-radius: 8px;
 }
-/* Всё, что красилось цветной заливкой с белым текстом, теперь
-   светло-серое — текст и иконки на нём тёмные */
-:root[data-theme="coral"] :is(.cal-day.tdy, .cal-weekbtn.on, .chip.on, .fin-tab.on, .fin-type.on, .font-btn.on,
+/* Залитые кнопки цвета режима в ярких темах — с тёмным текстом:
+   белый на неоново-зелёном/жёлтом/бирюзовом не читается */
+:root[data-theme="term"]  { --on-accent: #031006; }
+:root[data-theme="neon"]  { --on-accent: #12082a; }
+:root[data-theme="coral"] { --on-accent: #07080a; }
+:root:is([data-theme="term"], [data-theme="neon"], [data-theme="coral"]) :is(.btn.primary, .fab, .fin-fab, .bottomnav button.on,
+  .cal-day.tdy, .cal-weekbtn.on, .chip.on, .fin-tab.on, .fin-type.on, .font-btn.on,
   .fp-play, .ftb-count, .ftx-check.day, .ftx-row.picked .ftx-check, .icon-btn.on, .kb-seg button.on, .kb-tool.on,
   .notes-actions .icon-btn.on, .notes-list-tabs .tab.active, .timer-fab, .tl-tray-btn.on, .topbar .tb-btn.tb-view.on,
   .tr-day.on, .tl-band span) {
-  color: #1b1c1e; text-shadow: none;
+  color: var(--on-accent) !important; text-shadow: none;
 }
-:root[data-theme="coral"] :is(.fp-play, .icon-btn.on, .topbar .tb-btn.tb-view.on, .timer-fab) svg { fill: currentColor; color: #1b1c1e; }
+:root:is([data-theme="term"], [data-theme="neon"]) .sync-alert { color: var(--on-accent); }
+:root:is([data-theme="term"], [data-theme="neon"], [data-theme="coral"]) :is(.fp-play, .icon-btn.on, .topbar .tb-btn.tb-view.on, .timer-fab, .bottomnav button.on) svg {
+  fill: currentColor; color: var(--on-accent); opacity: 1;
+}
 :root[data-theme="coral"] .cell { border-radius: 6px; }
 :root[data-theme="coral"] .sync-alert { background: #452324; color: #ffd6d6; box-shadow: rgba(255, 99, 99, .4) 0 0 0 1px inset; }
 :root[data-theme="coral"] ::selection { background: rgba(255, 99, 99, .35); }

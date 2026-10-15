@@ -5220,34 +5220,37 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 }
 .kb-view.kb-notes-open { --kbn-w: 300px; }
 .kb-side { margin-right: var(--sp-3); position: relative; z-index: 2; }
-.kb-notes { position: relative; min-width: 0; overflow: hidden; align-self: stretch; z-index: 1; }
+/* Колонка не обрезает всё подряд (overflow: hidden срезал тень панели —
+   получался квадратный «блок» вокруг неё), а прячет только то, что
+   уехало влево — за колонку групп. Панель внутри фиксированной ширины:
+   при сворачивании она уезжает целиком, а не сжимается и не пропадает. */
+.kb-notes { position: relative; min-width: 0; align-self: stretch; z-index: 1; clip-path: inset(-40px -60px -40px 0); }
 .kb-notes-in {
   position: relative; display: flex; flex-direction: column; gap: var(--sp-2);
-  width: calc(100% - var(--sp-3)); max-height: calc(100dvh - 150px); height: 100%;
-  padding: var(--sp-3) calc(var(--sp-3) + 10px) var(--sp-3) var(--sp-3);
+  width: 288px; max-height: calc(100dvh - 150px); height: 100%;
+  padding: var(--sp-3) calc(var(--sp-3) + 12px) var(--sp-3) var(--sp-3);
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
   -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
-  transform: translateX(-104%); opacity: 0;
-  transition: transform .45s var(--ease-spring), opacity .3s ease;
+  transform: translateX(-110%); visibility: hidden;
+  transition: transform .45s var(--ease-spring), visibility 0s linear .45s;
 }
-.kb-view.kb-notes-open .kb-notes-in { transform: none; opacity: 1; }
+.kb-view.kb-notes-open .kb-notes-in { transform: none; visibility: visible; transition: transform .45s var(--ease-spring), visibility 0s; }
 .kb-notes-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .kb-notes-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--gc, var(--dim)); flex: none; }
 .kb-notes-title { flex: 1; min-width: 0; font: 800 15px/1.2 var(--font-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kb-notes-n { font-size: 11px; font-weight: 800; color: var(--dim); }
 .kb-notes .kb-list { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
 .kb-notes .kb-list .empty { padding: 18px 6px; font-size: 13px; line-height: 1.5; }
-/* Полоска-ручка по центру правого края: свернуть колонку */
+/* Полоска-ручка по центру правого края панели: тап или свайп влево — свернуть */
 .kb-notes-grip {
-  position: absolute; right: 8px; top: 50%; width: 6px; height: 46px; padding: 0; margin-top: -23px;
-  border: 0; border-radius: 3px; cursor: pointer;
-  background: color-mix(in srgb, var(--text) 22%, transparent);
-  opacity: 0; transition: opacity .3s ease .1s, background .2s;
+  position: absolute; right: 6px; top: 50%; width: 5px; height: 46px; padding: 0; margin-top: -23px;
+  border: 0; border-radius: 3px; cursor: grab; touch-action: none;
+  background: color-mix(in srgb, var(--text) 24%, transparent);
+  transition: background .2s;
 }
-.kb-notes-grip::before { content: ""; position: absolute; inset: -16px -12px; }
-.kb-view.kb-notes-open .kb-notes-grip { opacity: 1; }
+.kb-notes-grip::before { content: ""; position: absolute; inset: -18px -8px -18px -14px; }
 .kb-notes-grip:hover { background: var(--accent); }
 /* Подгруппы — отступом под родителем */
 .kb-sub { padding: 2px 0 4px 14px; }
@@ -5263,5 +5266,28 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   .kb-view.kb-notes-open .kb-notes { pointer-events: auto; }
   /* Поверх списка групп — плотная подложка, иначе группы просвечивают */
   .kb-notes-in { width: 100%; max-height: none; background: var(--panel-solid); }
+  .kb-notes { clip-path: inset(-40px -40px -40px 0); }
   .kb-main { grid-row: 2; }
+}
+
+/* ══════════════ Финансы: шапка, категории, кнопка «+» ══════════════ */
+/* Шапка: одинаковые поля сверху и снизу, ряды по центру */
+.fin-head { padding: 10px 10px; align-items: center; }
+.fin-head > * { align-self: center; }
+@media (max-width: 720px) { .fin-head { padding: 10px 8px; row-gap: 8px; } }
+/* Крестик удаления у категории */
+.fcat-chip { gap: 7px; padding-right: 8px; }
+.fcat-x {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  font-style: normal; font-size: 10px; line-height: 1; color: var(--cc);
+  background: color-mix(in srgb, var(--cc) 18%, transparent); opacity: .75;
+}
+.fcat-x:hover { opacity: 1; background: color-mix(in srgb, var(--cc) 32%, transparent); }
+/* «+» финансов — та же кнопка, что и на других экранах (класс .fab) */
+.fab.fin-fab {
+  right: max(16px, env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
+  width: 56px; height: 56px; font-size: 26px; border-radius: 50%; z-index: 20;
+}
+@media (max-width: 720px) {
+  .fab.fin-fab { right: max(14px, env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); width: 56px; height: 56px; }
 }

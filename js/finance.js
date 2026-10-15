@@ -324,7 +324,7 @@ export function renderFinanceView(el) {
       </div>
     </header>
     <div class="fin-body"></div>
-    <button type="button" class="fin-fab" title="Новая операция">+</button>`;
+    <button type="button" class="fab fin-fab" title="Новая операция">+</button>`;
   const TABS = ['dash', 'tx', 'acc', 'plan'];
   /* Смена вкладки — кирпичики по рядам: опустевший ряд заполняется
      сразу, не дожидаясь остальных. */
@@ -728,13 +728,21 @@ function renderAccounts(box) {
         <button type="button" class="btn mini fin-add-cat">＋ Категория</button></header>
       <div class="fin-cats">${['expense', 'income'].map(flow => `
         <div class="fcat-group"><div class="fcat-cap">${flow === 'expense' ? 'Расходы' : 'Доходы'}</div>
-        ${getCategories(flow).map(c => `<button type="button" class="fcat-chip" data-id="${c.id}" style="--cc:${c.color}">${esc(c.name)}</button>`).join('') || '<p class="empty">Пусто</p>'}
+        ${getCategories(flow).map(c => `<button type="button" class="fcat-chip" data-id="${c.id}" style="--cc:${c.color}">${esc(c.name)}<i class="fcat-x" title="Удалить категорию" aria-label="Удалить категорию">✕</i></button>`).join('') || '<p class="empty">Пусто</p>'}
         </div>`).join('')}</div>
     </section></div>`;
   box.querySelector('.fin-add-acc').onclick = () => openAccSheet(null);
   box.querySelector('.fin-add-cat').onclick = () => openCatSheet(null);
   box.querySelectorAll('.fa-row').forEach(r => r.onclick = () => openAccSheet(r.dataset.id));
-  box.querySelectorAll('.fcat-chip').forEach(r => r.onclick = () => openCatSheet(r.dataset.id));
+  box.querySelectorAll('.fcat-chip').forEach(r => r.onclick = async e => {
+    if (e.target.closest('.fcat-x')) {
+      const c = getItem(r.dataset.id);
+      if (!c || !confirm(`Удалить категорию «${c.name}»? Операции останутся, но без категории.`)) return;
+      await removeItem(r.dataset.id);
+      return;
+    }
+    openCatSheet(r.dataset.id);
+  });
 }
 
 /* ── Планы (бюджеты) ── */

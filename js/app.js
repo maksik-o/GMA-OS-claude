@@ -1108,11 +1108,15 @@ const SYNC_MSG = {
   error: 'Ошибка синхронизации',
   fail: 'Ошибка синхронизации',
 };
+/* Видимая кнопка «+». offsetParent у position: fixed всегда null,
+   поэтому кнопку финансов раньше не находили, и плашка «не
+   авторизованы» вставала прямо под неё. Смотрим на реальный размер. */
+const shown = el => !!el && !el.hidden && el.getClientRects().length > 0 && el.getBoundingClientRect().width > 0;
 function activeFab() {
   const fin = document.querySelector('.fin-fab');
-  if (fin && fin.offsetParent) return fin;
+  if (shown(fin)) return fin;
   const ab = $('addBtn');
-  return ab && !ab.hidden ? ab : null;
+  return shown(ab) ? ab : null;
 }
 /* «Не вошли» и «не настроено» — осознанный выбор, а не сбой: такую
    плашку можно закрыть, и она не вернётся, пока состояние то же.
