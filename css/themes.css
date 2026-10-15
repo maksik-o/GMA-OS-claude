@@ -238,6 +238,99 @@
 :root[data-theme="neon"] .g-hd.today b { color: #2de2e6; }
 :root[data-theme="neon"] .cell.c-done { box-shadow: 0 0 9px color-mix(in srgb, var(--c-done) 70%, transparent); }
 
+/* ══════════════ 7. КОРАЛЛ ══════════════
+   По мотивам DESIGN.md «Midnight command center, coral neon»:
+   почти чёрный холст, ступени поверхности едва заметны, панели
+   очерчены не тенью, а «клавишной» обводкой — тонкое кольцо, блик
+   сверху и вдавленный низ. Акцент один — коралловый, и он только
+   метка: кнопки действий нейтральные светло-серые с тёмным текстом.
+   Inter с чуть положительной разрядкой и не жирные заголовки,
+   служебные подписи — моноширинным капсом. */
+:root[data-theme="coral"], :root[data-theme="coral"] body, .tmini.t-coral {
+  --bg: #040506;
+  --bg-mesh:
+    radial-gradient(70% 38% at 50% -6%, rgba(4, 63, 150, .55) 0%, rgba(6, 18, 37, .2) 55%, transparent 75%),
+    radial-gradient(40% 18% at 78% 4%, rgba(255, 99, 99, .22) 0%, transparent 70%);
+  --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
+  --text: #ffffff; --dim: #9c9c9d; --c-todo: rgba(255, 255, 255, .42);
+  --glass: color-mix(in srgb, #07080a calc(var(--panel-a, 1) * 100%), transparent);
+  --card: rgba(255, 255, 255, .05);
+  --brd: #363739; --panel-solid: #0b0c0e;
+  --shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset, rgba(255, 255, 255, .14) 0 0 0 1px, rgba(0, 0, 0, .2) 0 -1px 0 0 inset;
+  --inner-glow: 0 0 0 transparent;
+  --t-bw: 0px; --r-lg: 16px; --r-md: 8px;
+  --font-ui: "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-head: "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-meta: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --c-done: #59d499; --c-started: #ffc062; --c-skipped: #ff6363; --c-postponed: #56c2ff;
+  /* Нейтральная «кнопка действия» вместо цветной: Mist + Iron */
+  --accent-deep: #e6e6e6;
+}
+:root[data-theme="coral"], .tmini.t-coral { --panel-a: 1; --mode-work: #ff6363; --mode-home: #59d499; --mode-study: #56c2ff; --mode-all: #e6e6e6; }
+:root[data-theme="coral"] body { letter-spacing: .01em; font-feature-settings: "calt", "kern", "liga", "ss03"; }
+/* Заголовки шепчут: размер вместо жирности */
+:root[data-theme="coral"] .topbar::before, :root[data-theme="coral"] .kb-board-title,
+:root[data-theme="coral"] .notes-day-label, :root[data-theme="coral"] .drawer h3 { font-weight: 500; letter-spacing: .004em; }
+/* Служебные подписи — моноширинный капс, как метаданные */
+:root[data-theme="coral"] .set-sub, :root[data-theme="coral"] .ed-card h4, :root[data-theme="coral"] .fh-cap,
+:root[data-theme="coral"] .fs-cap, :root[data-theme="coral"] .kb-links-cap, :root[data-theme="coral"] .kb-ac-cap,
+:root[data-theme="coral"] .g-hd {
+  font-family: var(--font-meta); text-transform: uppercase; letter-spacing: .05em; color: #6a6b6c;
+}
+:root[data-theme="coral"] .g-hd b { font-family: var(--font-ui); color: #ffffff; letter-spacing: 0; }
+/* Шапка и нижнее меню — стеклянные полосы поверх холста */
+:root[data-theme="coral"] .topbar, :root[data-theme="coral"] .bottomnav {
+  background: rgba(7, 8, 10, .62); border: 1px solid var(--brd); box-shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset;
+  -webkit-backdrop-filter: blur(48px) saturate(1.4); backdrop-filter: blur(48px) saturate(1.4);
+}
+/* Кнопки: нейтральные. Залитая — Mist с текстом Iron, обычная — тёмная клавиша */
+:root[data-theme="coral"] .btn.primary, :root[data-theme="coral"] .fab, :root[data-theme="coral"] .fin-fab,
+:root[data-theme="coral"] .bottomnav button.on {
+  background: #e6e6e6; color: #454647;
+  box-shadow: rgba(0, 0, 0, .03) 0 7px 3px 0, rgba(0, 0, 0, .25) 0 4px 4px 0;
+}
+:root[data-theme="coral"] .btn.primary, :root[data-theme="coral"] .fin-fab { border-radius: 8px; }
+:root[data-theme="coral"] .fab { border-radius: 16px; }
+:root[data-theme="coral"] .icon-btn, :root[data-theme="coral"] .sync, :root[data-theme="coral"] .btn:not(.primary),
+:root[data-theme="coral"] .chip {
+  background: #111214; color: #e6e6e6;
+  box-shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset, rgba(255, 255, 255, .12) 0 0 0 1px, rgba(0, 0, 0, .2) 0 -1px 0 0 inset;
+}
+:root[data-theme="coral"] .btn:not(.primary) { border-radius: 8px; }
+/* Режимы — сегментированный переключатель, выбранный — светлая плашка */
+:root[data-theme="coral"] .modes { background: #111214; box-shadow: rgba(255, 255, 255, .08) 0 0 0 1px inset; }
+:root[data-theme="coral"] .mode-blob { background: #e6e6e6 !important; box-shadow: rgba(0, 0, 0, .25) 0 2px 4px !important; }
+:root[data-theme="coral"] .modes button.on { color: #1b1c1e; text-shadow: none; font-weight: 600; }
+/* Цвет режима — только точкой у выбранного: акцент как метка, не заливка */
+:root[data-theme="coral"] .modes button.on::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%;
+  background: var(--accent); vertical-align: middle; transform: translateY(-1px);
+}
+/* Сегодня — коралловая метка */
+:root[data-theme="coral"] .g-hd.today { background: #452324; box-shadow: rgba(255, 99, 99, .35) 0 0 0 1px inset; }
+:root[data-theme="coral"] .g-hd.today b { color: #ff6363; }
+/* Поля ввода — колодцы: белая дымка 5%, радиус 8 */
+:root[data-theme="coral"] input[type="text"], :root[data-theme="coral"] input[type="search"],
+:root[data-theme="coral"] textarea, :root[data-theme="coral"] select,
+:root[data-theme="coral"] .kb-q, :root[data-theme="coral"] .kb-editor, :root[data-theme="coral"] .ed-card {
+  background-color: rgba(255, 255, 255, .05); border-radius: 8px;
+}
+/* Всё, что красилось цветной заливкой с белым текстом, теперь
+   светло-серое — текст и иконки на нём тёмные */
+:root[data-theme="coral"] :is(.cal-day.tdy, .cal-weekbtn.on, .chip.on, .fin-tab.on, .fin-type.on, .font-btn.on,
+  .fp-play, .ftb-count, .ftx-check.day, .ftx-row.picked .ftx-check, .icon-btn.on, .kb-seg button.on, .kb-tool.on,
+  .notes-actions .icon-btn.on, .notes-list-tabs .tab.active, .timer-fab, .tl-tray-btn.on, .topbar .tb-btn.tb-view.on,
+  .tr-day.on, .tl-band span) {
+  color: #1b1c1e; text-shadow: none;
+}
+:root[data-theme="coral"] :is(.fp-play, .icon-btn.on, .topbar .tb-btn.tb-view.on, .timer-fab) svg { fill: currentColor; color: #1b1c1e; }
+:root[data-theme="coral"] .cell { border-radius: 6px; }
+:root[data-theme="coral"] .sync-alert { background: #452324; color: #ffd6d6; box-shadow: rgba(255, 99, 99, .4) 0 0 0 1px inset; }
+:root[data-theme="coral"] ::selection { background: rgba(255, 99, 99, .35); }
+.tmini.t-coral .tm-card { box-shadow: rgba(255, 255, 255, .14) 0 0 0 1px; }
+.tmini.t-coral .tm-chip { background: #e6e6e6; }
+.tmini.t-coral .tm-title { font-weight: 500; }
+
 /* ══════════════ Мини-превью тем в «Оформлении» ══════════════
    Маленький экран приложения на переменных своей темы. */
 .tmini {

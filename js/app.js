@@ -37,6 +37,7 @@ const THEMES = [
   { id: 'glass',  label: 'Стекло', surf: 'dark' },
   { id: 'swiss',  label: 'Швейцарский', surf: 'light' },
   { id: 'neon',   label: 'Неон', surf: 'dark' },
+  { id: 'coral',  label: 'Коралл', surf: 'dark' },
 ];
 /* Прежние темы → ближайшие новые */
 const THEME_MIGRATE = {
