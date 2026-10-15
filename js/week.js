@@ -432,7 +432,9 @@ function updateModeBlob() {
     }
     const elRect = el.getBoundingClientRect();
     const btnRect = active.getBoundingClientRect();
-    const left = btnRect.left - elRect.left;
+    /* Пилюля позиционируется от внутреннего края переключателя: у тем
+       с толстой рамкой («Брутал») без поправки она съезжала на ширину рамки */
+    const left = btnRect.left - elRect.left - el.clientLeft;
     const width = btnRect.width;
     if (!_modeBlobInitialized) {
       blob.style.transition = 'none';
@@ -452,6 +454,28 @@ function updateModeBlob() {
   });
 }
 window.addEventListener('resize', updateModeBlob);
+/* Пилюля меряет кнопки один раз, а тема меняет шрифт, отступы и
+   ширину кнопок — после смены темы пилюля оставалась на старом месте,
+   «между» режимами. Следим за размерами кнопок, сменой темы и
+   догрузкой шрифтов; цвет перекрашиваем под палитру новой темы. */
+(function watchModeBlob() {
+  const el = $('modes');
+  if (!el) return;
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => updateModeBlob());
+    ro.observe(el);
+    new MutationObserver(() => el.querySelectorAll('button').forEach(b => ro.observe(b)))
+      .observe(el, { childList: true });
+  }
+  new MutationObserver(() => {
+    updateModeBlob();
+    requestAnimationFrame(() => setBlobColors(state.mode, true));
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.fonts) {
+    document.fonts.addEventListener('loadingdone', updateModeBlob);
+    document.fonts.ready.then(updateModeBlob);
+  }
+})();
 function metaHTML(tk) {
   const meta = [];
   if ((tk.subtasks || []).length) {

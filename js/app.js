@@ -564,15 +564,52 @@ function closeDrawer() {
   if (d) d.classList.remove('open');
   refreshBackdrop();
 }
+/* Свайп вправо закрывает шторку (во вложенном экране — возвращает в
+   главное меню). Раньше жест ловился только по pointerup: на iPhone
+   горизонтальное движение перехватывала прокрутка шторки, приходил
+   pointercancel, и свайп не срабатывал. Теперь шторка разрешает
+   браузеру только вертикальную прокрутку (touch-action: pan-y в CSS),
+   едет за пальцем и закрывается по расстоянию или по скорости. */
 (function bindDrawerSwipe() {
   const d = $('drawer');
   if (!d) return;
-  let sx = 0, sy = 0;
-  d.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; });
-  d.addEventListener('pointerup', e => {
-    const dx = e.clientX - sx, dy = e.clientY - sy;
-    if (dx > 60 && Math.abs(dy) < 60) closeDrawer();
+  let sx = 0, sy = 0, dx = 0, t0 = 0, mode = '', pid = null;
+  d.addEventListener('pointerdown', e => {
+    if (!d.classList.contains('open') || e.target.closest('input, textarea, select, .drawer-grip')) return;
+    sx = e.clientX; sy = e.clientY; dx = 0; t0 = performance.now(); mode = ''; pid = e.pointerId;
   });
+  d.addEventListener('pointermove', e => {
+    if (e.pointerId !== pid) return;
+    const mx = e.clientX - sx, my = e.clientY - sy;
+    if (!mode) {
+      if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+      mode = mx > 0 && Math.abs(mx) > Math.abs(my) * 1.2 ? 'x' : 'y';
+      if (mode === 'x') {
+        d.classList.add('drag');
+        try { d.setPointerCapture(pid); } catch {}
+      }
+    }
+    if (mode !== 'x') return;
+    dx = Math.max(0, mx);
+    d.style.transform = `translateX(${dx}px)`;
+  });
+  const end = e => {
+    if (e.pointerId !== pid) return;
+    pid = null;
+    if (mode === 'x') {
+      const fast = dx / Math.max(1, performance.now() - t0) > 0.5;   // быстрый взмах
+      d.classList.remove('drag');
+      d.style.transform = '';
+      if (dx > Math.min(110, d.offsetWidth * 0.3) || (fast && dx > 30)) {
+        const main = $('drawerMain');
+        if (main && main.hidden) showDrawerView('main');
+        else closeDrawer();
+      }
+    }
+    mode = '';
+  };
+  d.addEventListener('pointerup', end);
+  d.addEventListener('pointercancel', end);
 })();
 const VIEW_ORDER = ['week', 'contacts', 'finance', 'kb'];
 function setView(v) {

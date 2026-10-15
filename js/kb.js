@@ -117,9 +117,14 @@ export async function kbRemove(id) {
   if (!it) return;
   if (it.kind === 'note') for (const f of it.files || []) await dbDel(FILES, f.id).catch(() => {});
   if (it.kind === 'group') {
-    for (const n of all('note')) {
-      if (n.groupId === id) { n.groupId = ''; await dbPut(STORE, n); }
+    /* Подгруппы и заметки поднимаются на уровень выше, а не теряются */
+    const up = it.parentId || '';
+    for (const x of state.items) {
+      if (x.deleted) continue;
+      if (x.kind === 'note' && x.groupId === id) { x.groupId = up; x.updatedAt = new Date().toISOString(); await dbPut(STORE, x); }
+      if (x.kind === 'group' && x.parentId === id) { x.parentId = up; x.updatedAt = new Date().toISOString(); await dbPut(STORE, x); }
     }
+    for (const n of getAllNotes()) if (n.kbGroupId === id) await updateNoteById(n.id, { kbGroupId: up });
   }
   it.deleted = true;
   await put(it);
@@ -189,6 +194,7 @@ async function openAttachment(fid, name) {
 let curGroup = '';     // '' — все
 const openGroups = new Set();
 let curNote = null;
+let notesOpen = false;      // колонка заметок выбранной группы: скрыта, пока группу не выбрали
 let query = '';
 let _host = null;
 let view = 'note';         // 'note' | 'graph'
@@ -271,22 +277,28 @@ function buildShell(el) {
       <div class="kb-search"><input class="kb-q" type="search" placeholder="Поиск по базе" value="${esc(query)}"></div>
       <div class="kb-tools">
         <button type="button" class="kb-tool kb-to-graph" title="Граф связей между заметками">◉ Граф</button>
-        <button type="button" class="kb-tool kb-to-new" title="Новая заметка">＋ Заметка</button>
       </div>
       <div class="kb-groups"></div>
-      <div class="kb-list"></div>
     </aside>
+    <section class="kb-notes" aria-label="Заметки группы">
+      <div class="kb-notes-in">
+        <header class="kb-notes-head"><span class="kb-notes-dot"></span><b class="kb-notes-title"></b><span class="kb-notes-n"></span></header>
+        <div class="kb-list"></div>
+      </div>
+      <button type="button" class="kb-notes-grip" title="Свернуть список заметок" aria-label="Свернуть список заметок"></button>
+    </section>
     <main class="kb-main"></main>`;
   const side = el.querySelector('.kb-side');
   const qi = side.querySelector('.kb-q');
-  qi.oninput = () => { query = qi.value; renderSide(); };
+  qi.oninput = () => { query = qi.value; if (query.trim()) notesOpen = true; renderSide(); };
   qi.onkeydown = e => {
     if (e.key !== 'Enter') return;
-    const first = side.querySelector('.kb-list .kb-item');
+    const first = el.querySelector('.kb-list .kb-item');
     if (first) openNote(first.dataset.id);
   };
   side.addEventListener('click', onSideClick);
-  bindNoteDrag(el, side);
+  el.querySelector('.kb-notes').addEventListener('click', onSideClick);
+  bindNoteDrag(el, el);
 }
 
 /* На телефоне основная область стоит под списком — подкручиваем к ней */
@@ -319,9 +331,9 @@ function onSideClick(e) {
     if (view === 'graph') revealMain();
     return;
   }
-  if (t.closest('.kb-to-new')) { newKbNote(); return; }
+  if (t.closest('.kb-notes-grip')) { notesOpen = false; renderSide(); return; }
   if (t.closest('.kb-g-new')) { openGroupSheet(null, _host); return; }
-  const item = t.closest('.kb-item, .kb-subitem');
+  const item = t.closest('.kb-item');
   if (item) { openNote(item.dataset.id); return; }
   const g = t.closest('.kb-g[data-g]');
   if (!g) return;
@@ -338,7 +350,9 @@ function onSideClick(e) {
     if (gid) openGroupSheet(gid, _host);
     return;
   }
-  curGroup = gid;
+  /* Повторный тап по открытой группе прячет колонку заметок */
+  if (curGroup === gid && notesOpen) notesOpen = false;
+  else { curGroup = gid; notesOpen = true; }
   renderSide();
   if (view === 'graph') renderMain();
 }
@@ -359,38 +373,66 @@ function itemHTML(n) {
     </span></button>`;
 }
 
+/* ── Группы: дерево с подгруппами ──
+   parentId у группы — её родитель. Заметки группы — её собственные и
+   всех вложенных подгрупп. */
+const childGroups = (gid, groups) => groups.filter(g => (g.parentId || '') === gid && g.id !== gid);
+function groupBranch(gid, groups = kbGroups()) {
+  const ids = new Set([gid]);
+  let grew = true;
+  while (grew) {   // обход вширь; защита от цикла — ids уже посещённые
+    grew = false;
+    for (const g of groups) if (g.parentId && ids.has(g.parentId) && !ids.has(g.id)) { ids.add(g.id); grew = true; }
+  }
+  return ids;
+}
+
 function renderSide() {
   if (!_host) return;
   const side = _host.querySelector('.kb-side');
   const groups = kbGroups();
+  const known = new Set(groups.map(g => g.id));
   const allNotes = kbNotes().sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
   const q = query.trim().toLowerCase();
   let notes = allNotes;
-  if (curGroup) notes = notes.filter(n => n.groupId === curGroup);
+  if (curGroup && !known.has(curGroup)) curGroup = '';
+  if (curGroup) { const br = groupBranch(curGroup, groups); notes = notes.filter(n => br.has(n.groupId)); }
   if (q) notes = notes.filter(n => (titleOf(n) + ' ' + plain(n.html)).toLowerCase().includes(q));
-  const countIn = gid => allNotes.filter(n => n.groupId === gid).length;
+  const countIn = gid => { const br = groupBranch(gid, groups); return allNotes.filter(n => br.has(n.groupId)).length; };
+
+  const row = (g, depth) => {
+    const kids = childGroups(g.id, groups);
+    const open = openGroups.has(g.id);
+    return `<div class="kb-gwrap${open ? ' open' : ''}" data-drop="${g.id}" style="--depth:${depth}">
+      <button type="button" class="kb-g${curGroup === g.id ? ' on' : ''}" data-g="${g.id}" style="--gc:${g.color || '#94a3b8'}">
+        <span class="kb-g-caret${kids.length ? '' : ' none'}">${kids.length ? (open ? '▾' : '▸') : ''}</span>
+        <span class="kb-g-dot"></span><span class="kb-g-name">${esc(g.name)}</span>
+        <span class="kb-g-n">${countIn(g.id)}</span>
+        <span class="kb-g-edit" title="Изменить или добавить подгруппу">✎</span></button>
+      ${open && kids.length ? `<div class="kb-sub">${kids.map(k => row(k, depth + 1)).join('')}</div>` : ''}
+    </div>`;
+  };
+  /* Корни — группы без родителя или с удалённым родителем */
+  const roots = groups.filter(g => !g.parentId || !known.has(g.parentId));
 
   side.querySelector('.kb-to-graph').classList.toggle('on', view === 'graph');
   setHTML(side.querySelector('.kb-groups'), `
     <button type="button" class="kb-g${curGroup === '' ? ' on' : ''}" data-g="" style="--gc:var(--dim)">
+      <span class="kb-g-caret none"></span>
       <span class="kb-g-dot"></span><span class="kb-g-name">Все заметки</span><span class="kb-g-n">${allNotes.length}</span></button>
-    ${groups.map(g => {
-      const inside = allNotes.filter(n => n.groupId === g.id);
-      const open = openGroups.has(g.id);
-      return `<div class="kb-gwrap${open ? ' open' : ''}" data-drop="${g.id}">
-        <button type="button" class="kb-g${curGroup === g.id ? ' on' : ''}" data-g="${g.id}" style="--gc:${g.color || '#94a3b8'}">
-          <span class="kb-g-caret">${open ? '▾' : '▸'}</span>
-          <span class="kb-g-dot"></span><span class="kb-g-name">${esc(g.name)}</span>
-          <span class="kb-g-n">${countIn(g.id)}</span>
-          <span class="kb-g-edit" title="Переименовать">✎</span></button>
-        ${open ? `<div class="kb-sub">${inside.length
-          ? inside.map(n => `<button type="button" class="kb-subitem${curNote === n.id ? ' on' : ''}" data-id="${n.id}" data-drag="1">${esc(titleOf(n))}</button>`).join('')
-          : '<span class="kb-sub-empty">Пусто</span>'}</div>` : ''}
-      </div>`;
-    }).join('')}
+    ${roots.map(g => row(g, 0)).join('')}
     <button type="button" class="kb-g-new">＋ Группа</button>`);
-  setHTML(side.querySelector('.kb-list'),
-    notes.length ? notes.map(itemHTML).join('') : '<p class="empty">Ничего не найдено</p>');
+
+  /* Колонка заметок выбранной группы */
+  const col = _host.querySelector('.kb-notes');
+  const cg = curGroup ? groups.find(g => g.id === curGroup) : null;
+  col.querySelector('.kb-notes-title').textContent = q ? 'Поиск' : cg ? cg.name : 'Все заметки';
+  col.querySelector('.kb-notes-n').textContent = notes.length;
+  col.style.setProperty('--gc', q ? 'var(--accent)' : cg ? (cg.color || '#94a3b8') : 'var(--dim)');
+  setHTML(col.querySelector('.kb-list'), notes.length
+    ? notes.map(itemHTML).join('')
+    : `<p class="empty">${q ? 'Ничего не найдено' : 'В группе пока нет заметок — кнопка «+» внизу создаст новую'}</p>`);
+  _host.classList.toggle('kb-notes-open', notesOpen);
 }
 
 /* Миниатюра открытой заметки — прямо при наборе, без перерисовки */
@@ -399,8 +441,7 @@ function updateThumb() {
   const title = editing.title.value.trim();
   const text = plain(editing.ed.innerHTML);
   const label = title || text.slice(0, 40) || 'Без названия';
-  _host.querySelectorAll(`.kb-side [data-id="${CSS.escape(editing.id)}"]`).forEach(node => {
-    if (node.classList.contains('kb-subitem')) { node.textContent = label; return; }
+  _host.querySelectorAll(`.kb-list [data-id="${CSS.escape(editing.id)}"]`).forEach(node => {
     const b = node.querySelector('b'), i = node.querySelector('i');
     if (b) b.textContent = label;
     if (i) i.textContent = text.slice(0, 70) || 'Пусто';
@@ -809,7 +850,8 @@ function graphData() {
       front = next;
     }
   } else {
-    ids = new Set(all.filter(n => !curGroup || n.groupId === curGroup).map(n => n.id));
+    const br = curGroup ? groupBranch(curGroup) : null;
+    ids = new Set(all.filter(n => !br || br.has(n.groupId)).map(n => n.id));
   }
   if (hideOrphans) {
     for (const id of [...ids]) {
@@ -879,8 +921,13 @@ function updateGraph(main, refit) {
 }
 
 /* ── Окно группы ── */
-function openGroupSheet(id, host) {
+function openGroupSheet(id, host, parentPreset = '') {
   const g = id ? kbItem(id) : null;
+  const all = kbGroups();
+  /* Родителем нельзя выбрать саму группу и её же подгруппы — иначе цикл */
+  const banned = id ? groupBranch(id, all) : new Set();
+  const parentNow = g ? (g.parentId || '') : parentPreset;
+  const depthOf = gr => { let d = 0, p = gr.parentId; const seen = new Set(); while (p && !seen.has(p)) { seen.add(p); d++; p = (all.find(x => x.id === p) || {}).parentId; } return d; };
   const g0 = g ? kbGroups().find(x => x.id === g.id) || g : null;
   const resolved = c => {
     if (!c || !String(c).startsWith('var(')) return c;
@@ -900,10 +947,16 @@ function openGroupSheet(id, host) {
         <div class="kg-colors">${PALETTE.map(c =>
           `<button type="button" class="kg-dot${c.toLowerCase() === String(color).toLowerCase() ? ' on' : ''}" data-c="${c}" style="--c:${c}"></button>`).join('')}
           <input class="kg-custom" type="color" value="${color}" title="Свой цвет"></div></div>
+      <label class="fin-field"><span>Внутри группы</span>
+        <select class="fin-in kg-parent">
+          <option value="">— верхний уровень —</option>
+          ${all.filter(x => !banned.has(x.id)).map(x => `<option value="${x.id}"${x.id === parentNow ? ' selected' : ''}>${'  '.repeat(depthOf(x))}${esc(x.name)}</option>`).join('')}
+        </select></label>
     </div>
     <div class="ne-actions">
       ${g && !['kb-work', 'kb-home', 'kb-study'].includes(g.id)
         ? '<button type="button" class="btn danger kg-del">Удалить</button>' : ''}
+      ${g ? '<button type="button" class="btn kg-sub">＋ Подгруппа</button>' : ''}
       <span class="spacer"></span>
       <button type="button" class="btn primary kg-save">Сохранить</button>
     </div></div>`;
@@ -926,25 +979,29 @@ function openGroupSheet(id, host) {
   ov.querySelector('.kg-save').onclick = async () => {
     const name = nameEl.value.trim();
     if (!name) { nameEl.focus(); return; }
-    const patch = { name: name.slice(0, 40), color: picked, order: g ? g.order : kbGroups().length };
+    const patch = { name: name.slice(0, 40), color: picked, order: g ? g.order : kbGroups().length,
+      parentId: ov.querySelector('.kg-parent').value };
     if (id && MODE_OF_GROUP[id]) {
       const mode = MODES.find(x => x.id === MODE_OF_GROUP[id]) || {};
       patch.customName = name !== mode.label;
       patch.customColor = !String(picked).startsWith('var(');
     }
     const saved = await kbSave('group', patch, id);
-    if (!id) { curGroup = saved.id; openGroups.add(saved.id); }
+    if (!id) { curGroup = saved.id; notesOpen = true; }
+    if (patch.parentId) openGroups.add(patch.parentId);   // показать новую подгруппу в дереве
     close();
     renderKbView(host);
   };
   const del = ov.querySelector('.kg-del');
   if (del) del.onclick = async () => {
-    if (!confirm('Удалить группу? Заметки останутся, но без группы.')) return;
+    if (!confirm('Удалить группу? Её заметки и подгруппы перейдут на уровень выше.')) return;
     await kbRemove(id);
     if (curGroup === id) curGroup = '';
     close();
     renderKbView(host);
   };
+  const sub = ov.querySelector('.kg-sub');
+  if (sub) sub.onclick = () => { close(); openGroupSheet(null, host, id); };
   setTimeout(() => nameEl.focus(), 60);
 }
 
@@ -1007,7 +1064,7 @@ function bindNoteDrag(el, side) {
   };
   const block = e => { if (started && e.cancelable) e.preventDefault(); };
   side.addEventListener('pointerdown', e => {
-    const node = e.target.closest('[data-drag], .kb-item');
+    const node = e.target.closest('.kb-item');
     if (!node || e.button > 0) return;
     src = node;
     sx = e.clientX;
@@ -1027,6 +1084,7 @@ export async function newKbNote() {
     title: '', html: '', groupId: curGroup || (kbGroups()[0] || {}).id || '',
     files: [], links: [], tags: [],
   });
+  notesOpen = true;   // новая заметка видна в колонке своей группы
   openNote(n.id, true);
 }
 
