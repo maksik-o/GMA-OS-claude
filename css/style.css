@@ -540,6 +540,8 @@ body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head {
 }
 .drawer.open { transform: none; }
 .drawer.drag { transition: none; }
+/* Горизонталь — нашему свайпу закрытия, вертикаль — прокрутке */
+.drawer { touch-action: pan-y; }
 .drawer-grip {
   position: absolute;
   left: 0; top: 50%;
@@ -5168,11 +5170,98 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   .kb-list, .notes-list-content, .ed-scroll, .sheet-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 }
 
-/* Тачскрин: hover-эффекты «залипают» после касания — отключаем подъём */
+/* Тачскрин: hover-эффекты «залипают» после касания — отключаем подъём.
+   Только у карточек: правило на .glass сбрасывало transform и шторке
+   настроек — после касания она «залипала» открытой на iPhone. */
 @media (hover: none) {
-  .glass:hover, .contact-card:hover, .note-list-item:hover { transform: none; }
+  .contact-card:hover, .note-list-item:hover { transform: none; }
 }
 /* Пользователь попросил меньше движения — гасим долгие переходы */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+/* ══════════════ Финансы: пустое состояние ══════════════
+   Рисунок красится цветами темы и режима: карточка — поверхность,
+   пунктирный график и монета — акцент. */
+.fin-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
+  padding: 28px 20px 26px; margin: 4px 0;
+  border-radius: var(--r-lg); background: var(--glass); border: var(--t-bw, 0) solid var(--brd);
+  box-shadow: var(--shadow), var(--inner-glow);
+}
+.fin-empty .fe-art { width: min(220px, 70%); height: auto; margin-bottom: 4px; }
+.fe-card { fill: var(--card); stroke: color-mix(in srgb, var(--text) 14%, transparent); stroke-width: 1.5; }
+.fe-bars rect { fill: none; stroke: color-mix(in srgb, var(--text) 22%, transparent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.fe-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 6 5; }
+.fe-dots circle { fill: var(--accent); }
+.fe-coin { fill: var(--accent); filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--accent) 45%, transparent)); }
+.fe-plus { stroke: #fff; stroke-width: 3.5; stroke-linecap: round; }
+.fe-title { font: 800 18px/1.25 var(--font-head); }
+.fe-text { max-width: 44ch; font-size: 14px; line-height: 1.5; color: var(--dim); }
+.fe-add { margin-top: 6px; }
+.fe-hint { font-size: 12px; color: var(--dim); opacity: .85; }
+/* В виджете — компактно, без отдельной подложки */
+.fin-empty.compact { background: none; border: 0; box-shadow: none; padding: 6px 4px; gap: 6px; margin: auto 0; }
+.fin-empty.compact .fe-art { width: 120px; margin: 0; }
+.fin-empty.compact .fe-title { font-size: 14px; }
+.fin-empty.compact .fe-text { font-size: 12px; }
+.fin-empty.compact .fe-add { padding: 7px 14px; font-size: 13px; margin-top: 2px; }
+
+/* ══════════════ База знаний: группы с подгруппами и выдвижная колонка заметок ══════════════
+   Раньше миниатюры заметок стояли под списком групп и при большом
+   числе групп сжимались до двух строк. Теперь у заметок своя колонка:
+   она скрыта, выезжает из-за колонки групп при выборе группы и
+   уезжает обратно по тапу на полоску у правого края. */
+.kb-view {
+  grid-template-columns: minmax(230px, 270px) var(--kbn-w, 0px) minmax(0, 1fr);
+  column-gap: 0;
+  transition: grid-template-columns .45s var(--ease-spring);
+}
+.kb-view.kb-notes-open { --kbn-w: 300px; }
+.kb-side { margin-right: var(--sp-3); position: relative; z-index: 2; }
+.kb-notes { position: relative; min-width: 0; overflow: hidden; align-self: stretch; z-index: 1; }
+.kb-notes-in {
+  position: relative; display: flex; flex-direction: column; gap: var(--sp-2);
+  width: calc(100% - var(--sp-3)); max-height: calc(100dvh - 150px); height: 100%;
+  padding: var(--sp-3) calc(var(--sp-3) + 10px) var(--sp-3) var(--sp-3);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
+  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: var(--shadow), var(--inner-glow);
+  transform: translateX(-104%); opacity: 0;
+  transition: transform .45s var(--ease-spring), opacity .3s ease;
+}
+.kb-view.kb-notes-open .kb-notes-in { transform: none; opacity: 1; }
+.kb-notes-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.kb-notes-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--gc, var(--dim)); flex: none; }
+.kb-notes-title { flex: 1; min-width: 0; font: 800 15px/1.2 var(--font-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-notes-n { font-size: 11px; font-weight: 800; color: var(--dim); }
+.kb-notes .kb-list { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
+.kb-notes .kb-list .empty { padding: 18px 6px; font-size: 13px; line-height: 1.5; }
+/* Полоска-ручка по центру правого края: свернуть колонку */
+.kb-notes-grip {
+  position: absolute; right: 8px; top: 50%; width: 6px; height: 46px; padding: 0; margin-top: -23px;
+  border: 0; border-radius: 3px; cursor: pointer;
+  background: color-mix(in srgb, var(--text) 22%, transparent);
+  opacity: 0; transition: opacity .3s ease .1s, background .2s;
+}
+.kb-notes-grip::before { content: ""; position: absolute; inset: -16px -12px; }
+.kb-view.kb-notes-open .kb-notes-grip { opacity: 1; }
+.kb-notes-grip:hover { background: var(--accent); }
+/* Подгруппы — отступом под родителем */
+.kb-sub { padding: 2px 0 4px 14px; }
+.kb-g-caret { cursor: pointer; }
+.kb-g-caret.none { visibility: hidden; }
+
+@media (max-width: 720px) {
+  /* На телефоне колонки в стопку: колонка заметок выезжает поверх колонки групп */
+  .kb-view { grid-template-columns: minmax(0, 1fr); --kbn-w: auto; transition: none; }
+  .kb-view.kb-notes-open { --kbn-w: auto; }
+  .kb-side { margin-right: 0; grid-area: 1 / 1; }
+  .kb-notes { grid-area: 1 / 1; z-index: 3; pointer-events: none; }
+  .kb-view.kb-notes-open .kb-notes { pointer-events: auto; }
+  /* Поверх списка групп — плотная подложка, иначе группы просвечивают */
+  .kb-notes-in { width: 100%; max-height: none; background: var(--panel-solid); }
+  .kb-main { grid-row: 2; }
 }

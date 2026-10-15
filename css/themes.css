@@ -22,7 +22,7 @@
    ══════════════════════════════════════════════════════════════════ */
 
 /* Поверхности, которые получают «материал» темы */
-:root[data-theme] .glass, :root[data-theme] .kb-side, :root[data-theme] .kb-main,
+:root[data-theme] .glass, :root[data-theme] .kb-side, :root[data-theme] .kb-main, :root[data-theme] .kb-notes-in,
 :root[data-theme] .sheet, :root[data-theme] .editor, :root[data-theme] .drawer,
 :root[data-theme] .bottomnav, :root[data-theme] .cmenu, :root[data-theme] .auth,
 :root[data-theme] .searchpanel, :root[data-theme] .person-editor, :root[data-theme] .toast,
@@ -57,7 +57,7 @@ html[data-theme] {
     radial-gradient(900px 600px at 50% 100%, var(--time-atmosphere), transparent 70%),
     var(--bg);
 }
-:root[data-theme] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-main, .fin-hero, .fs-card, .fin-card, .tl-wrap) {
+:root[data-theme] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .fin-hero, .fs-card, .fin-card, .tl-wrap) {
   box-shadow:
     var(--shadow), var(--inner-glow),
     inset 0 1px 0 color-mix(in srgb, var(--accent) calc(var(--mode-inner) * 1.6), transparent),
@@ -105,10 +105,6 @@ html[data-theme] {
 :root[data-theme="note"] .g-hd.today { background: linear-gradient(transparent 52%, color-mix(in srgb, var(--accent) 30%, transparent) 52%); border-radius: 2px; }
 :root[data-theme="note"] .g-hd.today b { color: var(--accent); }
 :root[data-theme="note"] .cell { border-radius: 999px; }
-:root[data-theme="note"] .notes-editor, :root[data-theme="note"] .kb-editor {
-  background-image: repeating-linear-gradient(transparent 0 calc(1.65em - 1px), #e8dcc6 calc(1.65em - 1px) 1.65em);
-  line-height: 1.65em;
-}
 :root[data-theme="note"] .icon-btn, :root[data-theme="note"] .sync, :root[data-theme="note"] .btn {
   border: 1px solid var(--brd); box-shadow: 0 1px 0 #cfc2a6;
 }
@@ -148,7 +144,7 @@ html[data-theme] {
 :root[data-theme="brutal"] .cell { border-radius: 4px; border-width: 2px; }
 /* Цвет режима — плашками: панели отбрасывают жёсткую тень цвета режима
    в чёрной обводке, заголовок недели на цветном ярлыке */
-:root[data-theme="brutal"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-main, .fin-hero, .fs-card, .fin-card, .tl-wrap) {
+:root[data-theme="brutal"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .fin-hero, .fs-card, .fin-card, .tl-wrap) {
   box-shadow: 5px 5px 0 0 var(--accent), 5px 5px 0 2.5px #111;
 }
 :root[data-theme="brutal"] .kb-board-title { color: #111; background: var(--accent); padding: 2px 10px; border: 2px solid #111; border-radius: 8px; box-shadow: 2px 2px 0 #111; }
@@ -251,16 +247,17 @@ html[data-theme] {
 
 /* ══════════════ 6. НЕОН ══════════════ */
 :root[data-theme="neon"], :root[data-theme="neon"] body, .tmini.t-neon {
-  --bg: #12082a;
+  /* Фон ровный по всей высоте: раньше нижние 38% были отдельной
+     светлой полосой «горизонта», и экран делился пополам */
+  --bg: #140a2e;
   --bg-mesh:
-    linear-gradient(transparent 0 62%, rgba(255, 62, 165, .12) 62%, transparent 100%),
-    repeating-linear-gradient(90deg, rgba(45, 226, 230, .08) 0 1px, transparent 1px 42px),
-    linear-gradient(#0d0620 0%, #1d0b3a 60%, #2a0b45 100%);
-  --tint: #ff3ea5;
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .045) 0 1px, transparent 1px 42px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 42px);
+  --tint: var(--accent);
   --text: #f4eaff; --dim: #a58bd1; --c-todo: rgba(244, 234, 255, .5);
-  --glass: color-mix(in srgb, rgb(22 10 46) calc(var(--panel-a, 0.88) * 100%), transparent); --card: rgba(45, 226, 230, .07); --brd: rgba(255, 62, 165, .75);
+  --glass: color-mix(in srgb, rgb(22 10 46) calc(var(--panel-a, 0.88) * 100%), transparent); --card: color-mix(in srgb, var(--accent) 8%, transparent); --brd: color-mix(in srgb, var(--accent) 70%, transparent);
   --panel-solid: #1a0c36;
-  --shadow: 0 0 16px rgba(255, 62, 165, .32); --inner-glow: inset 0 0 14px rgba(255, 62, 165, .08);
+  --shadow: 0 0 16px color-mix(in srgb, var(--accent) 32%, transparent); --inner-glow: inset 0 0 14px color-mix(in srgb, var(--accent) 8%, transparent);
   --t-bw: 1px; --r-lg: 16px; --r-md: 10px;
   --font-ui: "Exo 2", -apple-system, sans-serif;
   --font-head: "Exo 2", -apple-system, sans-serif;
@@ -270,16 +267,17 @@ html[data-theme] {
 :root[data-theme="neon"], .tmini.t-neon { --panel-a: 0.88; --mode-work: #ff3ea5; --mode-home: #2de2e6; --mode-study: #ffd166; --mode-all: #b388ff; }
 :root[data-theme="neon"] .topbar::before, :root[data-theme="neon"] .kb-board-title {
   text-transform: uppercase; font-weight: 800; letter-spacing: .04em;
-  background: linear-gradient(90deg, var(--accent), #2de2e6); -webkit-background-clip: text; background-clip: text; color: transparent;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #fff)); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-:root[data-theme="neon"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-main, .fin-hero, .fs-card, .fin-card) {
+:root[data-theme="neon"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .fin-hero, .fs-card, .fin-card) {
   box-shadow:
     0 0 18px -6px var(--accent),
     inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
     inset 0 0 28px -8px color-mix(in srgb, var(--accent) var(--mode-inner), transparent);
 }
 :root[data-theme="neon"] .icon-btn, :root[data-theme="neon"] .sync, :root[data-theme="neon"] .chip {
-  background: transparent; border: 1px solid rgba(45, 226, 230, .55); color: #2de2e6; box-shadow: 0 0 10px rgba(45, 226, 230, .18);
+  background: transparent; border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent); color: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 :root[data-theme="neon"] .btn.primary, :root[data-theme="neon"] .fab, :root[data-theme="neon"] .fin-fab,
 :root[data-theme="neon"] .bottomnav button.on {
@@ -316,8 +314,8 @@ html[data-theme] {
   --font-head: "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-meta: "JetBrains Mono", ui-monospace, Menlo, monospace;
   --c-done: #59d499; --c-started: #ffc062; --c-skipped: #ff6363; --c-postponed: #56c2ff;
-  /* Нейтральная «кнопка действия» вместо цветной: Mist + Iron */
-  --accent-deep: #e6e6e6;
+  /* Залитые кнопки — цвета текущего режима (тёмный текст на них) */
+  --accent-deep: var(--accent);
 }
 :root[data-theme="coral"], .tmini.t-coral { --panel-a: 1; --mode-work: #ff6363; --mode-home: #59d499; --mode-study: #56c2ff; --mode-all: #e6e6e6; }
 :root[data-theme="coral"] body { letter-spacing: .01em; font-feature-settings: "calt", "kern", "liga", "ss03"; }
@@ -336,29 +334,30 @@ html[data-theme] {
   background: rgba(7, 8, 10, .62); border: 1px solid var(--brd); box-shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset;
   -webkit-backdrop-filter: blur(48px) saturate(1.4); backdrop-filter: blur(48px) saturate(1.4);
 }
-/* Кнопки: нейтральные. Залитая — Mist с текстом Iron, обычная — тёмная клавиша */
+/* Кнопки: залитая — цвета режима с тёмным текстом, обычная — тёмная клавиша */
 :root[data-theme="coral"] .btn.primary, :root[data-theme="coral"] .fab, :root[data-theme="coral"] .fin-fab,
 :root[data-theme="coral"] .bottomnav button.on {
-  background: #e6e6e6; color: #454647;
+  background: var(--accent); color: #07080a;
   box-shadow: rgba(0, 0, 0, .03) 0 7px 3px 0, rgba(0, 0, 0, .25) 0 4px 4px 0;
 }
 :root[data-theme="coral"] .btn.primary, :root[data-theme="coral"] .fin-fab { border-radius: 8px; }
-:root[data-theme="coral"] .fab { border-radius: 16px; box-shadow: 0 0 0 2px var(--accent), rgba(0, 0, 0, .25) 0 4px 4px 0; }
-:root[data-theme="coral"] .bottomnav button.on { box-shadow: inset 0 -2px 0 var(--accent); }
+:root[data-theme="coral"] .fab { border-radius: 16px; }
 :root[data-theme="coral"] .icon-btn, :root[data-theme="coral"] .sync, :root[data-theme="coral"] .btn:not(.primary),
 :root[data-theme="coral"] .chip {
   background: #111214; color: #e6e6e6;
   box-shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset, rgba(255, 255, 255, .12) 0 0 0 1px, rgba(0, 0, 0, .2) 0 -1px 0 0 inset;
 }
 :root[data-theme="coral"] .btn:not(.primary) { border-radius: 8px; }
-/* Режимы — сегментированный переключатель, выбранный — светлая плашка */
+/* Режимы — сегментированный переключатель, выбранный — плашка цвета режима */
 :root[data-theme="coral"] .modes { background: #111214; box-shadow: rgba(255, 255, 255, .08) 0 0 0 1px inset; }
-:root[data-theme="coral"] .mode-blob { background: #e6e6e6 !important; box-shadow: rgba(0, 0, 0, .25) 0 2px 4px !important; }
-:root[data-theme="coral"] .modes button.on { color: #1b1c1e; text-shadow: none; font-weight: 600; }
-/* Цвет режима — только точкой у выбранного: акцент как метка, не заливка */
+:root[data-theme="coral"] .mode-blob { background: var(--accent) !important; box-shadow: rgba(0, 0, 0, .25) 0 2px 4px !important; }
+:root[data-theme="coral"] .modes button.on { color: #07080a; text-shadow: none; font-weight: 600; }
+/* Точка режима у выбранного: на плашке того же цвета она бы пропала,
+   поэтому отделена тёмным зазором и светлой каймой */
 :root[data-theme="coral"] .modes button.on::before {
-  content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%;
+  content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 9px; border-radius: 50%;
   background: var(--accent); vertical-align: middle; transform: translateY(-1px);
+  box-shadow: 0 0 0 1.5px #07080a, 0 0 0 3px rgba(255, 255, 255, .9);
 }
 /* Сегодня — коралловая метка */
 :root[data-theme="coral"] .g-hd.today { background: color-mix(in srgb, var(--accent) 20%, #07080a); box-shadow: color-mix(in srgb, var(--accent) 45%, transparent) 0 0 0 1px inset; }
@@ -382,8 +381,18 @@ html[data-theme] {
 :root[data-theme="coral"] .sync-alert { background: #452324; color: #ffd6d6; box-shadow: rgba(255, 99, 99, .4) 0 0 0 1px inset; }
 :root[data-theme="coral"] ::selection { background: rgba(255, 99, 99, .35); }
 .tmini.t-coral .tm-card { box-shadow: rgba(255, 255, 255, .14) 0 0 0 1px; }
-.tmini.t-coral .tm-chip { background: #e6e6e6; }
+.tmini.t-coral .tm-chip { background: var(--mode-work); }
 .tmini.t-coral .tm-title { font-weight: 500; }
+
+/* ══════════════ Ручки переноса виджетов в темах с острыми углами ══════════════
+   Ручка — дуга по радиусу угла панели. У «Терминала» и «Швейцарского»
+   углы прямые, и дуга вырождалась в квадратик; здесь ручка — уголок. */
+:root:is([data-theme="term"], [data-theme="swiss"]) :is(.dock-handle, .pane-move-handle) {
+  width: 16px; height: 16px; top: 0; left: 0;
+  border-top: 3px solid currentColor; border-left: 3px solid currentColor;
+  border-radius: 0 !important; box-sizing: border-box;
+}
+:root:is([data-theme="term"], [data-theme="swiss"]) :is(.dock-handle, .pane-move-handle) path { display: none; }
 
 /* ══════════════ Мини-превью тем в «Оформлении» ══════════════
    Маленький экран приложения на переменных своей темы. */

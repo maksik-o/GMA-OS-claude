@@ -353,7 +353,38 @@ export function renderFinanceView(el) {
 const rerender = () => { if (_host) renderFinanceView(_host); };
 
 /* ── Обзор ── */
+/* ── Пустое состояние: ни одной операции и ни одного счёта ──
+   Вместо десятка пустых графиков — картинка и понятный первый шаг.
+   Иллюстрация: карточка с пунктирным (ещё не построенным) графиком,
+   столбиками-заготовками и монетой с плюсом — «добавь первую». */
+const hasFinanceData = () => getTxs().length > 0 || getAccounts().length > 0;
+const EMPTY_FIN_ART = `<svg class="fe-art" viewBox="0 0 200 140" aria-hidden="true">
+  <rect x="14" y="18" width="150" height="104" rx="16" class="fe-card"/>
+  <g class="fe-bars"><rect x="34" y="84" width="16" height="22" rx="4"/><rect x="58" y="72" width="16" height="34" rx="4"/>
+    <rect x="82" y="78" width="16" height="28" rx="4"/><rect x="106" y="60" width="16" height="46" rx="4"/><rect x="130" y="50" width="16" height="56" rx="4"/></g>
+  <path class="fe-line" d="M34 70 L62 56 L90 62 L114 42 L142 32"/>
+  <g class="fe-dots"><circle cx="34" cy="70" r="3.5"/><circle cx="62" cy="56" r="3.5"/><circle cx="90" cy="62" r="3.5"/><circle cx="114" cy="42" r="3.5"/><circle cx="142" cy="32" r="3.5"/></g>
+  <circle cx="164" cy="104" r="22" class="fe-coin"/>
+  <path class="fe-plus" d="M164 94v20M154 104h20"/>
+</svg>`;
+function emptyFinanceHTML(compact) {
+  return `<div class="fin-empty${compact ? ' compact' : ''}">
+    ${EMPTY_FIN_ART}
+    <b class="fe-title">${compact ? 'Добавьте первые расходы' : 'Здесь появится ваш бюджет'}</b>
+    <span class="fe-text">${compact
+      ? 'Виджет покажет баланс месяца и куда уходят деньги'
+      : 'Добавьте первый доход или расход — мы будем следить за бюджетом, строить графики по дням и категориям и подскажем, сколько остаётся до конца месяца.'}</span>
+    <button type="button" class="btn primary fe-add">＋ Добавить операцию</button>
+    ${compact ? '' : '<span class="fe-hint">Или загрузите выписку из банка — кнопка ⇅ справа от месяца</span>'}
+  </div>`;
+}
+
 function renderDash(box) {
+  if (!hasFinanceData()) {
+    box.innerHTML = emptyFinanceHTML(false);
+    box.querySelector('.fe-add').onclick = () => openTxSheet(null);
+    return;
+  }
   const s = monthStats(curM);
   const t = totals();
   const cats = byCategory(curM, 'expense');
@@ -1037,6 +1068,11 @@ function openIOSheet() {
    панелей — ручка переноса, стекло, растяжение по ширине. */
 export function renderFinanceWidget(box) {
   if (!box) return;
+  if (!hasFinanceData()) {
+    box.innerHTML = emptyFinanceHTML(true);
+    box.querySelector('.fe-add').onclick = () => openTxSheet(null);
+    return;
+  }
   const m = curMonth();
   const s = monthStats(m);
   const t = totals();
