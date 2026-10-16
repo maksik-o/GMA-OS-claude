@@ -5313,6 +5313,9 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .vo-ico { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
 .vo-ico svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.vo-ico.brand { background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.vo-ico.brand svg { width: 22px; height: 22px; stroke: none; }
+.vault-opt:disabled .vo-ico.brand svg { filter: saturate(.55); }
 .vo-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .vo-body b { font-size: 14px; }
 .vo-body span { font-size: 12px; line-height: 1.45; color: var(--dim); }
@@ -5321,7 +5324,8 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .vo-badge.on { background: var(--accent); color: #fff; }
 .vault-filepick { margin-top: 10px; padding: 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .vault-filepick p { margin: 0 0 4px; font-size: 13px; line-height: 1.5; }
-.vault-state { margin-top: 10px; }
+.vault-state { margin: 0 0 10px; }
+.vault-state:empty { display: none; }
 .vault-card { padding: 12px; border-radius: var(--r-md); background: var(--card); }
 .vc-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; }
 .vc-row span { color: var(--dim); }

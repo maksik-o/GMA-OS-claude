@@ -36,6 +36,23 @@ const ICONS = {
   cloud: '<svg viewBox="0 0 24 24"><path d="M17.5 19H8a6 6 0 1 1 5.7-8h1.8a4 4 0 0 1 0 8z"/></svg>',
   script: '<svg viewBox="0 0 24 24"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 6l-2 12"/></svg>',
 };
+/* Фирменные значки хранилищ (в цвете бренда) */
+const BRAND = {
+  yandex: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="14.6" rx="10.5" ry="4.6" fill="#FFCC00"/><ellipse cx="12" cy="14.2" rx="10.5" ry="3.6" fill="#FFDB4D"/>'
+    + '<path d="M6.6 13.4a5.4 5.4 0 0 1 10.8 0c0 1.1-2.4 1.9-5.4 1.9s-5.4-.8-5.4-1.9z" fill="#FC3F1D"/><ellipse cx="12" cy="9.6" rx="2.2" ry="1" fill="#fff" opacity=".55"/></svg>',
+  gdrive: '<svg viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>'
+    + '<path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>'
+    + '<path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>'
+    + '<path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>'
+    + '<path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>'
+    + '<path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>',
+  dropbox: '<svg viewBox="0 0 24 24"><path fill="#0061FF" d="M6 1.807L0 5.629l6 3.822 6.001-3.822L6 1.807zM18 1.807l-6 3.822 6 3.822 6-3.822-6-3.822zM0 13.274l6 3.822 6.001-3.822L6 9.452l-6 3.822zM18 9.452l-6 3.822 6 3.822 6-3.822-6-3.822zM6 18.371l6.001 3.822 6-3.822-6-3.822L6 18.371z"/></svg>',
+  onedrive: '<svg viewBox="0 0 24 24"><path fill="#0364B8" d="M9.6 7.7a6 6 0 0 1 10.1 2.9A4.2 4.2 0 0 1 22.9 15l-12.1 3.1L4.5 11.4a5.4 5.4 0 0 1 5.1-3.7z"/>'
+    + '<path fill="#0078D4" d="M10 8.4a5.5 5.5 0 0 0-6.3 3.4A4.3 4.3 0 0 0 4.6 20H11l4.2-8.5z"/>'
+    + '<path fill="#1490DF" d="M19.7 10.6h-.5a6 6 0 0 0-4.6 1.3L6 20h13.6a4.7 4.7 0 0 0 .1-9.4z"/>'
+    + '<path fill="#28A8EA" d="M23.1 13.8A4.7 4.7 0 0 1 19.6 20H6.9l9.9-6.7a4.4 4.4 0 0 1 6.3.5z"/></svg>',
+  legacy: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M12.363 2.54a3.136 3.136 0 0 0-.376.022 2.864 2.864 0 0 0-1.589.828c-.562.58-.82 1.115-.773 1.943-.01.264.193 1.023.272 1.274 1.115 3.546 2.09 6.75 3.26 10.279.08.246.168.486.267.72.02.047.035.046.048-.004.077-.297.174-.612.29-.945.894-2.576 1.772-5.14 2.633-7.696a.345.345 0 0 0 .004-.217 163.054 163.054 0 0 0-1.49-4.572 2.603 2.603 0 0 0-.704-.933c-.55-.46-1.166-.694-1.842-.7Zm9.078.117a2.734 2.734 0 0 0-2.878 1.828l-4.576 13.289a2.734 2.734 0 0 0 1.695 3.475l.12.04a2.734 2.734 0 0 0 3.475-1.694L23.85 6.307a2.734 2.734 0 0 0-1.695-3.476c-.233-.1-.506-.124-.716-.174ZM12.375 3.96a1.396 1.396 0 1 1 0 2.791 1.395 1.395 0 0 1 0-2.79zm8.809.07a1.402 1.402 0 1 1 0 2.803 1.402 1.402 0 0 1 0-2.803zM5.419 7.605a2.853 2.853 0 0 0-.468.052 2.683 2.683 0 0 0-1.337.627 2.62 2.62 0 0 0-.924 1.833 3.808 3.808 0 0 0 0 .648 2.52 2.52 0 0 0 .673 1.52c.221.238.465.454.732.648 3.043 2.21 6.08 4.43 9.108 6.664a.78.78 0 0 0 .158.089c.03-.043.032-.098.007-.167a17.409 17.409 0 0 0-.317-1.066 532.752 532.752 0 0 1-2.02-6.251 41.91 41.91 0 0 0-.497-1.477c-.967-.849-2.078-1.6-3.023-2.302A3.848 3.848 0 0 0 6.153 7.7a2.388 2.388 0 0 0-.734-.094Zm.02 1.424a1.398 1.398 0 1 1 0 2.796 1.398 1.398 0 0 1 0-2.796zm-2.458 6.792c-.733-.006-1.375.202-1.927.622a2.72 2.72 0 0 0-.95 1.45 2.78 2.78 0 0 0-.09 1.04 2.74 2.74 0 0 0 .695 1.583c.664.578 1.26.85 2 .945 1.42-.005 2.84-.012 4.262-.02h.418c2.277-.003 4.513-.002 6.706.003.148.005.28.003.392-.01.06-.005.091-.031.092-.077a10.656 10.656 0 0 0-.834-.653 488.746 488.746 0 0 1-6.57-4.815.236.236 0 0 0-.14-.047c-1.34-.003-2.691-.01-4.054-.02zm-.19 1.418a1.402 1.402 0 1 1 0 2.803 1.402 1.402 0 0 1 0-2.803zm13.874.002a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8z"/></svg>',
+};
 
 const hasFileApi = () => typeof window.showSaveFilePicker === 'function' && typeof window.showOpenFilePicker === 'function';
 
@@ -70,6 +87,8 @@ function setMode(m) {
 
 /* ── Статус для облачка в шапке и плашки ── */
 let lastError = '';
+let lastCorrupt = false;   // ошибка в самом файле — тогда предлагаем перезаписать
+const corrupt = msg => { const e = new Error(msg); e.corrupt = true; return e; };
 let busy = false, pending = false, timer = null;
 const status = s => document.dispatchEvent(new CustomEvent('sync-status', { detail: s }));
 const lastSyncText = () => {
@@ -95,7 +114,7 @@ const fileStore = {
     const text = (await f.text()).trim();
     let data = null;
     if (text) {
-      try { data = JSON.parse(text); } catch { throw new Error('Файл повреждён или это не JSON'); }
+      try { data = JSON.parse(text); } catch { throw corrupt('Файл повреждён или это не JSON'); }
     }
     return { data, rev: f.lastModified };
   },
@@ -181,7 +200,7 @@ const yandexStore = {
     const file = await this.fetchVia(href);
     const text = (await file.text()).trim();
     let data = null;
-    if (text) { try { data = JSON.parse(text); } catch { throw new Error('Файл на Яндекс Диске повреждён'); } }
+    if (text) { try { data = JSON.parse(text); } catch { throw corrupt('Файл на Яндекс Диске повреждён'); } }
     return { data, rev: m.rev };
   },
   /* Ссылка скачивания Яндекса не разрешает чтение из браузера (нет CORS),
@@ -201,7 +220,7 @@ const yandexStore = {
       } catch (e) { fails.push(host + ': ' + (e && e.name === 'TimeoutError' ? 'нет ответа' : 'не открылся')); }
     }
     console.warn('[Яндекс Диск] прокси не сработали:\n' + fails.join('\n'));
-    if (fails.some(f => /file IO failure/.test(f))) throw new Error('Яндекс Диск не может прочитать файл — он повреждён на стороне Яндекса');
+    if (fails.some(f => /file IO failure/.test(f))) throw corrupt('Яндекс Диск не может прочитать файл — он повреждён на стороне Яндекса');
     throw new Error('Прокси Яндекс Диска недоступен (' + fails.map(f => f.split(' ').slice(0, 2).join(' ')).join('; ') + ')');
   },
   async upload(path, body) {
@@ -293,7 +312,7 @@ async function vaultSync(manual) {
     for (let i = 0; i < 3 && !written; i++) {
       const { data, rev } = await pv.read();
       if (data) {
-        if (!isSnapshot(data)) throw new Error('В хранилище лежат не данные GMA-OS');
+        if (!isSnapshot(data)) throw corrupt('В хранилище лежат не данные GMA-OS');
         await applySnapshot(data);
       }
       const res = await pv.write(buildSnapshot(), rev);
@@ -302,11 +321,13 @@ async function vaultSync(manual) {
     if (!written) throw new Error('Файл постоянно меняется другим устройством — попробуйте ещё раз');
     try { localStorage.setItem(LAST_KEY, String(Date.now())); } catch {}
     lastError = '';
+    lastCorrupt = false;
     status('ok');
     document.dispatchEvent(new CustomEvent('sync-done'));
     flushAttachments();
   } catch (e) {
     lastError = (e && e.message) || String(e);
+    lastCorrupt = !!(e && e.corrupt);
     if (e && e.name === 'NotFoundError') lastError = 'Файл не найден — его переместили или удалили. Выберите файл заново.';
     status(e && e.auth ? 'auth' : 'error');
   } finally {
@@ -329,6 +350,7 @@ async function vaultOverwrite() {
     if (res.conflict) throw new Error('Файл изменили во время записи — попробуйте ещё раз');
     try { localStorage.setItem(LAST_KEY, String(Date.now())); } catch {}
     lastError = '';
+    lastCorrupt = false;
     status('ok');
     flushAttachments();
   } catch (e) {
@@ -437,7 +459,7 @@ function optionHTML(s, current) {
     : s.id === current ? '<span class="vo-badge on">выбрано</span>'
     : (s.available && !s.available()) ? `<span class="vo-badge">${esc(s.note || 'недоступно')}</span>` : '';
   return `<button type="button" class="vault-opt${s.id === current ? ' on' : ''}" data-st="${s.id}"${off ? ' disabled' : ''}>
-    <span class="vo-ico">${ICONS[s.icon]}</span>
+    ${BRAND[s.id] ? `<span class="vo-ico brand">${BRAND[s.id]}</span>` : `<span class="vo-ico">${ICONS[s.icon]}</span>`}
     <span class="vo-body"><b>${esc(s.label)}</b><span>${esc(s.desc)}</span></span>${badge}</button>`;
 }
 const visibleStorages = forChooser => STORAGES.filter(s => !s.legacy || (!forChooser && legacy.configured()));
@@ -492,10 +514,10 @@ export function renderSyncPanel(el) {
   el.innerHTML = `
     <div class="vault">
       <p class="vault-lead">Ваши данные хранятся только там, где вы выберете. Сервер разработчика их не получает.</p>
+      <div class="vault-state"></div>
       <div class="set-sub">Где хранятся данные</div>
       <div class="vault-opts">${visibleStorages(false).map(x => optionHTML(x, mode)).join('')}</div>
       ${filePickHTML}
-      <div class="vault-state"></div>
       <div class="set-sub">Резервная копия</div>
       <div class="auth-row vault-backup">
         <button type="button" class="btn" data-act="export">Сохранить в файл</button>
@@ -508,7 +530,7 @@ export function renderSyncPanel(el) {
     st.innerHTML = `<div class="vault-card">
       <div class="vc-row"><span>Файл</span><b class="vc-file">…</b></div>
       <div class="vc-row"><span>Последняя синхронизация</span><b>${lastSyncText()}</b></div>
-      ${lastError ? `<p class="hint err">${esc(lastError)}</p>${overwriteHTML}` : ''}
+      ${lastError ? `<p class="hint err">${esc(lastError)}</p>${lastCorrupt ? overwriteHTML : ''}` : ''}
       <div class="auth-row">
         <button type="button" class="btn primary" data-act="sync">Синхронизировать</button>
         <button type="button" class="btn" data-act="refile">Другой файл</button>
@@ -527,7 +549,7 @@ export function renderSyncPanel(el) {
       <div class="vc-row"><span>Яндекс Диск</span><b>${has ? 'подключён' : 'нужен вход'}</b></div>
       <div class="vc-row"><span>Файл</span><b>Приложения/GMA-OS/gma-os-data.json</b></div>
       <div class="vc-row"><span>Последняя синхронизация</span><b>${lastSyncText()}</b></div>
-      ${lastError ? `<p class="hint err">${esc(lastError)}</p>${overwriteHTML}` : ''}
+      ${lastError ? `<p class="hint err">${esc(lastError)}</p>${lastCorrupt ? overwriteHTML : ''}` : ''}
       <div class="auth-row">
         ${has ? '<button type="button" class="btn primary" data-act="sync">Синхронизировать</button><button type="button" class="btn" data-act="yout">Отключить</button>'
               : '<button type="button" class="btn primary" data-act="ylogin">Войти через Яндекс</button>'}
