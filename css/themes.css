@@ -153,6 +153,27 @@ html[data-theme] {
 :root[data-theme="brutal"] .cell.none { border: 2px solid #111; opacity: .25; }
 :root[data-theme="brutal"] .cell.c-done { background: var(--c-done); }
 :root[data-theme="brutal"] .sync-alert { border: 2.5px solid #111; box-shadow: 4px 4px 0 #111; }
+/* Внутренние поверхности не должны быть белыми на белой панели:
+   шапки досок, колонки канбана, шкала времени — с оттенком акцента и
+   чёрной линией, круглые стрелки — жёлтые «кнопки» в обводке. */
+:root[data-theme="brutal"] .kanban-panel > .kb-head {
+  background: color-mix(in srgb, var(--accent) 16%, #fff); box-shadow: none;
+  border-bottom: 2.5px solid #111; border-radius: calc(var(--r-lg) - 3px) calc(var(--r-lg) - 3px) 0 0;
+  margin: -10px -10px 10px; padding: 10px 10px 8px;
+}
+:root[data-theme="brutal"] :is(.kb-arrow, .tl-tray-btn) {
+  background: #ffe066; color: #111; border: 2px solid #111; box-shadow: 2px 2px 0 #111;
+}
+:root[data-theme="brutal"] :is(.kb-arrow, .tl-tray-btn):active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111; }
+:root[data-theme="brutal"] :is(.icon-btn, .sync) { background: #ffe066; }
+:root[data-theme="brutal"] .kb-col {
+  background: color-mix(in srgb, var(--accent) 9%, #fff); border: 2px solid #111; box-shadow: 3px 3px 0 #111;
+}
+:root[data-theme="brutal"] .kb-col-head { border-bottom: 2px solid #111; }
+:root[data-theme="brutal"] .kb-count { background: #111; color: #fff; }
+:root[data-theme="brutal"] :is(.tl-gutter, .tl-corner) { background: color-mix(in srgb, var(--accent) 12%, #fff); border-right: 2px solid #111; }
+:root[data-theme="brutal"] .tl-colhead { background: color-mix(in srgb, var(--accent) 12%, #fff); border-bottom: 2px solid #111; box-shadow: none; }
+:root[data-theme="brutal"] .tl-col.today .tl-colhead { background: color-mix(in srgb, var(--accent) 45%, #fff); }
 
 /* ══════════════ 3. ТЕРМИНАЛ ══════════════ */
 :root[data-theme="term"], :root[data-theme="term"] body, .tmini.t-term {
@@ -168,7 +189,7 @@ html[data-theme] {
   --c-done: #39ff88; --c-started: #ffb000; --c-skipped: #ff5f56; --c-postponed: #4cc9ff;
   --accent-deep: var(--accent);
 }
-:root[data-theme="term"], .tmini.t-term { --panel-a: 1; --mode-work: #39ff88; --mode-home: #ffb000; --mode-study: #4cc9ff; --mode-all: #d6d6d6; }
+:root[data-theme="term"], .tmini.t-term { --panel-a: 1; --mode-work: #39ff88; --mode-home: #ffb000; --mode-study: #4cc9ff; --mode-all: #ff6ad5; }
 :root[data-theme="term"] *, :root[data-theme="term"] *::before, :root[data-theme="term"] *::after { border-radius: 0 !important; }
 :root[data-theme="term"] body { font-size: 14px; }
 :root[data-theme="term"] #app::after {
@@ -318,7 +339,7 @@ html[data-theme] {
   /* Залитые кнопки — цвета текущего режима (тёмный текст на них) */
   --accent-deep: var(--accent);
 }
-:root[data-theme="coral"], .tmini.t-coral { --panel-a: 1; --mode-work: #ff6363; --mode-home: #59d499; --mode-study: #56c2ff; --mode-all: #e6e6e6; }
+:root[data-theme="coral"], .tmini.t-coral { --panel-a: 1; --mode-work: #ff6363; --mode-home: #59d499; --mode-study: #56c2ff; --mode-all: #ffc531; }
 :root[data-theme="coral"] body { letter-spacing: .01em; font-feature-settings: "calt", "kern", "liga", "ss03"; }
 /* Заголовки шепчут: размер вместо жирности */
 :root[data-theme="coral"] .topbar::before, :root[data-theme="coral"] .kb-board-title,
@@ -393,15 +414,28 @@ html[data-theme] {
 .tmini.t-coral .tm-chip { background: var(--mode-work); }
 .tmini.t-coral .tm-title { font-weight: 500; }
 
-/* ══════════════ Ручки переноса виджетов в темах с острыми углами ══════════════
-   Ручка — дуга по радиусу угла панели. У «Терминала» и «Швейцарского»
-   углы прямые, и дуга вырождалась в квадратик; здесь ручка — уголок. */
-:root:is([data-theme="term"], [data-theme="swiss"]) :is(.dock-handle, .pane-move-handle) {
-  width: 16px; height: 16px; top: 0; left: 0;
-  border-top: 3px solid currentColor; border-left: 3px solid currentColor;
-  border-radius: 0 !important; box-sizing: border-box;
+/* ══════════════ Ручки переноса виджетов: один вид во всех темах ══════════════
+   Ручка — уголок, повторяющий скругление угла панели, на 2px внутрь от
+   края (с учётом толщины рамки темы) и всегда акцентного цвета. Размер
+   ручки не зависит от радиуса: у «Тетради» (маленький радиус) она больше
+   не превращается в крошечную дугу, у острых углов — ровный уголок. */
+.dock-handle, .pane-move-handle {
+  --h-gap: 2px; --h-w: 3px;
+  --h-r: max(0px, calc(var(--r-lg) - var(--t-bw, 0px) - var(--h-gap)));
+  position: absolute; right: auto; bottom: auto;
+  top: var(--h-gap) !important; left: var(--h-gap) !important;
+  width: calc(var(--h-r) + 13px) !important; height: calc(var(--h-r) + 13px) !important;
+  box-sizing: border-box; overflow: visible; opacity: 1 !important;
+  border: 0 solid var(--accent); border-top-width: var(--h-w); border-left-width: var(--h-w);
+  border-radius: var(--h-r) 0 0 0 !important;
+  color: var(--accent);
+  filter: none; transition: border-color .2s, transform .15s;
 }
-:root:is([data-theme="term"], [data-theme="swiss"]) :is(.dock-handle, .pane-move-handle) path { display: none; }
+.kb-col-handle { --h-r: max(0px, calc(var(--r-md) - var(--h-gap))); }
+.dock-handle path, .pane-move-handle svg { display: none; }
+.dock-handle:hover, .pane-move-handle:hover { border-color: color-mix(in srgb, var(--accent) 75%, var(--text)); }
+.dock-handle:active, .pane-move-handle:active { transform: scale(.94); }
+.week2.swapped .pane-move-handle { left: var(--h-gap) !important; }
 
 /* ══════════════ Мини-превью тем в «Оформлении» ══════════════
    Маленький экран приложения на переменных своей темы. */
