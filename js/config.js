@@ -13,7 +13,13 @@ export const OWNER_EMAIL = 'maksimgomzyakov1@gmail.com';
 // Пусто — вариант «Яндекс Диск» в приложении помечен «скоро».
 export const YANDEX_CLIENT_ID = '08e532e75ecb430baf6f86bf1e7aaeac';
 
-// Адрес своего Cloudflare Worker (proxy/yandex-worker.js) — Яндекс не даёт
-// браузеру скачать файл напрямую. Прокси только пересылает файл, не хранит.
+// Прокси для скачивания с Яндекс Диска — Яндекс не даёт браузеру
+// скачать файл напрямую. Прокси только пересылает файл, не хранит.
+// Можно несколько: пробуются по очереди. Yandex Cloud Functions
+// (proxy/yandex-cloud-function.js) работает в России без VPN,
+// Cloudflare Worker (proxy/yandex-worker.js) — запасной.
 // Пусто — вариант «Яндекс Диск» помечен «скоро».
-export const YANDEX_PROXY = 'https://gma-os-yandex.maksimgomzyakov1.workers.dev/';
+export const YANDEX_PROXY = [
+  'https://functions.yandexcloud.net/d4ent3fmd56srgdal3s7',
+  'https://gma-os-yandex.maksimgomzyakov1.workers.dev/',
+];
