@@ -14,9 +14,7 @@ import * as tm from './timer.js';
 const $ = id => document.getElementById(id);
 const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
 const sheet = $('sheet'), editor = $('editor'), daySheet = $('daySheet');
-const MONTHS_NOM = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-let editId = null, draft = {};
-let calOpen = false, calAnchor = null;
+let editId = null;
 let edDrum = null;
 export const sheetOpen = () =>
   (sheet && sheet.classList.contains('open')) ||
@@ -36,39 +34,7 @@ function mkChip(label, on, cls, fn) {
   b.addEventListener('click', fn);
   return b;
 }
-const isWe = ds => { const w = new Date(ds + 'T00:00').getDay(); return w === 0 || w === 6; };
-function firstOfToday() { const p = today().split('-').map(Number); return new Date(p[0], p[1] - 1, 1); }
 function growEl(el) { if (!el) return; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
-function daySquares(el, days, onToggle) {
-  el.innerHTML = '';
-  for (let i = 0; i < 7; i++) {
-    const d = addDays(state.weekStart, i);
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'q-day' + (days[d] ? ' on' : '') + (isWe(d) ? ' we' : '');
-    b.innerHTML = `<span class="d-name${isWe(d) ? ' we' : ''}">${WEEKDAYS[i]}</span><span class="d-num${isWe(d) ? ' we' : ''}">${+d.slice(8)}</span>`;
-    b.onclick = () => onToggle(d);
-    el.appendChild(b);
-  }
-}
-function calRender(el, anchor, days, onNav, onToggle) {
-  const y = anchor.getFullYear(), m = anchor.getMonth();
-  const lead = (new Date(y, m, 1).getDay() + 6) % 7;
-  const dim = new Date(y, m + 1, 0).getDate();
-  let html = `<div class="cal-head"><button type="button" class="cal-nav" data-dir="-1">‹</button><span class="cal-title">${MONTHS_NOM[m]} ${y}</span><button type="button" class="cal-nav" data-dir="1">›</button></div><div class="cal-week">${WEEKDAYS.map((w, i) => `<span class="${i >= 5 ? 'we' : ''}">${w}</span>`).join('')}</div><div class="cal-grid">`;
-  for (let i = 0; i < lead; i++) html += '<span></span>';
-  for (let d = 1; d <= dim; d++) {
-    const ds = iso(new Date(y, m, d));
-    html += `<button type="button" class="q-day${days[ds] ? ' on' : ''}${isWe(ds) ? ' we' : ''}" data-d="${ds}"><span class="d-num${isWe(ds) ? ' we' : ''}">${d}</span></button>`;
-  }
-  html += '</div>';
-  el.innerHTML = html;
-  el.querySelectorAll('.cal-nav').forEach(b => b.onclick = () => onNav(+b.dataset.dir));
-  el.querySelectorAll('.q-day[data-d]').forEach(b => b.onclick = () => onToggle(b.dataset.d));
-}
-const ft = $('fTitle');
-function grow() { growEl(ft); }
-if (ft) ft.addEventListener('input', grow);
 export function openSheet(task) { if (task) openEditor(task); else openQuick(); }
 export function closeSheet() {
   if (sheet) {
@@ -86,61 +52,15 @@ export function closeDay() {
   refreshBackdrop();
 }
 function openQuick() {
-  const style = quickStyle();
   const alt = $('qAlt');
-  if (sheet) sheet.dataset.qs = style;
-  sheet?.querySelectorAll('.q-classic').forEach(x => { x.hidden = style !== 'classic'; });
-  if (alt) alt.hidden = style === 'classic';
-  if (style !== 'classic' && alt) {
-    editId = null;
-    renderQuickAlt(alt, { close: closeSheet, openEditor, rerender: renderAll });
-    if (sheet) sheet.classList.add('open');
-    refreshBackdrop();
-    return;
-  }
   editId = null;
-  calOpen = false;
-  calAnchor = null;
-  const fc = $('fCal');
-  if (fc) fc.hidden = true;
-  draft = { days: { [today()]: 'todo' } };
-  if (ft) { ft.value = ''; grow(); }
-  renderQuick();
+  if (sheet) sheet.dataset.qs = quickStyle();
+  renderQuickAlt(alt, { close: closeSheet, openEditor, rerender: renderAll });
   if (sheet) sheet.classList.add('open');
   refreshBackdrop();
-  requestAnimationFrame(() => ft && ft.focus());
 }
-function qToggle(d) {
-  if (draft.days[d]) delete draft.days[d];
-  else draft.days[d] = 'todo';
-  renderQuick();
-}
-function renderQuick() {
-  const fd = $('fDays');
-  if (fd) daySquares(fd, draft.days, qToggle);
-  $('fNoDate')?.classList.toggle('on', Object.keys(draft.days).length === 0);
-  $('fCustom')?.classList.toggle('on', calOpen);
-  const fc = $('fCal');
-  if (calOpen && fc) {
-    fc.hidden = false;
-    if (!calAnchor) calAnchor = firstOfToday();
-    calRender(fc, calAnchor, draft.days, dir => {
-      calAnchor = new Date(calAnchor.getFullYear(), calAnchor.getMonth() + dir, 1);
-      renderQuick();
-    }, qToggle);
-  } else if (fc) fc.hidden = true;
-}
-on('fNoDate', 'click', () => { draft.days = {}; renderQuick(); });
-on('fCustom', 'click', () => { calOpen = !calOpen; renderQuick(); });
-sheet?.addEventListener('submit', async e => {
-  e.preventDefault();
-  if (quickStyle() !== 'classic') return;   // у других вариантов свой ввод (quick.js)
-  const title = ft ? ft.value.trim() : '';
-  if (!title) { ft && ft.focus(); return; }
-  await createTask({ title, days: draft.days, priority: 2, type: 'task', tags: [], notes: '' });
-  closeSheet();
-  renderAll();
-});
+/* Ввод в панели идёт через quick.js; Enter в поле не должен отправлять форму */
+sheet?.addEventListener('submit', e => e.preventDefault());
 /* ── Универсальный bindDrag для ЛЮБОГО sheet с grip ── */
 function attachDragHandlers(sheetEl, gripEl, onClose) {
   if (!sheetEl || !gripEl) return;
