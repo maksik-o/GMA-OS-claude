@@ -42,11 +42,14 @@ module.exports.handler = async function (event) {
   try { upstream = await fetch(target.toString(), { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (GMA-OS proxy)', 'Accept': '*/*' } }); }
   catch (e) { return { statusCode: 502, headers: cors, body: 'Upstream failed: ' + (e && e.message) }; }
   if (!upstream.ok) return { statusCode: 502, headers: cors, body: await describe(upstream) };
+  // Отдаём как есть, байт в байт: это может быть и файл данных, и вложение
+  // (картинка, PDF). Двоичное содержимое Yandex Cloud передаёт в base64.
+  const buf = Buffer.from(await upstream.arrayBuffer());
   return {
-    statusCode: upstream.status,
-    headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
-    body: await upstream.text(),
-    isBase64Encoded: false,
+    statusCode: 200,
+    headers: { ...cors, 'Content-Type': upstream.headers.get('content-type') || 'application/octet-stream', 'Cache-Control': 'no-store' },
+    body: buf.toString('base64'),
+    isBase64Encoded: true,
   };
 };
 

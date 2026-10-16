@@ -1,4 +1,4 @@
-const CACHE = 'rl-v264';
+const CACHE = 'rl-v265';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает
@@ -16,7 +16,7 @@ function putSafe(req, res) {
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/style.css',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-180.png',
-  './js/app.js', './js/config.js', './js/db.js', './js/files.js', './js/hotkeys.js',
+  './js/app.js', './js/config.js', './js/db.js', './js/files.js', './js/attach.js', './js/hotkeys.js',
   './js/search.js', './js/store.js', './js/sync.js', './js/timer.js',
   './js/week.js', './js/sheet.js', './js/notes.js', './js/focus.js',
   './js/widgets.js', './js/cal.js', './js/contacts.js', './js/kanban.js',

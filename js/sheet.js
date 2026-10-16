@@ -5,6 +5,7 @@ import {
   esc, MONTHS, taskPlans, setTaskPlan, removeTaskPlan, hmToMin, minToHM,
 } from './store.js';
 import { attachFile, openTaskFile, removeTaskFile, fmtSize } from './files.js';
+import { limitNote } from './attach.js';
 import { renderAll } from './week.js';
 import { createCalDrum, calTitle } from './cal.js';
 import * as tm from './timer.js';
@@ -550,6 +551,13 @@ function renderEdFiles(t) {
   add.textContent = '＋ Прикрепить файл';
   add.onclick = () => { if (!uploading) getFileInput().click(); };
   box.appendChild(add);
+  const note = limitNote();
+  if (note) {
+    const hint = document.createElement('p');
+    hint.className = 'file-limit';
+    hint.textContent = '⚠ ' + note;
+    box.appendChild(hint);
+  }
 }
 on('edTitle', 'input', e => {
   if (editId) {

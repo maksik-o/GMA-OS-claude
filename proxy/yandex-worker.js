@@ -43,7 +43,7 @@ export default {
       status: upstream.status,
       headers: {
         ...cors,
-        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Type': upstream.headers.get('content-type') || 'application/octet-stream',
         'Cache-Control': 'no-store',
       },
     });
