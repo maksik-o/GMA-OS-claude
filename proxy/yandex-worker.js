@@ -35,7 +35,10 @@ export default {
       return new Response('Host not allowed', { status: 400, headers: cors });
     }
 
-    const upstream = await fetch(target.toString(), { redirect: 'follow' });
+    let upstream;
+    try { upstream = await fetch(target.toString(), { redirect: 'follow' }); }
+    catch (e) { return new Response('Upstream failed: ' + (e && e.message), { status: 502, headers: cors }); }
+    if (!upstream.ok) return new Response('Yandex answered ' + upstream.status, { status: 502, headers: cors });
     return new Response(upstream.body, {
       status: upstream.status,
       headers: {

@@ -179,13 +179,20 @@ const yandexStore = {
     // Прокси пробуем по очереди: первый, что ответил, и выигрывает
     // (например, Yandex Cloud доступен везде, Cloudflare — не у всех провайдеров).
     let file = null;
+    const fails = [];
     for (const px of Y_PROXIES) {
+      const host = px.replace(/^https?:\/\/([^/]+).*$/, '$1');
       try {
         const r = await fetch(px + (px.includes('?') ? '&' : '?') + 'u=' + encodeURIComponent(href), { cache: 'no-store', signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined });
         if (r.ok) { file = r; break; }
-      } catch {}
+        const why = (await r.text().catch(() => '')).slice(0, 200);
+        fails.push(host + ': ' + r.status + (why ? ' ' + why : ''));
+      } catch (e) { fails.push(host + ': ' + (e && e.name === 'TimeoutError' ? 'нет ответа' : 'не открылся')); }
     }
-    if (!file) throw new Error('Прокси Яндекс Диска недоступен — проверьте интернет');
+    if (!file) {
+      console.warn('[Яндекс Диск] прокси не сработали:\n' + fails.join('\n'));
+      throw new Error('Прокси Яндекс Диска недоступен (' + fails.map(f => f.split(' ').slice(0, 2).join(' ')).join('; ') + ')');
+    }
     const text = (await file.text()).trim();
     let data = null;
     if (text) { try { data = JSON.parse(text); } catch { throw new Error('Файл на Яндекс Диске повреждён'); } }

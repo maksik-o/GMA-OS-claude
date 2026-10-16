@@ -38,7 +38,10 @@ module.exports.handler = async function (event) {
     return { statusCode: 400, headers: cors, body: 'Host not allowed' };
   }
 
-  const upstream = await fetch(target.toString(), { redirect: 'follow' });
+  let upstream;
+  try { upstream = await fetch(target.toString(), { redirect: 'follow' }); }
+  catch (e) { return { statusCode: 502, headers: cors, body: 'Upstream failed: ' + (e && e.message) }; }
+  if (!upstream.ok) return { statusCode: 502, headers: cors, body: 'Yandex answered ' + upstream.status };
   return {
     statusCode: upstream.status,
     headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
