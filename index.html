@@ -108,7 +108,7 @@
 
 <form id="sheet" class="sheet">
   <div id="sheetGrip" class="grip"></div>
-  <div class="sheet-scroll">
+  <div class="sheet-scroll q-classic">
     <textarea id="fTitle" class="f-title" rows="1" placeholder="Новая задача…" maxlength="400"></textarea>
     <div class="q-days" id="fDays"></div>
     <div class="q-row2">
@@ -117,7 +117,8 @@
     </div>
     <div id="fCal" class="q-cal" hidden></div>
   </div>
-  <div class="sheet-actions">
+  <div id="qAlt" class="q-alt" hidden></div>
+  <div class="sheet-actions q-classic">
     <button type="button" class="btn" onclick="document.getElementById('sheet').classList.remove('open')">Отмена</button>
     <span class="spacer"></span>
     <button type="submit" class="btn primary">Добавить</button>
@@ -224,6 +225,10 @@
       <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
       <span>Синхронизация</span><span class="chev">›</span>
     </button>
+    <button id="setQuick" class="set-item" type="button">
+      <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      <span>Ввод новой задачи</span><span class="chev">›</span>
+    </button>
     <button id="setKeys" class="set-item" type="button">
       <svg viewBox="0 0 24 24"><path d="M20 5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 6H8v-2h8v2zm1-3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg>
       <span>Горячие клавиши</span><span class="chev">›</span>
@@ -280,6 +285,14 @@
       <h3>Синхронизация</h3>
     </header>
     <div id="syncPanel"></div>
+  </div>
+
+  <div id="drawerQuick" hidden>
+    <header class="drawer-sync-head">
+      <button id="quickBack" class="btn mini" type="button">←</button>
+      <h3>Ввод новой задачи</h3>
+    </header>
+    <div id="quickRows"></div>
   </div>
 
   <div id="drawerKeys" hidden>
