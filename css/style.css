@@ -5336,7 +5336,6 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 
 /* ══════════════ Панель новой задачи: варианты (quick.js) ══════════════ */
 .q-alt { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
-.q-alt[hidden], .sheet .q-classic[hidden] { display: none !important; }
 .qx { overflow-y: auto; padding: 0 16px 6px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; min-height: 0; }
 .qx-actions { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--brd); }
 .qx-cap { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 2px 0 8px; }
@@ -5374,6 +5373,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .qx-added { margin-top: 8px; }
 .qx-added .qx-row { animation: qxin .5s ease; border-radius: 8px; }
 @keyframes qxin { from { background: color-mix(in srgb, var(--accent) 16%, transparent); transform: translateX(-8px); } }
+.qx-smart { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
 .qx-help { margin: 8px 0 4px; font-size: 11.5px; color: var(--dim); }
 
 /* конструктор */
@@ -5434,16 +5434,6 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .qx-load button.hl { box-shadow: inset 0 0 0 2px var(--accent); }
 .qx-done { text-align: center; padding: 34px 10px; font-size: 18px; font-weight: 800; }
 .qx-done small { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--dim); }
-
-/* компьютер: умная строка — посередине экрана, как поиск */
-@media (min-width: 900px) and (hover: hover) {
-  .sheet[data-qs="smart"] { top: 16vh; bottom: auto; border-radius: 22px; max-height: 70vh;
-    transform: translate(-50%, -24px) scale(.97); opacity: 0;
-    transition: transform .28s var(--ease-spring, ease), opacity .2s ease, visibility 0s linear .28s; }
-  .sheet[data-qs="smart"].open { transform: translate(-50%, 0); opacity: 1; transition: transform .28s var(--ease-spring, ease), opacity .2s ease, visibility 0s; }
-  .sheet[data-qs="smart"] .grip { display: none; }
-  .sheet[data-qs="smart"] .qx { padding-top: 14px; }
-}
 
 /* Настройки → Ввод новой задачи */
 .qs-opts { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 12px; }

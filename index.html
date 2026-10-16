@@ -108,21 +108,7 @@
 
 <form id="sheet" class="sheet">
   <div id="sheetGrip" class="grip"></div>
-  <div class="sheet-scroll q-classic">
-    <textarea id="fTitle" class="f-title" rows="1" placeholder="Новая задача…" maxlength="400"></textarea>
-    <div class="q-days" id="fDays"></div>
-    <div class="q-row2">
-      <button type="button" id="fNoDate" class="q-sq">Без даты</button>
-      <button type="button" id="fCustom" class="q-sq">Календарь</button>
-    </div>
-    <div id="fCal" class="q-cal" hidden></div>
-  </div>
-  <div id="qAlt" class="q-alt" hidden></div>
-  <div class="sheet-actions q-classic">
-    <button type="button" class="btn" onclick="document.getElementById('sheet').classList.remove('open')">Отмена</button>
-    <span class="spacer"></span>
-    <button type="submit" class="btn primary">Добавить</button>
-  </div>
+  <div id="qAlt" class="q-alt"></div>
 </form>
 
 <div id="editor" class="editor">
