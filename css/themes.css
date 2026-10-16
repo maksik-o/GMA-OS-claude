@@ -379,7 +379,7 @@ html[data-theme] {
   .cal-day.tdy, .cal-weekbtn.on, .chip.on, .fin-tab.on, .fin-type.on, .font-btn.on,
   .fp-play, .ftb-count, .ftx-check.day, .ftx-row.picked .ftx-check, .icon-btn.on, .kb-seg button.on, .kb-tool.on,
   .notes-actions .icon-btn.on, .notes-list-tabs .tab.active, .timer-fab, .tl-tray-btn.on, .topbar .tb-btn.tb-view.on,
-  .tr-day.on, .tl-band span) {
+  .tr-day.on, .tl-band span, .vo-badge.on) {
   color: var(--on-accent) !important; text-shadow: none;
 }
 :root:is([data-theme="term"], [data-theme="neon"]) .sync-alert { color: var(--on-accent); }

@@ -267,6 +267,8 @@ body[data-font="l"] { zoom: 1.1; }
 .sync[data-state="syncing"] .dot { background: var(--c-started); animation: pulse 1s infinite; }
 .sync[data-state="error"] .dot { background: var(--c-skipped); }
 .sync[data-state="auth"] .dot { background: var(--p2); }
+.sync[data-state="perm"] .dot { background: var(--p2); }
+.sync[data-state="local"] .dot { background: color-mix(in srgb, var(--text) 30%, transparent); }
 @keyframes pulse { 50% { opacity: .35; } }
 /* ── Сетка недели ── */
 .week2 { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
@@ -5291,3 +5293,37 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 @media (max-width: 720px) {
   .fab.fin-fab { right: max(14px, env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); width: 56px; height: 56px; }
 }
+
+/* ══════════════ Хранилище данных: выбор места и резервная копия ══════════════ */
+.vault { display: flex; flex-direction: column; gap: 4px; }
+.vault-lead { margin: 0 0 6px; font-size: 13.5px; line-height: 1.5; color: var(--dim); }
+.vault-opts { display: flex; flex-direction: column; gap: 8px; }
+.vault-opt {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left;
+  padding: 12px; border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); border-radius: var(--r-md);
+  background: var(--card); color: var(--text); cursor: pointer;
+  transition: border-color .2s, background .2s, transform .15s;
+}
+.vault-opt:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.vault-opt:active:not(:disabled) { transform: scale(.99); }
+.vault-opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.vault-opt:disabled { opacity: .55; cursor: default; }
+.vo-ico { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.vo-ico svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.vo-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vo-body b { font-size: 14px; }
+.vo-body span { font-size: 12px; line-height: 1.45; color: var(--dim); }
+.vo-badge { flex: none; align-self: center; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+  padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--dim); white-space: nowrap; }
+.vo-badge.on { background: var(--accent); color: #fff; }
+.vault-filepick { margin-top: 10px; padding: 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.vault-filepick p { margin: 0 0 4px; font-size: 13px; line-height: 1.5; }
+.vault-state { margin-top: 10px; }
+.vault-card { padding: 12px; border-radius: var(--r-md); background: var(--card); }
+.vc-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; }
+.vc-row span { color: var(--dim); }
+.vc-row b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vault-note { margin-top: 0; }
+.vault-modal { width: min(520px, 100%); overflow-y: auto; }
+.vault-modal .notes-list-head { margin-bottom: 6px; }

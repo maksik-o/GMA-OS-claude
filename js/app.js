@@ -8,7 +8,7 @@ import {
 } from './store.js';
 import { renderAll, shiftWeek, goToday, dayOpen, openDay, closeDay, closeCellMenu, refreshRunning, blockSwap } from './week.js';
 import { openSheet, closeSheet, sheetOpen, refreshBackdrop } from './sheet.js';
-import { syncInit, syncNow, renderSyncPanel } from './sync.js';
+import { syncInit, syncNow, renderSyncPanel } from './vault.js';
 import { searchInit, openSearch, closeSearch, searchOpen } from './search.js';
 import { dbGetKV, dbSetKV } from './db.js';
 import * as hk from './hotkeys.js';
@@ -1103,6 +1103,7 @@ function enhanceToolbar() {
 const SYNC_MSG = {
   auth: 'Вы не авторизованы — синхронизация не идёт',
   offline: 'Нет сети — изменения сохранятся локально',
+  perm: 'Разрешите доступ к файлу данных — нажмите, чтобы продолжить',
   off: 'Синхронизация не настроена',
   err: 'Ошибка синхронизации',
   error: 'Ошибка синхронизации',

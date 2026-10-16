@@ -1,12 +1,5 @@
 import { API_URL, CLIENT_ID, OWNER_EMAIL } from './config.js';
-import {
-  state, applyMerged, getTagsDict, getTagsDeleted, saveTagsMeta,
-  getTombstonesFull
-} from './store.js';
-import { getContactsForSync, applyContactsMerged, getContactTombstones, applyContactTombstones } from './contacts.js';
-import { getNotesForSync, getNoteTombstones, applyNotesMerged } from './notes.js';
-import { getFinanceForSync, applyFinanceMerged } from './finance.js';
-import { getKbForSync, applyKbMerged } from './kb.js';
+import { PARTS, partPayload, applyPart } from './snapshot.js';
 
 const TOKEN_KEY = 'rl_token';
 const KEY_KEY = 'rl_device_key';
@@ -181,7 +174,6 @@ export async function apiCall(action, extra) {
    случается один раз — при первом входе или после сброса.
    ══════════════════════════════════════════════════════════════════ */
 const SINCE_KEY = 'rl_sync_since';
-const PARTS = ['tasks', 'notes', 'contacts', 'finance', 'kb'];
 const SOFT_LIMIT = 3 * 1024 * 1024;   // выше этого Apps Script рвёт соединение
 /* Часы на устройствах расходятся; берём запас, чтобы не пропустить
    запись, сохранённую соседним устройством «в прошлом». */
@@ -196,45 +188,6 @@ function saveSince(map) {
 }
 export function resetSyncWatermarks() {
   try { localStorage.removeItem(SINCE_KEY); } catch (e) {}
-}
-const newer = (list, since) => !since
-  ? (list || [])
-  : (list || []).filter(r => r && String(r.updatedAt || '') > since);
-
-function partPayload(part, since) {
-  if (part === 'tasks') {
-    const tombstonesToSend = getTombstonesFull();
-    const tombIds = new Set(tombstonesToSend.map(t => t.id));
-    return {
-      tasks: newer(state.tasks.filter(t => t && !tombIds.has(t.id)), since),
-      tombstones: tombstonesToSend,        // могильники малы, шлём целиком
-      tags: getTagsDict(),
-      tagsDeleted: getTagsDeleted(),
-    };
-  }
-  if (part === 'notes') return { notes: newer(getNotesForSync(), since), noteTombstones: getNoteTombstones() };
-  if (part === 'contacts') return { contacts: newer(getContactsForSync(), since), contactTombstones: getContactTombstones() };
-  if (part === 'finance') return { finance: newer(getFinanceForSync(), since) };
-  if (part === 'kb') return { kb: newer(getKbForSync(), since) };
-  return {};
-}
-async function applyPart(part, out) {
-  if (part === 'tasks') {
-    await applyMerged({
-      tasks: Array.isArray(out.tasks) ? out.tasks : [],
-      tombstones: Array.isArray(out.tombstones) ? out.tombstones : [],
-    });
-    if (Array.isArray(out.tags)) await saveTagsMeta(out.tags, out.tagsDeleted || []);
-  } else if (part === 'notes') {
-    if (Array.isArray(out.notes)) await applyNotesMerged(out.notes);
-  } else if (part === 'contacts') {
-    if (Array.isArray(out.contacts)) await applyContactsMerged(out.contacts);
-    if (Array.isArray(out.contactTombstones)) await applyContactTombstones(out.contactTombstones);
-  } else if (part === 'finance') {
-    if (Array.isArray(out.finance)) await applyFinanceMerged(out.finance);
-  } else if (part === 'kb') {
-    if (Array.isArray(out.kb)) await applyKbMerged(out.kb);
-  }
 }
 /* Пустой пакет отправлять незачем: если ничего не менялось и мы уже
    синхронизировались, раздел просто пропускаем. */
