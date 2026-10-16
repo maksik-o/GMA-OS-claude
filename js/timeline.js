@@ -9,7 +9,7 @@
 import {
   state, getTask, visibleTasks, isDone, esc, createTask,
   today, addDays, parseISO, WEEKDAYS, MONTHS,
-  plansForDay, setTaskPlan, hmToMin, minToHM, setEntry,
+  plansForDay, setTaskPlan, removeTaskPlan, updateTask, hmToMin, minToHM, setEntry,
   hapticLight, hapticMedium, subscribe,
 } from './store.js';
 import { openSheet } from './sheet.js';
@@ -207,7 +207,7 @@ export function renderTimeline(panel) {
        синхронно с колонками (своей прокрутки у него нет). */
     '<div class="tl-body">' +
       '<div class="tl-gutterbox glass tl-box">' +
-        '<div class="tl-corner"></div>' +
+        '<div class="tl-corner">Время</div>' +
         '<div class="tl-gscroll">' +
           `<div class="tl-hours" style="height:${24 * HOUR + 1}px">` +
             hours.map(h => `<span class="${h === 0 ? 'first' : h === 24 ? 'last' : ''}" style="top:${h * HOUR}px">${String(h).padStart(2, '0')}:00</span>`).join('') +
@@ -561,8 +561,14 @@ function bindTrayChip(chip, panel) {
 
 /* ── Перетаскивание и растягивание ── */
 function bindBlock(node) {
-  let mode = null, sy = 0, s0 = 0, len0 = 0, moved = false, raf = null, lastY = 0;
+  let mode = null, sx = 0, sy = 0, s0 = 0, len0 = 0, moved = false, raf = null, lastY = 0, lastX = 0, toDay = null;
   const scroller = node.closest('.tl-scroll');
+  const panel = node.closest('.timeline-panel');
+  /* Колонка дня под пальцем — для переноса задачи на другой день */
+  const colAt = (x, y) => {
+    const hit = document.elementsFromPoint(x, y).find(el => el.classList && el.classList.contains('tl-col'));
+    return hit || null;
+  };
   const apply = (s, len) => {
     node.style.top = `${(s / 60) * HOUR}px`;
     node.style.height = `${(len / 60) * HOUR}px`;
@@ -582,17 +588,25 @@ function bindBlock(node) {
       const before = scroller.scrollTop;
       scroller.scrollTop = Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight, before + v));
       sy -= scroller.scrollTop - before;   // блок остаётся под пальцем
-      onMove({ clientY: lastY });
+      onMove({ clientY: lastY, clientX: lastX });
     }
     raf = requestAnimationFrame(tick);
   };
   const onMove = e => {
     lastY = e.clientY;
-    if (!moved && Math.abs(e.clientY - sy) < 4) return;
+    if (e.clientX != null) lastX = e.clientX;
+    if (!moved && Math.abs(e.clientY - sy) < 4 && Math.abs(lastX - sx) < 6) return;
     moved = true;
     node.classList.add('dragging');
     const d = snap(((e.clientY - sy) / HOUR) * 60);
-    if (mode === 'move') apply(Math.max(0, Math.min(DAY_MIN - len0, s0 + d)), len0);
+    if (mode === 'move') {
+      apply(Math.max(0, Math.min(DAY_MIN - len0, s0 + d)), len0);
+      /* По горизонтали блок едет за пальцем, колонка под ним подсвечивается */
+      node.style.transform = `translateX(${lastX - sx}px)`;
+      const col = colAt(lastX, lastY);
+      toDay = col ? col.dataset.day : node.dataset.day;
+      if (panel) panel.querySelectorAll('.tl-col').forEach(c => c.classList.toggle('drop-over', c === col && c.dataset.day !== node.dataset.day));
+    }
     else if (mode === 'bottom') apply(s0, Math.max(MIN_LEN, Math.min(DAY_MIN - s0, len0 + d)));
     else {
       const s = Math.max(0, Math.min(s0 + len0 - MIN_LEN, s0 + d));
@@ -607,11 +621,29 @@ function bindBlock(node) {
     stop();
     node.classList.remove('dragging');
     mode = null;
+    node.style.transform = '';
+    if (panel) panel.querySelectorAll('.tl-col.drop-over').forEach(c => c.classList.remove('drop-over'));
     if (!moved) { openSheet(getTask(node.dataset.id)); return; }
     const s = Math.round((parseFloat(node.style.top) / HOUR) * 60);
     const len = Math.max(MIN_LEN, Math.round((parseFloat(node.style.height) / HOUR) * 60));
     hapticMedium();
-    await setTaskPlan(node.dataset.id, node.dataset.day, minToHM(s), minToHM(s + len));
+    const from = node.dataset.day;
+    if (toDay && toDay !== from) {
+      /* Перенос на другой день: окно времени и отметка дня переезжают
+         вместе — со старого дня задача уходит. */
+      const t = getTask(node.dataset.id);
+      if (t) {
+        const days = { ...(t.days || {}) };
+        days[toDay] = days[from] || 'todo';
+        delete days[from];
+        await updateTask(t.id, { days });
+        await removeTaskPlan(t.id, from);
+        await setTaskPlan(t.id, toDay, minToHM(s), minToHM(s + len));
+      }
+    } else {
+      await setTaskPlan(node.dataset.id, from, minToHM(s), minToHM(s + len));
+    }
+    toDay = null;
     refreshTimeline();
   };
   node.addEventListener('pointerdown', e => {
@@ -623,6 +655,8 @@ function bindBlock(node) {
     mode = grip ? (grip.classList.contains('top') ? 'top' : 'bottom') : 'move';
     sy = e.clientY;
     lastY = e.clientY;
+    sx = lastX = e.clientX;
+    toDay = null;
     s0 = Math.round((parseFloat(node.style.top) / HOUR) * 60);
     len0 = Math.max(MIN_LEN, Math.round((parseFloat(node.style.height) / HOUR) * 60));
     moved = false;

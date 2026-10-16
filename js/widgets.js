@@ -6,7 +6,7 @@ import { renderFinanceWidget, financeSubscribe } from './finance.js';
 const $ = id => document.getElementById(id);
 const WIDGETS_KEY = 'rl_widgets_v1';
 const DOCK_KEY = 'rl_dock_v1';
-const HANDLE = id => `<svg class="dock-handle" data-dock="${id}" viewBox="0 0 32 32" aria-hidden="true"><path d="M2.68 16.82 A20 20 0 0 1 16.82 2.68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>`;
+const HANDLE = id => `<svg class="dock-handle" data-dock="${id}" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>`;
 export const WIDGETS = [
   { id: 'notes', label: 'Заметки', icon: '📝' },
   { id: 'focus', label: 'Фокусировка', icon: '🎯' },
