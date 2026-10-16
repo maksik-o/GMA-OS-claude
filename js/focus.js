@@ -19,7 +19,7 @@ let _lastPoms = -1;
 const ICON_PLAY_S = '<svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></svg>';
 const ICON_PAUSE_S = '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
 const ICON_STOP_S = '<svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/></svg>';
-const HANDLE_PATH = 'M2 22 A20 20 0 0 1 12 4.68';
+const HANDLE_PATH = 'M2.68 16.82 A20 20 0 0 1 16.82 2.68';
 const handleSVG = dock => `<svg class="dock-handle" data-dock="${dock}" viewBox="0 0 32 32" aria-hidden="true"><path d="${HANDLE_PATH}" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>`;
 
 /* ── Риски по дуге (каждая минута, крупные каждые 5) ── */

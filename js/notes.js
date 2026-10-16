@@ -324,7 +324,7 @@ export function renderNotesPanel(container) {
   const fav = !!(_currentNote && _currentNote.favorite);
   const dayNum = +currentDay.slice(8);
   const monthCap = cap(MONTHS_FULL[+currentDay.slice(5, 7) - 1]);
-  container.innerHTML = `<svg class="dock-handle" data-dock="notes" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 12 4.68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
+  container.innerHTML = `<svg class="dock-handle" data-dock="notes" viewBox="0 0 32 32" aria-hidden="true"><path d="M2.68 16.82 A20 20 0 0 1 16.82 2.68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
 <div class="notes-header">
 <span class="notes-day-label"><b class="nd-num">${dayNum}</b> ${monthCap}${isToday ? '<i class="nd-today">· сегодня</i>' : ''}</span>
 <div class="notes-actions">

@@ -173,9 +173,10 @@ html[data-theme] {
 }
 :root[data-theme="brutal"] .kb-col-head { border-bottom: 2px solid #111; }
 :root[data-theme="brutal"] .kb-count { background: #111; color: #fff; }
-:root[data-theme="brutal"] :is(.tl-gutter, .tl-corner) { background: color-mix(in srgb, var(--accent) 10%, #fff); border-right: 2px solid #111; }
+:root[data-theme="brutal"] #dayPanel .tl-gutterbox { background: color-mix(in srgb, var(--accent) 10%, #fff); }
+:root[data-theme="brutal"] #dayPanel :is(.tl-heads, .tl-gscroll) { border-color: #111; border-width: 2px; }
 :root[data-theme="brutal"] #dayPanel .tl-colhead { background: color-mix(in srgb, var(--accent) 12%, #fff); border: 2px solid #111 !important; box-shadow: 2px 2px 0 #111; }
-:root[data-theme="brutal"] #dayPanel .tl-col.today .tl-colhead { background: color-mix(in srgb, var(--accent) 45%, #fff); box-shadow: 2px 2px 0 #111; }
+:root[data-theme="brutal"] #dayPanel .tl-colhead.today { background: color-mix(in srgb, var(--accent) 45%, #fff); box-shadow: 2px 2px 0 #111; }
 :root[data-theme="brutal"] #dayPanel .tl-chip { border: 2px solid #111; box-shadow: 2px 2px 0 #111; background: #fff; }
 
 /* ══════════════ 3. ТЕРМИНАЛ ══════════════ */
@@ -446,17 +447,32 @@ html[data-theme] {
   --h-w: 3px; --h-size: 13px; --h-gap: 2px; border-radius: 0 !important; -webkit-mask: none; mask: none;
 }
 
-/* Брутал — та же короткая дуга, но жирная и с жёсткой тенью панелей */
-:root[data-theme="brutal"] :is(.dock-handle, .pane-move-handle) {
-  --h-w: 4px; --h-size: 15px; --h-gap: 3px;
-  filter: drop-shadow(1.5px 1.5px 0 #111);
+/* Лего и Стекло — короткая дуга со скруглёнными концами (SVG-линия с
+   round cap), по скруглению угла: дуга радиуса --h-ra с центром в центре
+   скругления панели. Путь в SVG — дуга r=20 с центром (22,22) в поле 32,
+   отсюда множители 1.6 (размер) и 1.1 (сдвиг). */
+:root:is([data-theme="brutal"], [data-theme="glass"]) :is(.dock-handle, .pane-move-handle) {
+  --h-rin: calc(var(--r-lg) - var(--t-bw, 0px));
+  --h-ra: max(3px, calc(var(--h-rin) - var(--h-d)));
+  width: calc(var(--h-ra) * 1.6) !important; height: calc(var(--h-ra) * 1.6) !important;
+  top: calc(var(--h-rin) - var(--h-ra) * 1.1) !important; left: calc(var(--h-rin) - var(--h-ra) * 1.1) !important;
+  border: 0 !important; border-radius: 0 !important; -webkit-mask: none; mask: none; background: none;
 }
-
-/* Стекло — светящаяся дуга-блик */
+:root:is([data-theme="brutal"], [data-theme="glass"]) .kb-col-handle { --h-rin: calc(var(--r-md) - var(--t-bw, 0px)); }
+:root:is([data-theme="brutal"], [data-theme="glass"]) .dock-handle path { display: inline; }
+:root:is([data-theme="brutal"], [data-theme="glass"]) .pane-move-handle svg { display: block; width: 100%; height: 100%; }
+:root:is([data-theme="brutal"], [data-theme="glass"]) :is(.dock-handle, .pane-move-handle) path {
+  vector-effect: non-scaling-stroke; stroke: var(--accent); stroke-width: var(--h-sw); stroke-linecap: round;
+}
+/* Лего — жирная дуга в тонкой чёрной обводке */
+:root[data-theme="brutal"] :is(.dock-handle, .pane-move-handle) {
+  --h-d: 4px; --h-sw: 3px;
+  filter: drop-shadow(1px 0 0 #111) drop-shadow(-1px 0 0 #111) drop-shadow(0 1px 0 #111) drop-shadow(0 -1px 0 #111);
+}
+/* Стекло — светящаяся дуга-блик большего радиуса (панели скруглены сильнее) */
 :root[data-theme="glass"] :is(.dock-handle, .pane-move-handle) {
-  --h-w: 3px; --h-size: 17px; --h-gap: 3px;
+  --h-d: 4px; --h-sw: 3px;
   filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent));
-  -webkit-mask: linear-gradient(135deg, #000 38%, transparent 64%); mask: linear-gradient(135deg, #000 38%, transparent 64%);
 }
 
 /* Неон — изгиб неоновой трубки с двойным свечением */
