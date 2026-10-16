@@ -519,8 +519,18 @@ function applyModeColorsToCSS() {
 const normTag = t => (typeof t === 'string' ? { name: t, color: null } : { name: String((t && t.name) || ''), color: (t && t.color) || null });
 let tagsCache = [];
 let tagsDeletedCache = [];
+/* Когда тег последний раз меняли (добавили, переименовали, перекрасили,
+   удалили): { имя в нижнем регистре: ISO-время }. По нему при синхронизации
+   решается, чьё состояние тега свежее — устройства или файла. */
+let tagsAtCache = {};
 export const getTagsDict = () => tagsCache;
 export const getTagsDeleted = () => tagsDeletedCache;
+export const getTagsAt = () => tagsAtCache;
+async function touchTags(names) {
+  const now = new Date().toISOString();
+  for (const n of names) if (n) tagsAtCache[String(n).toLowerCase()] = now;
+  await dbSetKV('tagsAt', tagsAtCache);
+}
 export const getTagColor = name => {
   const t = tagsCache.find(x => x.name.toLowerCase() === String(name).toLowerCase());
   return t && t.color ? t.color : null;
@@ -530,6 +540,47 @@ async function loadTagsDict() {
   tagsCache = (Array.isArray(v) ? v : []).map(normTag).filter(t => t.name);
   const d = await dbGetKV('tagsDeleted');
   tagsDeletedCache = Array.isArray(d) ? d : [];
+  const a = await dbGetKV('tagsAt');
+  tagsAtCache = a && typeof a === 'object' ? a : {};
+}
+/* Слить теги из хранилища с тегами устройства. Раньше список из файла
+   целиком заменял местный — и только что добавленный тег пропадал при
+   первой же синхронизации (в файле его ещё нет). Теперь по каждому тегу
+   побеждает более свежее изменение; без отметок времени (старые данные) —
+   объединение, удалённое где-либо считается удалённым. */
+export async function mergeTagsMeta(rTags, rDeleted, rAt) {
+  const ra0 = rAt && typeof rAt === 'object' ? rAt : {};
+  const L = new Map(tagsCache.map(t => [t.name.toLowerCase(), t]));
+  const R = new Map((rTags || []).map(normTag).filter(t => t.name).map(t => [t.name.toLowerCase(), t]));
+  const lDel = new Set(tagsDeletedCache.map(x => String(x).toLowerCase()));
+  const rDel = new Set((rDeleted || []).filter(Boolean).map(x => String(x).toLowerCase()));
+  const order = [...new Set([...L.keys(), ...R.keys(), ...lDel, ...rDel])];
+  const dict = [], deleted = [], at = { ...tagsAtCache };
+  for (const n of order) {
+    const la = tagsAtCache[n] || '', ra = ra0[n] || '';
+    let present, tag;
+    if (la || ra) {
+      const fromR = ra > la;
+      if (fromR) at[n] = ra;
+      const M = fromR ? R : L, D = fromR ? rDel : lDel;
+      present = M.has(n) && !D.has(n);
+      tag = M.get(n);
+      const other = (fromR ? L : R).get(n);
+      if (present && tag && !tag.color && other && other.color) tag = { ...tag, color: other.color };
+    } else {
+      present = (L.has(n) || R.has(n)) && !lDel.has(n) && !rDel.has(n);
+      tag = L.get(n) || R.get(n);
+      if (present && tag && !tag.color && R.get(n) && R.get(n).color) tag = { ...tag, color: R.get(n).color };
+    }
+    if (present && tag) dict.push(tag);
+    else if (lDel.has(n) || rDel.has(n)) deleted.push(n);
+  }
+  tagsCache = dict;
+  tagsDeletedCache = deleted;
+  tagsAtCache = at;
+  await dbSetKV('tagsDict', dict);
+  await dbSetKV('tagsDeleted', deleted);
+  await dbSetKV('tagsAt', at);
 }
 export async function saveTagsMeta(tags, deleted) {
   tagsCache = (tags || []).map(normTag).filter(t => t.name);
@@ -552,12 +603,14 @@ export async function addTagsToDict(names) {
     tagsDeletedCache = deleted;
     await dbSetKV('tagsDict', dict);
     await dbSetKV('tagsDeleted', deleted);
+    await touchTags(names);
     userChange();
   }
   return dict;
 }
 export async function setTagColor(name, color) {
   await saveTagsMeta(tagsCache.map(t => t.name === name ? { ...t, color } : t), tagsDeletedCache);
+  await touchTags([name]);
   userChange();
 }
 export async function renameTag(oldName, newName) {
@@ -572,7 +625,10 @@ export async function renameTag(oldName, newName) {
     seen.add(l);
     next.push({ ...t, name });
   }
-  await saveTagsMeta(next, tagsDeletedCache.includes(oldName.toLowerCase()) ? tagsDeletedCache : [...tagsDeletedCache, oldName.toLowerCase()]);
+  const delNext = (tagsDeletedCache.includes(oldName.toLowerCase()) ? tagsDeletedCache : [...tagsDeletedCache, oldName.toLowerCase()])
+    .filter(x => x !== nn.toLowerCase());
+  await saveTagsMeta(next, delNext);
+  await touchTags([oldName, nn]);
   for (const t of state.tasks) {
     if ((t.tags || []).includes(oldName)) {
       const s2 = new Set();
@@ -592,6 +648,7 @@ export async function renameTag(oldName, newName) {
 }
 export async function deleteTag(name) {
   await saveTagsMeta(tagsCache.filter(t => t.name !== name), [...tagsDeletedCache, name.toLowerCase()]);
+  await touchTags([name]);
   for (const t of state.tasks) {
     if ((t.tags || []).includes(name)) {
       t.tags = t.tags.filter(x => x !== name);

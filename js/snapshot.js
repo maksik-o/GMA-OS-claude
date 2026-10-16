@@ -8,7 +8,7 @@
    (updatedAt), удалённое помечается «могильником» и не воскресает.
    ══════════════════════════════════════════════════════════════════ */
 import {
-  state, applyMerged, getTagsDict, getTagsDeleted, saveTagsMeta,
+  state, applyMerged, getTagsDict, getTagsDeleted, getTagsAt, mergeTagsMeta,
   getTombstonesFull
 } from './store.js';
 import { getContactsForSync, applyContactsMerged, getContactTombstones, applyContactTombstones } from './contacts.js';
@@ -31,6 +31,7 @@ export function partPayload(part, since) {
       tombstones: tombstonesToSend,        // могильники малы, шлём целиком
       tags: getTagsDict(),
       tagsDeleted: getTagsDeleted(),
+      tagsAt: getTagsAt(),
     };
   }
   if (part === 'notes') return { notes: newer(getNotesForSync(), since), noteTombstones: getNoteTombstones() };
@@ -45,7 +46,7 @@ export async function applyPart(part, out) {
       tasks: Array.isArray(out.tasks) ? out.tasks : [],
       tombstones: Array.isArray(out.tombstones) ? out.tombstones : [],
     });
-    if (Array.isArray(out.tags)) await saveTagsMeta(out.tags, out.tagsDeleted || []);
+    if (Array.isArray(out.tags)) await mergeTagsMeta(out.tags, out.tagsDeleted || [], out.tagsAt);
   } else if (part === 'notes') {
     if (Array.isArray(out.notes)) await applyNotesMerged(out.notes);
   } else if (part === 'contacts') {

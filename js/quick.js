@@ -13,7 +13,7 @@
    ══════════════════════════════════════════════════════════════════ */
 import {
   state, today, addDays, WEEKDAYS, MODES, TYPE_LABEL, PRIORITY_LABEL,
-  createTask, uid, esc, parseISO,
+  createTask, uid, esc, parseISO, getTagsDict, getTagColor, addTagsToDict,
 } from './store.js';
 import { attachFile } from './files.js';
 import { limitNote, attachLimit, fmtSize } from './attach.js';
@@ -26,7 +26,7 @@ export const QUICK_STYLES = [
     id: 'builder', label: 'Конструктор', icon: '⚙',
     desc: 'Название и кнопки-свойства: всё задаётся сразу, без большого редактора.',
     how: [
-      'Под названием — кнопки: Дни · Время · Приоритет · Режим · Тип · Подзадачи · Файл.',
+      'Под названием — кнопки: Дни · Время · Приоритет · Режим · Тип · Теги · Подзадачи · Файл.',
       'Тап по кнопке раскрывает её выбор прямо в панели; выбранное пишется на кнопке.',
       'Внизу — превью: так задача будет выглядеть в списке.',
       '«Подробнее» создаёт задачу и открывает её полную карточку.',
@@ -39,7 +39,7 @@ export const QUICK_STYLES = [
       'Даты: «сегодня», «завтра», «послезавтра», «в пятницу», «пн», «20.10».',
       'Время и длительность: «в 15:00», «15:30», «30м», «1ч».',
       'Приоритет: «!» — высокий, «!!» — средний, «!!!» — низкий, или слово «срочно».',
-      'Режим: #работа, #дом, #учёба. Тип: «встреча», «проект», «событие», «мелочь».',
+      'Режим: #работа, #дом, #учёба. Любое другое #слово — тег. Тип: «встреча», «проект», «событие», «мелочь».',
       'Распознанное видно чипами под строкой; тап по чипу убирает его.',
       'Enter — добавить и сразу вводить следующую. Esc — закрыть.',
     ],
@@ -83,7 +83,8 @@ const durLabel = m => (m >= 60 ? (m % 60 ? `${Math.floor(m / 60)} ч ${m % 60} �
 function rowPreview(t) {
   const days = Object.keys(t.days || {}).sort();
   const when = days.length ? days.map(dayLabel).join(', ') : 'без даты';
-  const bits = [when, t.blockStart ? '⏰ ' + t.blockStart : '', t.subtasks && t.subtasks.length ? `☑ 0/${t.subtasks.length}` : ''].filter(Boolean);
+  const bits = [when, t.blockStart ? '⏰ ' + t.blockStart : '', t.subtasks && t.subtasks.length ? `☑ 0/${t.subtasks.length}` : '',
+    ...(t.tags || []).map(x => '#' + x)].filter(Boolean);
   return `<div class="qx-row"><i style="background:var(--mode-${t.mode || defaultMode()})"></i>
     <span>${t.priority === 1 ? '<b class="qx-p1">! </b>' : ''}${esc(t.title || 'Новая задача')}</span><em>${esc(bits.join(' · '))}</em></div>`;
 }
@@ -149,6 +150,18 @@ export function parseQuick(text) {
   } else {
     take(/\s(встреча|встречу|проект|событие|мелочь)(?=\s)/i, k('type', m => { out.type = TYPE_WORDS[m[1].toLowerCase()]; }));
   }
+  /* Остальные #слова — теги (режимы уже разобраны выше) */
+  out.tags = [];
+  let tm;
+  const tagRe = /\s#([^\s#]{1,40})(?=\s)/;
+  while ((tm = s.match(tagRe))) {
+    const name = tm[1];
+    const known = getTagsDict().find(t => t.name.toLowerCase() === name.toLowerCase());
+    const nm = known ? known.name : name;
+    if (!out.tags.some(x => x.toLowerCase() === nm.toLowerCase())) out.tags.push(nm);
+    out.marks.push({ text: tm[0].trim(), kind: 'tag', tag: nm });
+    s = s.replace(tagRe, ' ');
+  }
   out.title = s.replace(/\s+/g, ' ').trim();
   return out;
 }
@@ -157,7 +170,7 @@ function smartTask(p) {
   return {
     title: p.title, days: day ? { [day]: 'todo' } : {},
     priority: p.pri || 2, mode: p.mode || undefined, type: p.type || 'task',
-    blockStart: p.time || null, blockMin: p.dur || 30, tags: [],
+    blockStart: p.time || null, blockMin: p.dur || 30, tags: p.tags || [],
   };
 }
 function smartInit(host) {
@@ -170,7 +183,8 @@ function smartInit(host) {
         <button type="button" class="qx-send" title="Добавить (Enter)" disabled>↑</button>
       </div>
       <div class="qx-chips"></div>
-      <div class="qx-sugg">${['завтра', 'в пятницу', 'в 10:00', '30м', '!', ...realModes().map(m => '#' + m.label.toLowerCase().replace(/\s+/g, '')), 'встреча']
+      <div class="qx-sugg">${['завтра', 'в пятницу', 'в 10:00', '30м', '!', ...realModes().map(m => '#' + m.label.toLowerCase().replace(/\s+/g, '')), 'встреча',
+        ...getTagsDict().slice(0, 6).map(t => '#' + t.name.replace(/\s+/g, '_'))]
         .map(w => `<button type="button">${esc(w)}</button>`).join('')}</div>
       <div class="qx-added"></div>
       <p class="qx-help">Enter — добавить и продолжить · Esc — закрыть</p>
@@ -190,7 +204,9 @@ function smartInit(host) {
       else if (mk.kind === 'pri') lbl = '⚑ ' + PRIORITY_LABEL[p.pri];
       else if (mk.kind === 'mode') lbl = '● ' + modeLabel(p.mode);
       else if (mk.kind === 'type') lbl = '▣ ' + TYPE_LABEL[p.type];
-      const tint = mk.kind === 'mode' ? ` style="--k:var(--mode-${p.mode})"` : '';
+      else if (mk.kind === 'tag') lbl = '# ' + mk.tag;
+      const tc = mk.kind === 'tag' ? getTagColor(mk.tag) : null;
+      const tint = mk.kind === 'mode' ? ` style="--k:var(--mode-${p.mode})"` : tc ? ` style="--k:${tc}"` : '';
       list.push(`<button type="button" class="qx-chip k-${mk.kind}"${tint} data-t="${esc(mk.text)}" title="Убрать">${esc(lbl)}<span>✕</span></button>`);
     }
     if (p.type && !p.marks.some(m => m.kind === 'type')) list.push(`<span class="qx-chip k-type">▣ ${esc(TYPE_LABEL[p.type])}</span>`);
@@ -203,6 +219,7 @@ function smartInit(host) {
     const p = parseQuick(inp.value);
     if (!p.title) return;
     const data = smartTask(p);
+    if (data.tags.length) await addTagsToDict(data.tags);
     await createTask(data);
     added.unshift(data);
     inp.value = '';
@@ -239,7 +256,7 @@ function smartInit(host) {
 function builderInit(host) {
   const b = {
     title: '', days: { [today()]: 'todo' }, weekStart: state.weekStart, time: '', dur: 30,
-    pri: 2, mode: defaultMode(), type: 'task', subs: [], file: null, open: 'days',
+    pri: 2, mode: defaultMode(), type: 'task', subs: [], tags: [], file: null, open: 'days',
   };
   host.innerHTML = `
     <div class="qx qx-builder">
@@ -264,6 +281,7 @@ function builderInit(host) {
     ['pri', '⚑', () => PRIORITY_LABEL[b.pri], () => b.pri !== 2],
     ['mode', '', () => modeLabel(b.mode), () => true],
     ['type', '▣', () => TYPE_LABEL[b.type], () => b.type !== 'task'],
+    ['tags', '#', () => (b.tags.length ? b.tags.join(', ') : 'Теги'), () => b.tags.length > 0],
     ['subs', '☑', () => (b.subs.length ? `Подзадачи · ${b.subs.length}` : 'Подзадачи'), () => b.subs.length > 0],
     ['file', '📎', () => (b.file ? b.file.name : 'Файл'), () => !!b.file],
   ];
@@ -271,7 +289,7 @@ function builderInit(host) {
     `<button type="button" data-k="${key}" data-v="${esc(String(v))}" class="${String(b[key]) === String(v) ? 'on' : ''}">${esc(l)}</button>`).join('')}</div>`;
   const task = () => ({
     title: b.title.trim(), days: { ...b.days }, priority: b.pri, mode: b.mode, type: b.type,
-    blockStart: b.time || null, blockMin: b.dur, tags: [],
+    blockStart: b.time || null, blockMin: b.dur, tags: b.tags.slice(),
     subtasks: b.subs.map(text => ({ id: uid(), text, done: false })),
   });
   function render() {
@@ -296,7 +314,25 @@ function builderInit(host) {
     } else if (o === 'pri') pop.innerHTML = '<div class="qx-cap">Приоритет</div>' + seg('pri', [[1, '⚑ Высокий'], [2, 'Средний'], [3, 'Низкий']]);
     else if (o === 'mode') pop.innerHTML = '<div class="qx-cap">Режим</div>' + seg('mode', realModes().map(m => [m.id, m.label]));
     else if (o === 'type') pop.innerHTML = '<div class="qx-cap">Тип</div>' + seg('type', Object.entries(TYPE_LABEL));
-    else if (o === 'subs') {
+    else if (o === 'tags') {
+      const dict = getTagsDict();
+      const all = [...dict.map(t => t.name), ...b.tags.filter(n => !dict.some(t => t.name === n))];
+      pop.innerHTML = `<div class="qx-cap">Теги</div>
+        <div class="qx-seg qx-tags">${all.map(n => { const c = getTagColor(n); return `<button type="button" data-tag="${esc(n)}" class="${b.tags.includes(n) ? 'on' : ''}"${c ? ` style="--tc:${c}"` : ''}># ${esc(n)}</button>`; }).join('')
+          || '<span class="qx-to">Тегов пока нет — введите первый ниже</span>'}</div>
+        <div class="qx-subin"><input type="text" maxlength="40" placeholder="Новый тег и Enter" enterkeyhint="done"><button type="button" class="btn mini">＋</button></div>`;
+      const ti = pop.querySelector('.qx-subin input');
+      const addTag = () => {
+        const v = ti.value.trim().replace(/^#/, '');
+        if (!v) return;
+        const known = dict.find(t => t.name.toLowerCase() === v.toLowerCase());
+        const nm = known ? known.name : v;
+        if (!b.tags.includes(nm)) b.tags.push(nm);
+        render(); pop.querySelector('.qx-subin input').focus();
+      };
+      ti.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } };
+      pop.querySelector('.qx-subin button').onclick = addTag;
+    } else if (o === 'subs') {
       pop.innerHTML = `<div class="qx-cap">Подзадачи</div><div class="qx-subin"><input type="text" maxlength="200" placeholder="Шаг и Enter" enterkeyhint="done"><button type="button" class="btn mini">＋</button></div>
         <ul class="qx-subs">${b.subs.map((s, i) => `<li><span>☐ ${esc(s)}</span><button type="button" data-rm="${i}" title="Убрать">✕</button></li>`).join('')}</ul>`;
       const si = pop.querySelector('.qx-subin input');
@@ -325,6 +361,7 @@ function builderInit(host) {
   async function create() {
     const t = task();
     if (!t.title) { title.focus(); return null; }
+    if (t.tags.length) await addTagsToDict(t.tags);
     const made = await createTask(t);
     if (b.file && made) { try { await attachFile(made.id, b.file); } catch (e) { alert(e.message); } }
     done();
@@ -336,6 +373,8 @@ function builderInit(host) {
     if (wk) { b.weekStart = addDays(b.weekStart, 7 * +wk.dataset.wk); render(); return; }
     const d = e.target.closest('[data-day]');
     if (d) { if (b.days[d.dataset.day]) delete b.days[d.dataset.day]; else b.days[d.dataset.day] = 'todo'; render(); return; }
+    const tg = e.target.closest('[data-tag]');
+    if (tg) { const n = tg.dataset.tag; b.tags = b.tags.includes(n) ? b.tags.filter(x => x !== n) : [...b.tags, n]; render(); return; }
     const r = e.target.closest('[data-rm]');
     if (r) { b.subs.splice(+r.dataset.rm, 1); render(); return; }
     const s = e.target.closest('[data-k]');
