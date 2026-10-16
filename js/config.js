@@ -11,4 +11,4 @@ export const OWNER_EMAIL = 'maksimgomzyakov1@gmail.com';
 // ClientID приложения на oauth.yandex.ru. Это публичный идентификатор,
 // он не даёт доступа ни к чьим данным. Client secret сюда НЕ вписывать.
 // Пусто — вариант «Яндекс Диск» в приложении помечен «скоро».
-export const YANDEX_CLIENT_ID = '';
+export const YANDEX_CLIENT_ID = '08e532e75ecb430baf6f86bf1e7aaeac';
