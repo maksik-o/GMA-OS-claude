@@ -22,7 +22,7 @@ import { buildSnapshot, applySnapshot, isSnapshot } from './snapshot.js';
 import { dbGetKV, dbSetKV } from './db.js';
 import { esc } from './store.js';
 import * as legacy from './sync.js';
-import { YANDEX_CLIENT_ID } from './config.js';
+import { YANDEX_CLIENT_ID, YANDEX_PROXY } from './config.js';
 
 const MODE_KEY = 'rl_storage';
 const LAST_KEY = 'rl_vault_last';
@@ -43,7 +43,7 @@ export const STORAGES = [
   { id: 'file', label: 'Локальный файл', icon: 'file',
     desc: 'JSON-файл на компьютере. Положите его в папку Яндекс Диска, Dropbox или OneDrive — их программа разнесёт файл по вашим компьютерам.',
     note: 'Chrome и Edge на компьютере', available: hasFileApi },
-  { id: 'yandex', label: 'Яндекс Диск', icon: 'cloud', soon: () => !YANDEX_CLIENT_ID, desc: 'Папка «Приложения/GMA-OS» в вашем Яндекс Диске. Работает на телефоне и компьютере.' },
+  { id: 'yandex', label: 'Яндекс Диск', icon: 'cloud', soon: () => !YANDEX_CLIENT_ID || !YANDEX_PROXY, desc: 'Папка «Приложения/GMA-OS» в вашем Яндекс Диске. Работает на телефоне и компьютере.' },
   { id: 'gdrive', label: 'Google Диск', icon: 'cloud', soon: true, desc: 'Скрытая папка приложения в вашем Google Диске.' },
   { id: 'dropbox', label: 'Dropbox', icon: 'cloud', soon: true, desc: 'Папка «Apps/GMA-OS» в вашем Dropbox.' },
   { id: 'onedrive', label: 'OneDrive', icon: 'cloud', soon: true, desc: 'Папка приложения в вашем OneDrive.' },
@@ -172,8 +172,12 @@ const yandexStore = {
     const res = await this.api('/resources/download?path=' + encodeURIComponent(Y_PATH));
     if (!res.ok) throw new Error('Не удалось получить ссылку на файл (' + res.status + ')');
     const { href } = await res.json();
+    // Ссылка скачивания Яндекса не разрешает чтение из браузера (нет CORS),
+    // поэтому идём через свой прокси: он только пересылает файл, ничего не хранит.
+    if (!YANDEX_PROXY) throw new Error('Не настроен прокси для Яндекс Диска — сообщите разработчику');
     let file;
-    try { file = await fetch(href); } catch { throw new Error('Яндекс Диск не отдал файл браузеру — сообщите разработчику'); }
+    try { file = await fetch(YANDEX_PROXY.replace(/\/?$/, '/') + '?u=' + encodeURIComponent(href), { cache: 'no-store' }); }
+    catch { throw new Error('Прокси Яндекс Диска не отвечает — проверьте интернет'); }
     if (!file.ok) throw new Error('Не удалось скачать файл (' + file.status + ')');
     const text = (await file.text()).trim();
     let data = null;
