@@ -414,28 +414,68 @@ html[data-theme] {
 .tmini.t-coral .tm-chip { background: var(--mode-work); }
 .tmini.t-coral .tm-title { font-weight: 500; }
 
-/* ══════════════ Ручки переноса виджетов: один вид во всех темах ══════════════
-   Ручка — уголок, повторяющий скругление угла панели, на 2px внутрь от
-   края (с учётом толщины рамки темы) и всегда акцентного цвета. Размер
-   ручки не зависит от радиуса: у «Тетради» (маленький радиус) она больше
-   не превращается в крошечную дугу, у острых углов — ровный уголок. */
+/* ══════════════ Ручки переноса виджетов ══════════════
+   База — короткий тонкий изгиб по скруглению угла, на 2–3px внутрь,
+   цвета режима, мягко обрывается к концам. Темы меняют подачу:
+   «Тетрадь» — загнутый уголок страницы, «Брутал» — жирная дуга с жёсткой
+   тенью, «Стекло» — светящаяся дуга-блик, «Неон» — неоновая трубка.
+   «Терминал» и «Швейцарский» — прямой уголок (углы у них острые). */
 .dock-handle, .pane-move-handle {
-  --h-gap: 2px; --h-w: 3px;
-  --h-r: max(0px, calc(var(--r-lg) - var(--t-bw, 0px) - var(--h-gap)));
+  --h-gap: 3px; --h-w: 2px; --h-size: 15px;
+  --h-r: max(4px, calc(var(--r-lg) - var(--t-bw, 0px) - var(--h-gap)));
   position: absolute; right: auto; bottom: auto;
   top: var(--h-gap) !important; left: var(--h-gap) !important;
-  width: calc(var(--h-r) + 13px) !important; height: calc(var(--h-r) + 13px) !important;
+  width: var(--h-size) !important; height: var(--h-size) !important;
   box-sizing: border-box; overflow: visible; opacity: 1 !important;
   border: 0 solid var(--accent); border-top-width: var(--h-w); border-left-width: var(--h-w);
   border-radius: var(--h-r) 0 0 0 !important;
-  color: var(--accent);
-  filter: none; transition: border-color .2s, transform .15s;
+  -webkit-mask: linear-gradient(135deg, #000 52%, transparent 53%); mask: linear-gradient(135deg, #000 52%, transparent 53%);
+  color: var(--accent); background: none; filter: none;
+  transition: border-color .2s, transform .15s, filter .2s;
 }
-.kb-col-handle { --h-r: max(0px, calc(var(--r-md) - var(--h-gap))); }
+.kb-col-handle { --h-r: max(4px, calc(var(--r-md) - var(--h-gap))); }
 .dock-handle path, .pane-move-handle svg { display: none; }
-.dock-handle:hover, .pane-move-handle:hover { border-color: color-mix(in srgb, var(--accent) 75%, var(--text)); }
-.dock-handle:active, .pane-move-handle:active { transform: scale(.94); }
+.dock-handle:active, .pane-move-handle:active { transform: scale(.92); }
 .week2.swapped .pane-move-handle { left: var(--h-gap) !important; }
+
+/* Терминал, Швейцарский — прямой уголок */
+:root:is([data-theme="term"], [data-theme="swiss"]) :is(.dock-handle, .pane-move-handle) {
+  --h-w: 3px; --h-size: 13px; --h-gap: 2px; border-radius: 0 !important; -webkit-mask: none; mask: none;
+}
+
+/* Брутал — та же короткая дуга, но жирная и с жёсткой тенью панелей */
+:root[data-theme="brutal"] :is(.dock-handle, .pane-move-handle) {
+  --h-w: 4px; --h-size: 15px; --h-gap: 3px;
+  filter: drop-shadow(1.5px 1.5px 0 #111);
+}
+
+/* Стекло — светящаяся дуга-блик */
+:root[data-theme="glass"] :is(.dock-handle, .pane-move-handle) {
+  --h-w: 3px; --h-size: 17px; --h-gap: 3px;
+  filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent));
+  -webkit-mask: linear-gradient(135deg, #000 38%, transparent 64%); mask: linear-gradient(135deg, #000 38%, transparent 64%);
+}
+
+/* Неон — изгиб неоновой трубки с двойным свечением */
+:root[data-theme="neon"] :is(.dock-handle, .pane-move-handle) {
+  --h-w: 2.5px; --h-size: 22px; --h-gap: 3px;
+  filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 70%, transparent));
+  -webkit-mask: linear-gradient(135deg, #000 44%, transparent 62%); mask: linear-gradient(135deg, #000 44%, transparent 62%);
+}
+
+/* Тетрадь — загнутый уголок страницы: верхний треугольник «отрезан» под
+   цвет стола, нижний — оборот листа с тенью. Сидит прямо на углу панели. */
+:root[data-theme="note"] :is(.dock-handle, .pane-move-handle) {
+  --h-size: 18px;
+  top: calc(-1 * var(--t-bw, 0px)) !important; left: calc(-1 * var(--t-bw, 0px)) !important;
+  border: 0; border-radius: var(--r-lg) 0 0 0 !important; -webkit-mask: none; mask: none;
+  background:
+    linear-gradient(135deg, var(--bg) 0 50%, transparent 50.5%),
+    linear-gradient(135deg, transparent 49%, color-mix(in srgb, var(--accent) 45%, #8a6a3a) 50%, transparent 54%),
+    linear-gradient(315deg, #fff6e2 0%, color-mix(in srgb, var(--accent) 22%, #ead7ad) 60%, color-mix(in srgb, var(--accent) 35%, #c9ad7a) 100%);
+  filter: drop-shadow(1.5px 1.5px 1.5px rgba(80, 60, 30, .45));
+}
+:root[data-theme="note"] .week2.swapped .pane-move-handle { left: calc(-1 * var(--t-bw, 0px)) !important; }
 
 /* ══════════════ Мини-превью тем в «Оформлении» ══════════════
    Маленький экран приложения на переменных своей темы. */
