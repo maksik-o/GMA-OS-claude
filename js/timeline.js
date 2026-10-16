@@ -179,7 +179,7 @@ export function renderTimeline(panel) {
   }
 
   panel.innerHTML =
-    '<div class="kb-head kb-head-hold">' +
+    '<div class="kb-head kb-head-hold glass tl-box tl-headbox">' +
       '<div class="kb-row">' +
         '<button type="button" class="kb-board-title" id="tlTitle" title="Выбор вида: Running-list / kanban / Timeline">Timeline</button>' +
         '<div class="kb-rangenav">' +
@@ -190,19 +190,19 @@ export function renderTimeline(panel) {
         '<div class="kb-right">' +
           '<button type="button" class="tl-tray-btn" id="tlRoutines" title="Повседневные дела — только в Timeline">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>' +
-            '<span class="tlb-lab">Расписание</span></button>' +
+            '<span class="tlb-lab">Повседневные дела</span></button>' +
           `<button type="button" class="tl-tray-btn${trayOpen ? ' on' : ''}" id="tlTray" title="Задачи без планирования">` +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/></svg>' +
             `<span class="tlb-lab">Без времени</span><i>${trayList.length}</i></button>` +
         '</div>' +
       '</div>' +
-      `<div class="tl-tray${trayOpen ? ' open' : ''}">` +
+      `<div class="tl-tray${trayOpen ? ' open' : ''}"><div class="tl-tray-in">` +
         (trayList.length
           ? trayList.map(t => `<button type="button" class="tl-chip m-${esc(t.mode)}" data-id="${esc(t.id)}" title="Перетащите на сетку">${esc(t.title)}</button>`).join('')
           : '<span class="tl-tray-empty">Все задачи этих дней уже расставлены</span>') +
-      '</div>' +
+      '</div></div>' +
     '</div>' +
-    '<div class="tl-body">' +
+    '<div class="tl-body glass tl-box">' +
       '<div class="tl-gutter">' +
         '<div class="tl-corner"></div>' +
         `<div class="tl-hours" style="height:${24 * HOUR + 1}px">` +
@@ -244,10 +244,14 @@ export function renderTimeline(panel) {
   if (rb) rb.onclick = e => { e.stopPropagation(); openRoutines(); };
 
   const trayBtn = panel.querySelector('#tlTray');
+  /* Лоток открывается без перерисовки панели — так шапка плавно
+     раздвигается и сдвигается обратно (анимация в CSS). */
   if (trayBtn) trayBtn.onclick = e => {
     e.stopPropagation();
     trayOpen = !trayOpen;
-    renderTimeline(panel);
+    trayBtn.classList.toggle('on', trayOpen);
+    const tr = panel.querySelector('.tl-tray');
+    if (tr) tr.classList.toggle('open', trayOpen);
   };
   panel.querySelectorAll('.tl-tray .tl-chip').forEach(c => bindTrayChip(c, panel));
   panel.querySelectorAll('.tl-block .tlb-check').forEach(c => {
@@ -679,7 +683,7 @@ function bindRoutine(node) {
   });
 }
 
-/* ── Окно «Расписание» ── */
+/* ── Окно «Повседневные дела» ── */
 const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const R_COLORS = ['#64748b', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 function openRoutines() {
@@ -688,7 +692,7 @@ function openRoutines() {
   const draw = () => {
     const list = getRoutines();
     ov.innerHTML = `<div class="notes-list-modal glass tl-rsheet">
-      <header class="notes-list-head"><h3>Расписание</h3>
+      <header class="notes-list-head"><h3>Повседневные дела</h3>
         <button type="button" class="notes-list-close">✕</button></header>
       <p class="hint">Повседневные дела — обед, сон, дорога. Видны только в Timeline и не попадают в список задач.</p>
       <div class="notes-list-content">${list.length ? list.map(r => `

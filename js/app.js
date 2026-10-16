@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 const THEMES = [
   { id: 'auto',   label: 'Авто', auto: true },
   { id: 'note',   label: 'Тетрадь', surf: 'light' },
-  { id: 'brutal', label: 'Брутал', surf: 'light' },
+  { id: 'brutal', label: 'Лего', surf: 'light' },
   { id: 'term',   label: 'Терминал', surf: 'dark' },
   { id: 'glass',  label: 'Стекло', surf: 'dark' },
   { id: 'swiss',  label: 'Швейцарский', surf: 'light' },
