@@ -257,7 +257,7 @@ const MID_SEL = [
   '#dayPanel',
   '#contactsView .cgroup', '#contactsView .cgroup-new',
   '#financeView .fin-head', '#financeView .fin-body',
-  '#kbView .kb-side', '#kbView .kb-main',
+  '#kbView .kb-side', '#kbView .kb-notes', '#kbView .kb-main',
 ].join(',');
 function collectMidBlocks() {
   return [...document.querySelectorAll(MID_SEL)].filter(el => el.offsetWidth > 0);
@@ -278,8 +278,13 @@ async function switchModeWithAnim(nextId) {
     setBlobColors(nextId);
   }
   await blockSwap(to < from ? -1 : 1, async () => {
+    /* setMode сам перерисует экран в ближайшем кадре (notify через rAF).
+       Раньше здесь была ещё и немедленная перерисовка: анимация въезда
+       доставалась первой копии блоков, а через кадр их заменяла вторая —
+       и новые блоки возникали на месте без выдвижения. Ждём этот кадр
+       и только потом запускаем въезд — до отрисовки, без мигания. */
     await setMode(nextId);
-    document.dispatchEvent(new CustomEvent('render-now'));
+    await new Promise(r => requestAnimationFrame(r));
   });
 }
 
