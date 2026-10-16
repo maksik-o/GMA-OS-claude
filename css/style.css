@@ -5351,6 +5351,8 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 }
 .qx-seg button:active, .qx-filebtn:active { transform: scale(.96); }
 .qx-seg button.on { background: var(--accent); color: var(--on-accent, #fff); }
+.qx-tags button.on { background: var(--tc, var(--accent)); }
+.qx-chip.k-tag { --k: #db2777; }
 
 /* умная строка */
 .qx-line { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 14px; border-radius: 14px;
