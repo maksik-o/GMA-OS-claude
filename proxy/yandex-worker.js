@@ -36,16 +36,24 @@ export default {
     }
 
     let upstream;
-    try { upstream = await fetch(target.toString(), { redirect: 'follow' }); }
+    try { upstream = await fetch(target.toString(), { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (GMA-OS proxy)', 'Accept': '*/*' } }); }
     catch (e) { return new Response('Upstream failed: ' + (e && e.message), { status: 502, headers: cors }); }
-    if (!upstream.ok) return new Response('Yandex answered ' + upstream.status, { status: 502, headers: cors });
+    if (!upstream.ok) return new Response(await describe(upstream), { status: 502, headers: cors });
     return new Response(upstream.body, {
       status: upstream.status,
       headers: {
         ...cors,
-        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Type': upstream.headers.get('content-type') || 'application/octet-stream',
         'Cache-Control': 'no-store',
       },
     });
   },
 };
+
+// Что именно ответил Яндекс — для диагностики (без содержимого файла).
+async function describe(r) {
+  let host = '';
+  try { host = new URL(r.url).hostname; } catch {}
+  const body = (await r.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 160);
+  return 'Yandex answered ' + r.status + (r.redirected ? ' after redirect to ' + host : ' from ' + host) + (body ? ' | ' + body : '');
+}

@@ -1329,6 +1329,8 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
 }
 .fl-btn:hover { transform: scale(1.04); }
 .fl-btn.del { color: var(--c-skipped); }
+.file-limit { margin: 6px 2px 0; font-size: 12px; line-height: 1.35; font-weight: 600; color: var(--c-time); opacity: .85; }
+.kb-extra .file-limit { margin: 0 0 6px; }
 .file-uploading { display: flex; align-items: center; gap: 8px; padding: 8px 10px; color: var(--c-time); font-size: 13px; font-weight: 600; }
 .upload-spin { display: block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--c-time) 30%, transparent); border-top-color: var(--c-time); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

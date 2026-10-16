@@ -1,12 +1,23 @@
-// Файлы задач: загрузка в Drive, открытие с офлайн-кэшем, удаление
+// Файлы задач. При новой синхронизации — общий механизм вложений
+// (устройство + выбранное хранилище, attach.js). При прежней (скрипт
+// Google) — как раньше: загрузка в Drive через скрипт.
 import { getTask, updateTask } from './store.js';
 import { apiCall } from './sync.js';
 import { dbGetFile, dbPutFile, dbDelFile } from './db.js';
+import { fmtSize, storageMode, saveAttachment, loadAttachment, deleteAttachment, downloadBlob } from './attach.js';
+export { fmtSize };
 
-export const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' МБ' : Math.max(1, Math.round(b / 1024)) + ' КБ';
+const TASK_MAX = 5 * 1024 * 1024;
 
 export async function attachFile(taskId, file) {
-  if (file.size > 5 * 1024 * 1024) throw new Error('Файл больше 5 МБ');
+  if (storageMode() !== 'legacy') {
+    const meta = await saveAttachment(file, TASK_MAX, '5 МБ');
+    const t = getTask(taskId);
+    if (!t) { await deleteAttachment(meta); return; }
+    await updateTask(taskId, { files: [...(t.files || []), meta] });
+    return;
+  }
+  if (file.size > TASK_MAX) throw new Error('Файл больше 5 МБ');
   const data = await new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = () => res(String(r.result).split(',')[1]);
@@ -23,6 +34,12 @@ export async function attachFile(taskId, file) {
 }
 
 export async function openTaskFile(meta) {
+  if (meta.src) {   // вложение нового образца
+    const blob = await loadAttachment(meta);
+    if (!blob) throw new Error('Файл доступен только на устройстве, где его добавили');
+    downloadBlob(blob, meta.name);
+    return;
+  }
   let cached = await dbGetFile(meta.id);
   if (!cached) {
     const out = await apiCall('file', { payload: { fileId: meta.id } });
@@ -43,6 +60,12 @@ export async function openTaskFile(meta) {
 export async function removeTaskFile(taskId, fileId) {
   const t = getTask(taskId);
   if (!t) return;
+  const meta = (t.files || []).find(f => f.id === fileId);
+  if (meta && meta.src) {
+    await deleteAttachment(meta);
+    await updateTask(taskId, { files: (t.files || []).filter(f => f.id !== fileId) });
+    return;
+  }
   await apiCall('filedel', { payload: { fileId } }).catch(() => {});
   await dbDelFile(fileId).catch(() => {});
   await updateTask(taskId, { files: (t.files || []).filter(f => f.id !== fileId) });

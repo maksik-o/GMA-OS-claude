@@ -14,6 +14,7 @@ import { dbAll, dbPut, dbBulk, dbGet, dbDel } from './db.js';
 import { uid, esc, MODES } from './store.js';
 import { getAllNotes, updateNoteById, deleteNote } from './notes.js';
 import { createGraph } from './kbgraph.js';
+import { fmtSize, saveAttachment, loadAttachment, deleteAttachment, downloadBlob, limitNote } from './attach.js';
 
 const STORE = 'kb';
 const FILES = 'kbfiles';
@@ -108,14 +109,14 @@ export async function kbSave(kind, data, id) {
 export async function kbRemove(id) {
   if (isDaily(id)) {
     const it = kbItem(id);
-    for (const f of (it && it.files) || []) await dbDel(FILES, f.id).catch(() => {});
+    for (const f of (it && it.files) || []) await dropFile(f);
     await deleteNote(dailyRealId(id));
     notify();
     return;
   }
   const it = rawItem(id);
   if (!it) return;
-  if (it.kind === 'note') for (const f of it.files || []) await dbDel(FILES, f.id).catch(() => {});
+  if (it.kind === 'note') for (const f of it.files || []) await dropFile(f);
   if (it.kind === 'group') {
     /* Подгруппы и заметки поднимаются на уровень выше, а не теряются */
     const up = it.parentId || '';
@@ -132,7 +133,7 @@ export async function kbRemove(id) {
 
 /* ── Синхронизация ── */
 export const getKbForSync = () => state.items.map(i =>
-  i.kind === 'note' ? { ...i, files: (i.files || []).map(f => ({ id: f.id, name: f.name, size: f.size, mime: f.mime })) } : i);
+  i.kind === 'note' ? { ...i, files: (i.files || []).map(f => ({ id: f.id, name: f.name, size: f.size, mime: f.mime, ...(f.src ? { src: f.src } : {}) })) } : i);
 export async function applyKbMerged(list) {
   const remote = Array.isArray(list) ? list : [];
   const byId = new Map();
@@ -149,33 +150,31 @@ export async function applyKbMerged(list) {
 
 /* ── Файлы ── */
 const MAX_FILE = 8 * 1024 * 1024;
-export const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' МБ' : Math.max(1, Math.round(b / 1024)) + ' КБ';
+export { fmtSize };
 async function attach(noteId, file) {
-  if (file.size > MAX_FILE) throw new Error('Файл больше 8 МБ');
-  const data = await new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(String(r.result));
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-  const rec = { id: uid(), data };
-  await dbPut(FILES, rec);
+  const meta = await saveAttachment(file, MAX_FILE, '8 МБ');
   const n = kbItem(noteId);
-  if (!n) return;
-  const files = [...(n.files || []), { id: rec.id, name: file.name, size: file.size, mime: file.type }];
-  await kbSave('note', { files }, noteId);
+  if (!n) { await deleteAttachment(meta); return; }
+  await kbSave('note', { files: [...(n.files || []), meta] }, noteId);
 }
-async function openAttachment(fid, name) {
-  const rec = await dbGet(FILES, fid).catch(() => null);
+/* Вложение: общий механизм (устройство/облако), а для старых —
+   base64 в сторе kbfiles, только на том устройстве, где добавили */
+async function openAttachment(f) {
+  try {
+    const blob = f.src ? await loadAttachment(f) : null;
+    if (blob) { downloadBlob(blob, f.name); return; }
+  } catch (e) { alert('Не удалось открыть: ' + ((e && e.message) || e)); return; }
+  const rec = await dbGet(FILES, f.id).catch(() => null);
   if (!rec || !rec.data) { alert('Файл доступен только на устройстве, где его добавили.'); return; }
   const a = document.createElement('a');
   a.href = rec.data;
-  a.download = name || 'file';
+  a.download = f.name || 'file';
   a.target = '_blank';
   document.body.appendChild(a);
   a.click();
   a.remove();
 }
+const dropFile = f => (f.src ? deleteAttachment(f) : dbDel(FILES, f.id)).catch(() => {});
 
 /* ══════════════ ПРЕДСТАВЛЕНИЕ ══════════════
 
@@ -520,7 +519,7 @@ function buildNote(main, n) {
     <div class="kb-meta">
       <select class="kb-group-sel">${groupOptions(n)}</select>
       ${n.daily ? '<span class="kb-daily-tag">Заметка дня</span>' : ''}
-      <label class="kb-attach">📎 Файл<input type="file" class="kb-file" hidden multiple></label>
+      <label class="kb-attach"${limitNote() ? ` title="${esc(limitNote())}"` : ''}>📎 Файл<input type="file" class="kb-file" hidden multiple></label>
       <button type="button" class="btn mini kb-link">🔗 Связать</button>
       <button type="button" class="btn mini kb-local-graph" title="Граф вокруг этой заметки">◉ Граф</button>
     </div>
@@ -585,6 +584,7 @@ function renderExtra(main, n) {
     <span class="kbl-dot"></span>${esc(titleOf(l))}${removable ? '<i class="kbl-x" title="Убрать связь">✕</i>' : ''}</button>`;
   const uniq = arr => [...new Map(arr.map(x => [x.id, x])).values()];
   setHTML(main.querySelector('.kb-extra'), `
+    ${limitNote() ? `<p class="file-limit">⚠ ${esc(limitNote())}</p>` : ''}
     ${(n.files || []).length ? `<div class="kb-files">${n.files.map(f => `<div class="kb-file-row" data-fid="${f.id}">
       <span class="kbf-name">${esc(f.name)}</span><span class="kbf-size">${fmtSize(f.size)}</span>
       <button type="button" class="kbf-del" title="Открепить">✕</button></div>`).join('')}</div>` : ''}
@@ -672,11 +672,11 @@ function bindNote(main, n) {
       const note = kbItem(n.id);
       const f = ((note && note.files) || []).find(x => x.id === row.dataset.fid);
       if (t.classList.contains('kbf-del')) {
-        dbDel(FILES, row.dataset.fid).catch(() => {});
+        if (f) dropFile(f);
         kbSave('note', { files: (note.files || []).filter(x => x.id !== row.dataset.fid) }, n.id);
         return;
       }
-      openAttachment(row.dataset.fid, f ? f.name : '');
+      if (f) openAttachment(f);
       return;
     }
     const c = t.closest('.kb-linkchip');

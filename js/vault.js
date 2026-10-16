@@ -23,6 +23,7 @@ import { dbGetKV, dbSetKV } from './db.js';
 import { esc } from './store.js';
 import * as legacy from './sync.js';
 import { YANDEX_CLIENT_ID, YANDEX_PROXY } from './config.js';
+import { setupAttachments, flushAttachments } from './attach.js';
 const Y_PROXIES = [].concat(YANDEX_PROXY || []).filter(Boolean);
 
 const MODE_KEY = 'rl_storage';
@@ -118,6 +119,10 @@ const Y_STATE = 'rl_yandex_state';
 const Y_PENDING = 'rl_yandex_pending';
 const Y_API = 'https://cloud-api.yandex.net/v1/disk';
 const Y_PATH = 'app:/gma-os-data.json';
+const Y_FILES = 'app:/files';
+// Вложение скачивается через прокси; Yandex Cloud отдаёт до 3,5 МБ,
+// а двоичный файл идёт в base64 (+33%) — значит, сам файл до ~2,6 МБ.
+const Y_FILE_LIMIT = 2.5 * 1024 * 1024;
 const yRedirect = () => location.origin + location.pathname.replace(/index\.html$/, '');
 const yandexStore = {
   token() {
@@ -152,9 +157,9 @@ const yandexStore = {
   },
   disconnect() { try { localStorage.removeItem(Y_TOKEN); } catch {} },
   async ready() { return this.token() ? true : 'auth'; },
-  async api(path) {
+  async api(path, method) {
     let res;
-    try { res = await fetch(Y_API + path, { headers: { Authorization: 'OAuth ' + this.token(), Accept: 'application/json' } }); }
+    try { res = await fetch(Y_API + path, { method: method || 'GET', headers: { Authorization: 'OAuth ' + this.token(), Accept: 'application/json' } }); }
     catch { throw new Error('Не удалось связаться с Яндекс Диском — проверьте интернет'); }
     if (res.status === 401) { this.disconnect(); const e = new Error('Вход в Яндекс истёк — войдите снова'); e.auth = true; throw e; }
     return res;
@@ -173,41 +178,68 @@ const yandexStore = {
     const res = await this.api('/resources/download?path=' + encodeURIComponent(Y_PATH));
     if (!res.ok) throw new Error('Не удалось получить ссылку на файл (' + res.status + ')');
     const { href } = await res.json();
-    // Ссылка скачивания Яндекса не разрешает чтение из браузера (нет CORS),
-    // поэтому идём через свой прокси: он только пересылает файл, ничего не хранит.
-    if (!Y_PROXIES.length) throw new Error('Не настроен прокси для Яндекс Диска — сообщите разработчику');
-    // Прокси пробуем по очереди: первый, что ответил, и выигрывает
-    // (например, Yandex Cloud доступен везде, Cloudflare — не у всех провайдеров).
-    let file = null;
-    const fails = [];
-    for (const px of Y_PROXIES) {
-      const host = px.replace(/^https?:\/\/([^/]+).*$/, '$1');
-      try {
-        const r = await fetch(px + (px.includes('?') ? '&' : '?') + 'u=' + encodeURIComponent(href), { cache: 'no-store', signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined });
-        if (r.ok) { file = r; break; }
-        const why = (await r.text().catch(() => '')).slice(0, 200);
-        fails.push(host + ': ' + r.status + (why ? ' ' + why : ''));
-      } catch (e) { fails.push(host + ': ' + (e && e.name === 'TimeoutError' ? 'нет ответа' : 'не открылся')); }
-    }
-    if (!file) {
-      console.warn('[Яндекс Диск] прокси не сработали:\n' + fails.join('\n'));
-      throw new Error('Прокси Яндекс Диска недоступен (' + fails.map(f => f.split(' ').slice(0, 2).join(' ')).join('; ') + ')');
-    }
+    const file = await this.fetchVia(href);
     const text = (await file.text()).trim();
     let data = null;
     if (text) { try { data = JSON.parse(text); } catch { throw new Error('Файл на Яндекс Диске повреждён'); } }
     return { data, rev: m.rev };
   },
-  async write(data, rev) {
-    const m = await this.meta();
-    if ((m ? m.rev : null) !== rev) return { conflict: true };
-    const res = await this.api('/resources/upload?path=' + encodeURIComponent(Y_PATH) + '&overwrite=true');
+  /* Ссылка скачивания Яндекса не разрешает чтение из браузера (нет CORS),
+     поэтому идём через свой прокси: он только пересылает файл, ничего не хранит.
+     Прокси пробуем по очереди: первый, что ответил, и выигрывает
+     (Yandex Cloud доступен везде, Cloudflare — не у всех провайдеров). */
+  async fetchVia(href) {
+    if (!Y_PROXIES.length) throw new Error('Не настроен прокси для Яндекс Диска — сообщите разработчику');
+    const fails = [];
+    for (const px of Y_PROXIES) {
+      const host = px.replace(/^https?:\/\/([^/]+).*$/, '$1');
+      try {
+        const r = await fetch(px + (px.includes('?') ? '&' : '?') + 'u=' + encodeURIComponent(href), { cache: 'no-store', signal: AbortSignal.timeout ? AbortSignal.timeout(20000) : undefined });
+        if (r.ok) return r;
+        const why = (await r.text().catch(() => '')).slice(0, 300);
+        fails.push(host + ': ' + r.status + (why ? ' ' + why : ''));
+      } catch (e) { fails.push(host + ': ' + (e && e.name === 'TimeoutError' ? 'нет ответа' : 'не открылся')); }
+    }
+    console.warn('[Яндекс Диск] прокси не сработали:\n' + fails.join('\n'));
+    if (fails.some(f => /file IO failure/.test(f))) throw new Error('Яндекс Диск не может прочитать файл — он повреждён на стороне Яндекса');
+    throw new Error('Прокси Яндекс Диска недоступен (' + fails.map(f => f.split(' ').slice(0, 2).join(' ')).join('; ') + ')');
+  },
+  async upload(path, body) {
+    const res = await this.api('/resources/upload?path=' + encodeURIComponent(path) + '&overwrite=true');
     if (!res.ok) throw new Error('Не удалось начать загрузку (' + res.status + ')');
     const { href, method } = await res.json();
     let up;
-    try { up = await fetch(href, { method: method || 'PUT', body: JSON.stringify(data) }); }
-    catch { throw new Error('Яндекс Диск не принял файл от браузера — сообщите разработчику'); }
+    try { up = await fetch(href, { method: method || 'PUT', body }); }
+    catch { throw new Error('Яндекс Диск не принял файл от браузера — проверьте интернет'); }
     if (!up.ok) throw new Error('Загрузка не удалась (' + up.status + ')');
+  },
+  /* Вложения — отдельными файлами в «Приложения/GMA-OS/files/» */
+  async filesDir() {
+    if (this._dir) return;
+    const res = await this.api('/resources?path=' + encodeURIComponent(Y_FILES), 'PUT');
+    if (!res.ok && res.status !== 409) throw new Error('Не удалось создать папку для файлов (' + res.status + ')');
+    this._dir = true;
+  },
+  async putFile(id, blob) {
+    await this.filesDir();
+    await this.upload(Y_FILES + '/' + id, blob);
+  },
+  async getFile(id) {
+    const res = await this.api('/resources/download?path=' + encodeURIComponent(Y_FILES + '/' + id));
+    if (res.status === 404) throw new Error('Файла нет на Яндекс Диске — возможно, он ещё не загрузился с другого устройства');
+    if (!res.ok) throw new Error('Не удалось получить ссылку на файл (' + res.status + ')');
+    const { href } = await res.json();
+    return (await this.fetchVia(href)).blob();
+  },
+  async delFile(id) {
+    const res = await this.api('/resources?path=' + encodeURIComponent(Y_FILES + '/' + id) + '&permanently=true', 'DELETE');
+    if (!res.ok && res.status !== 404) throw new Error('Не удалось удалить файл (' + res.status + ')');
+  },
+  async rev() { const m = await this.meta(); return m ? m.rev : null; },
+  async write(data, rev) {
+    const m = await this.meta();
+    if ((m ? m.rev : null) !== rev) return { conflict: true };
+    await this.upload(Y_PATH, JSON.stringify(data));
     return { ok: true };
   },
 };
@@ -237,6 +269,7 @@ const PROVIDERS = {
     },
     async read() { return fileStore.read(await fileStore.handle()); },
     async write(data, rev) { return fileStore.write(await fileStore.handle(), data, rev); },
+    async rev() { return (await (await fileStore.handle()).getFile()).lastModified; },
   },
   yandex: yandexStore,
 };
@@ -271,6 +304,7 @@ async function vaultSync(manual) {
     lastError = '';
     status('ok');
     document.dispatchEvent(new CustomEvent('sync-done'));
+    flushAttachments();
   } catch (e) {
     lastError = (e && e.message) || String(e);
     if (e && e.name === 'NotFoundError') lastError = 'Файл не найден — его переместили или удалили. Выберите файл заново.';
@@ -280,6 +314,43 @@ async function vaultSync(manual) {
     if (pending) { pending = false; schedule(); }
   }
 }
+
+/* Перезаписать файл в хранилище данными этого устройства — на случай,
+   если файл там испорчен и не читается. Ничего не вливаем из хранилища. */
+async function vaultOverwrite() {
+  const pv = PROVIDERS[getMode()];
+  if (!pv || busy) return;
+  busy = true;
+  try {
+    const ok = await pv.ready(true);
+    if (ok !== true) { status(ok); return; }
+    status('syncing');
+    const res = await pv.write(buildSnapshot(), await pv.rev());
+    if (res.conflict) throw new Error('Файл изменили во время записи — попробуйте ещё раз');
+    try { localStorage.setItem(LAST_KEY, String(Date.now())); } catch {}
+    lastError = '';
+    status('ok');
+    flushAttachments();
+  } catch (e) {
+    lastError = (e && e.message) || String(e);
+    status(e && e.auth ? 'auth' : 'error');
+  } finally {
+    busy = false;
+  }
+}
+
+/* Вложения: облако — то же хранилище, что выбрано для данных */
+setupAttachments({
+  getMode,
+  cloud: () => (getMode() === 'yandex' && yandexStore.token() && Y_PROXIES.length ? {
+    id: 'yandex',
+    limit: Y_FILE_LIMIT,
+    limitText: 'С Яндекс Диском можно прикреплять файлы до 2,5 МБ',
+    put: (id, blob) => yandexStore.putFile(id, blob),
+    get: id => yandexStore.getFile(id),
+    del: id => yandexStore.delFile(id),
+  } : null),
+});
 
 /* ══════════════ Общий вход для приложения ══════════════ */
 export function syncNow(manual) {
@@ -409,6 +480,10 @@ const filePickHTML = `<div class="vault-filepick" hidden>
       <button type="button" class="btn" data-file="open">Открыть существующий</button>
     </div></div>`;
 
+const overwriteHTML = `<p class="hint">Если файл в хранилище испорчен, его можно заменить данными этого устройства.
+  Изменения, которые есть только в том файле, при этом пропадут.</p>
+  <div class="auth-row"><button type="button" class="btn" data-act="overwrite">Перезаписать данными этого устройства</button></div>`;
+
 /* Панель «Синхронизация» в настройках */
 export function renderSyncPanel(el) {
   if (!el) return;
@@ -433,7 +508,7 @@ export function renderSyncPanel(el) {
     st.innerHTML = `<div class="vault-card">
       <div class="vc-row"><span>Файл</span><b class="vc-file">…</b></div>
       <div class="vc-row"><span>Последняя синхронизация</span><b>${lastSyncText()}</b></div>
-      ${lastError ? `<p class="hint err">${esc(lastError)}</p>` : ''}
+      ${lastError ? `<p class="hint err">${esc(lastError)}</p>${overwriteHTML}` : ''}
       <div class="auth-row">
         <button type="button" class="btn primary" data-act="sync">Синхронизировать</button>
         <button type="button" class="btn" data-act="refile">Другой файл</button>
@@ -452,7 +527,7 @@ export function renderSyncPanel(el) {
       <div class="vc-row"><span>Яндекс Диск</span><b>${has ? 'подключён' : 'нужен вход'}</b></div>
       <div class="vc-row"><span>Файл</span><b>Приложения/GMA-OS/gma-os-data.json</b></div>
       <div class="vc-row"><span>Последняя синхронизация</span><b>${lastSyncText()}</b></div>
-      ${lastError ? `<p class="hint err">${esc(lastError)}</p>` : ''}
+      ${lastError ? `<p class="hint err">${esc(lastError)}</p>${overwriteHTML}` : ''}
       <div class="auth-row">
         ${has ? '<button type="button" class="btn primary" data-act="sync">Синхронизировать</button><button type="button" class="btn" data-act="yout">Отключить</button>'
               : '<button type="button" class="btn primary" data-act="ylogin">Войти через Яндекс</button>'}
@@ -470,6 +545,11 @@ export function renderSyncPanel(el) {
   if (act('sync')) act('sync').onclick = async () => { await vaultSync(true); renderSyncPanel(el); };
   if (act('refile')) act('refile').onclick = () => { el.querySelector('.vault-filepick').hidden = false; };
   if (act('ylogin')) act('ylogin').onclick = () => yandexStore.login();
+  if (act('overwrite')) act('overwrite').onclick = async () => {
+    if (!confirm('Заменить файл в хранилище данными этого устройства? Изменения, сделанные на других устройствах и ещё не попавшие сюда, пропадут.')) return;
+    await vaultOverwrite();
+    renderSyncPanel(el);
+  };
   if (act('yout')) act('yout').onclick = () => {
     if (!confirm('Отключить Яндекс Диск на этом устройстве? Данные останутся и на устройстве, и на Диске.')) return;
     yandexStore.disconnect();
