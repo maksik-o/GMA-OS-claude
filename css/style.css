@@ -3,7 +3,7 @@ input, textarea, [contenteditable="true"] { user-select: text; -webkit-user-sele
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 :root {
-  --mode-work: #dc2626; --mode-home: #16a34a; --mode-study: #2563eb; --mode-all: #d4a017;
+  --mode-work: #dc2626; --mode-home: #16a34a; --mode-study: #2563eb; --mode-all: #ea7a12;
   /* --c-todo задаётся на body[data-surf], т.к. зависит от --text.
      В :root var(--text) ещё не существует → переменная становится
      невалидной и шорткаты `border: 2px solid var(--c-todo)` гасятся целиком. */
@@ -5533,7 +5533,9 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   flex: none; width: 52px; display: flex; flex-direction: column;
   border-radius: var(--r-lg); overflow: hidden;
 }
-#dayPanel .tl-gutterbox .tl-corner { position: static; flex: none; height: var(--tl-head-h); min-height: var(--tl-head-h); background: none; border: 0; }
+#dayPanel .tl-gutterbox .tl-corner { position: static; flex: none; height: var(--tl-heads-h, var(--tl-head-h)); min-height: var(--tl-heads-h, var(--tl-head-h)); background: none; border: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--dim); }
+#dayPanel .tl-block.dragging { z-index: 20; }
 #dayPanel .tl-gscroll { flex: 1 1 auto; min-height: 0; overflow: hidden; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
 #dayPanel .tl-gscroll .tl-hours span { right: 9px; }
 #dayPanel .tl-gridbox {
@@ -5541,7 +5543,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   border-radius: var(--r-lg); overflow: hidden;
 }
 #dayPanel .tl-heads {
-  flex: none; display: flex; height: var(--tl-head-h); padding: 0 3px;
+  flex: none; display: flex; height: var(--tl-heads-h, var(--tl-head-h)); padding: 0 3px;
   border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
 }
 #dayPanel .tl-heads .tl-colhead { position: static; flex: 1 1 0; min-width: 0; margin: 5px 3px; }
@@ -5554,3 +5556,16 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   #dayPanel .tl-gutterbox { width: 42px; }
   #dayPanel .tl-heads .tl-colhead { margin: 5px 2px; }
 }
+
+/* Стрелки и прочерки переноса в квадратах Running-list: на светлых
+   темах — чёрные (белые с тенью там терялись), на тёмных — белые */
+body[data-surf="light"] .pp-dash::after { background: #111; box-shadow: none; }
+body[data-surf="light"] .pp-arrow::after {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M4%2012h14M11%206l7%206-7%206'%20fill='none'%20stroke='%23111'%20stroke-width='3'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E");
+  filter: none;
+}
+
+/* Кнопка-заголовок блока (Running-list / Kanban / Timeline) — с откликом
+   на нажатие, как остальные кнопки */
+.kb-board-title { transition: transform .15s var(--ease-bounce, ease); }
+.kb-board-title:active { transform: scale(.95); }

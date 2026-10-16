@@ -96,7 +96,7 @@ html[data-theme] {
   --c-done: #2f7d4f; --c-started: #c98a12; --c-skipped: #b3261e; --c-postponed: #23408e;
   --accent-deep: var(--accent);
 }
-:root[data-theme="note"], .tmini.t-note { --panel-a: 1; --mode-work: #b3261e; --mode-home: #2f7d4f; --mode-study: #23408e; --mode-all: #9a6b00; }
+:root[data-theme="note"], .tmini.t-note { --panel-a: 1; --mode-work: #b3261e; --mode-home: #2f7d4f; --mode-study: #23408e; --mode-all: #c46200; }
 :root[data-theme="note"] .topbar::before, :root[data-theme="note"] .kb-board-title,
 :root[data-theme="note"] .notes-day-label { font-style: italic; font-weight: 700; }
 :root[data-theme="note"] .mode-blob { background: transparent !important; box-shadow: inset 0 -2.5px 0 var(--accent) !important; border-radius: 0; }
@@ -124,7 +124,7 @@ html[data-theme] {
   --c-done: #18b26b; --c-started: #ff9f1c; --c-skipped: #ff3b3b; --c-postponed: #3b6cff;
   --accent-deep: var(--accent);
 }
-:root[data-theme="brutal"], .tmini.t-brutal { --panel-a: 1; --mode-work: #ff5a36; --mode-home: #18b26b; --mode-study: #3b6cff; --mode-all: #b14cff; }
+:root[data-theme="brutal"], .tmini.t-brutal { --panel-a: 1; --mode-work: #ff5a36; --mode-home: #18b26b; --mode-study: #3b6cff; --mode-all: #ff8a00; }
 :root[data-theme="brutal"] .topbar::before, :root[data-theme="brutal"] .kb-board-title { font-weight: 800; letter-spacing: -.02em; }
 :root[data-theme="brutal"] .icon-btn, :root[data-theme="brutal"] .sync, :root[data-theme="brutal"] .btn,
 :root[data-theme="brutal"] .fab, :root[data-theme="brutal"] .chip, :root[data-theme="brutal"] .fin-fab {
@@ -148,7 +148,10 @@ html[data-theme] {
 :root[data-theme="brutal"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .fin-hero, .fs-card, .fin-card, .tl-wrap, .tl-box) {
   box-shadow: 5px 5px 0 0 var(--accent), 5px 5px 0 2.5px #111;
 }
-:root[data-theme="brutal"] .kb-board-title { color: #111; background: var(--accent); padding: 2px 10px; border: 2px solid #111; border-radius: 8px; box-shadow: 2px 2px 0 #111; }
+:root[data-theme="brutal"] .kb-board-title { color: #111; background: var(--accent); padding: 2px 10px; border: 2px solid #111; border-radius: 8px; box-shadow: 2px 2px 0 #111;
+  /* жёсткая тень визуально тянет кнопку вниз — поднимаем на её половину */
+  transform: translate(-1px, -1px); transition: transform .12s ease, box-shadow .12s ease; }
+:root[data-theme="brutal"] .kb-board-title:active { transform: translate(1px, 1px); box-shadow: 0 0 0 #111; }
 :root[data-theme="brutal"] .topbar::before { color: #111; text-decoration: underline var(--accent) 5px; text-underline-offset: 4px; }
 :root[data-theme="brutal"] .cell.none { border: 2px solid #111; opacity: .25; }
 :root[data-theme="brutal"] .cell.c-done { background: var(--c-done); }
@@ -178,6 +181,10 @@ html[data-theme] {
 :root[data-theme="brutal"] #dayPanel .tl-colhead { background: color-mix(in srgb, var(--accent) 12%, #fff); border: 2px solid #111 !important; box-shadow: 2px 2px 0 #111; }
 :root[data-theme="brutal"] #dayPanel .tl-colhead.today { background: color-mix(in srgb, var(--accent) 45%, #fff); box-shadow: 2px 2px 0 #111; }
 :root[data-theme="brutal"] #dayPanel .tl-chip { border: 2px solid #111; box-shadow: 2px 2px 0 #111; background: #fff; }
+/* у чипов дат жёсткая тень 2px: опускаем линию под ними, чтобы зазор
+   «чип → линия» равнялся зазору «край → чип» */
+:root[data-theme="brutal"] #dayPanel { --tl-heads-h: calc(var(--tl-head-h) + 2px); }
+:root[data-theme="brutal"] #dayPanel .tl-heads .tl-colhead { margin: 5px 4px 7px 3px; }
 
 /* ══════════════ 3. ТЕРМИНАЛ ══════════════ */
 :root[data-theme="term"], :root[data-theme="term"] body, .tmini.t-term {
@@ -193,7 +200,7 @@ html[data-theme] {
   --c-done: #39ff88; --c-started: #ffb000; --c-skipped: #ff5f56; --c-postponed: #4cc9ff;
   --accent-deep: var(--accent);
 }
-:root[data-theme="term"], .tmini.t-term { --panel-a: 1; --mode-work: #39ff88; --mode-home: #ffb000; --mode-study: #4cc9ff; --mode-all: #ff6ad5; }
+:root[data-theme="term"], .tmini.t-term { --panel-a: 1; --mode-work: #39ff88; --mode-home: #ffb000; --mode-study: #4cc9ff; --mode-all: #ff8c1a; }
 :root[data-theme="term"] *, :root[data-theme="term"] *::before, :root[data-theme="term"] *::after { border-radius: 0 !important; }
 :root[data-theme="term"] body { font-size: 14px; }
 :root[data-theme="term"] #app::after {
@@ -211,6 +218,9 @@ html[data-theme] {
 }
 :root[data-theme="term"] .btn.primary, :root[data-theme="term"] .fab, :root[data-theme="term"] .fin-fab,
 :root[data-theme="term"] .bottomnav button.on {
+  /* фон задаём явно: общее правило выше делает кнопки прозрачными, и у
+     залитых оставался тёмный текст на тёмном фоне */
+  background: var(--accent); border-color: var(--accent);
   color: #031006; box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 :root[data-theme="term"] .g-hd.today { background: transparent; box-shadow: inset 0 -2px 0 var(--accent); }
@@ -235,7 +245,7 @@ html[data-theme] {
   --font-head: "Manrope", -apple-system, sans-serif;
   --c-done: #4ade80; --c-started: #fbbf24; --c-skipped: #ff7a7a; --c-postponed: #93c5fd;
 }
-:root[data-theme="glass"], .tmini.t-glass { --panel-a: 0.4; --mode-work: #ff7a7a; --mode-home: #4ade80; --mode-study: #60a5fa; --mode-all: #fbbf24; }
+:root[data-theme="glass"], .tmini.t-glass { --panel-a: 0.4; --mode-work: #ff7a7a; --mode-home: #4ade80; --mode-study: #60a5fa; --mode-all: #fb923c; }
 :root[data-theme="glass"] .topbar::before, :root[data-theme="glass"] .kb-board-title { font-weight: 800; letter-spacing: -.02em; }
 :root[data-theme="glass"] .icon-btn, :root[data-theme="glass"] .sync { border: 1px solid var(--brd); }
 
@@ -252,7 +262,7 @@ html[data-theme] {
   --c-done: #111111; --c-started: #f2a900; --c-skipped: #e4002b; --c-postponed: #0047bb;
   --accent-deep: var(--accent);
 }
-:root[data-theme="swiss"], .tmini.t-swiss { --panel-a: 1; --mode-work: #e4002b; --mode-home: #00875a; --mode-study: #0047bb; --mode-all: #111111; }
+:root[data-theme="swiss"], .tmini.t-swiss { --panel-a: 1; --mode-work: #e4002b; --mode-home: #00875a; --mode-study: #0047bb; --mode-all: #f06400; }
 :root[data-theme="swiss"] .topbar::before, :root[data-theme="swiss"] .kb-board-title { font-weight: 800; letter-spacing: -.04em; }
 :root[data-theme="swiss"] .icon-btn, :root[data-theme="swiss"] .sync, :root[data-theme="swiss"] .btn, :root[data-theme="swiss"] .chip {
   border-radius: 2px; box-shadow: none; border: 1px solid var(--brd); background: #fff;
@@ -290,7 +300,7 @@ html[data-theme] {
   --c-done: #ff3ea5; --c-started: #ffd166; --c-skipped: #ff5c5c; --c-postponed: #2de2e6;
   --accent-deep: var(--accent);
 }
-:root[data-theme="neon"], .tmini.t-neon { --panel-a: 0.88; --mode-work: #ff3ea5; --mode-home: #2de2e6; --mode-study: #ffd166; --mode-all: #b388ff; }
+:root[data-theme="neon"], .tmini.t-neon { --panel-a: 0.88; --mode-work: #ff3ea5; --mode-home: #2de2e6; --mode-study: #ffd166; --mode-all: #ff9b3d; }
 :root[data-theme="neon"] .topbar::before, :root[data-theme="neon"] .kb-board-title {
   text-transform: uppercase; font-weight: 800; letter-spacing: .04em;
   background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #fff)); -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -343,7 +353,7 @@ html[data-theme] {
   /* Залитые кнопки — цвета текущего режима (тёмный текст на них) */
   --accent-deep: var(--accent);
 }
-:root[data-theme="coral"], .tmini.t-coral { --panel-a: 1; --mode-work: #ff6363; --mode-home: #59d499; --mode-study: #56c2ff; --mode-all: #ffc531; }
+:root[data-theme="coral"], .tmini.t-coral { --panel-a: 1; --mode-work: #ff6363; --mode-home: #59d499; --mode-study: #56c2ff; --mode-all: #ff9f43; }
 :root[data-theme="coral"] body { letter-spacing: .01em; font-feature-settings: "calt", "kern", "liga", "ss03"; }
 /* Заголовки шепчут: размер вместо жирности */
 :root[data-theme="coral"] .topbar::before, :root[data-theme="coral"] .kb-board-title,
@@ -463,15 +473,18 @@ html[data-theme] {
 :root:is([data-theme="brutal"], [data-theme="glass"]) .pane-move-handle svg { display: block; width: 100%; height: 100%; }
 :root:is([data-theme="brutal"], [data-theme="glass"]) :is(.dock-handle, .pane-move-handle) path {
   vector-effect: non-scaling-stroke; stroke: var(--accent); stroke-width: var(--h-sw); stroke-linecap: round;
+  /* В SVG — четверть дуги (pathLength=100); видимая часть — отрезок по
+     центру длиной --h-len, так длину ручки задаёт тема, а не разметка */
+  stroke-dasharray: var(--h-len) 100; stroke-dashoffset: calc((100 - var(--h-len)) / -2);
 }
 /* Лего — жирная дуга в тонкой чёрной обводке */
 :root[data-theme="brutal"] :is(.dock-handle, .pane-move-handle) {
-  --h-d: 4px; --h-sw: 3px;
+  --h-d: 4px; --h-sw: 3px; --h-len: 92;
   filter: drop-shadow(1px 0 0 #111) drop-shadow(-1px 0 0 #111) drop-shadow(0 1px 0 #111) drop-shadow(0 -1px 0 #111);
 }
 /* Стекло — светящаяся дуга-блик большего радиуса (панели скруглены сильнее) */
 :root[data-theme="glass"] :is(.dock-handle, .pane-move-handle) {
-  --h-d: 4px; --h-sw: 3px;
+  --h-d: 4px; --h-sw: 3px; --h-len: 62;
   filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent));
 }
 

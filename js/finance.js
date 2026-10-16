@@ -84,16 +84,67 @@ export const getItem = id => state.items.find(i => i.id === id);
 export const catById = id => state.items.find(i => i.id === id && i.kind === 'cat');
 export const accById = id => state.items.find(i => i.id === id && i.kind === 'account');
 
+/* Стандартные категории получают постоянные id. Раньше каждое устройство
+   (и каждый браузер, и PWA отдельно от Safari) заводило свои 15 штук со
+   случайными id — при синхронизации они не узнавали друг друга и
+   складывались: категории множились с каждым новым устройством. */
+const defaultCatId = i => 'cat-d-' + i;
 export async function init() {
   state.items = await dbAll(STORE);
   if (!all('cat').length) {
+    /* Время создания — «из прошлого», чтобы стандартная категория не
+       перебивала переименования, сделанные на других устройствах. */
     const seed = DEFAULT_CATS.map(([name, flow, color], i) => ({
-      id: uid(), kind: 'cat', name, flow, color, order: i,
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      id: defaultCatId(i), kind: 'cat', name, flow, color, order: i,
+      createdAt: '2000-01-01T00:00:00.000Z', updatedAt: '2000-01-01T00:00:00.000Z',
     }));
-    state.items.push(...seed);
-    for (const c of seed) await dbPut(STORE, c);
+    for (const c of seed) if (!state.items.some(x => x.id === c.id)) { state.items.push(c); await dbPut(STORE, c); }
   }
+  await dedupeCategories();
+}
+/* Склеить одинаковые категории (имя + тип, без учёта регистра).
+   Остаётся одна — с постоянным id, если такая есть, иначе с наименьшим id:
+   правило одно на всех устройствах, поэтому все приходят к одному
+   результату. Операции и бюджеты переносятся на неё, лишние помечаются
+   удалёнными — удаление разносится синхронизацией. */
+async function dedupeCategories() {
+  const groups = new Map();
+  for (const c of all('cat')) {
+    const key = c.flow + '|' + String(c.name || '').trim().toLowerCase();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
+  }
+  const remap = new Map();
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    list.sort((a, b) => {
+      const da = /^cat-d-/.test(a.id), db = /^cat-d-/.test(b.id);
+      if (da !== db) return da ? -1 : 1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+    const keep = list[0];
+    for (const dup of list.slice(1)) remap.set(dup.id, keep.id);
+  }
+  if (!remap.size) return false;
+  const now = new Date().toISOString();
+  const changed = [];
+  for (const it of state.items) {
+    if (it.deleted) continue;
+    if (it.kind === 'cat' && remap.has(it.id)) { it.deleted = true; it.updatedAt = now; changed.push(it); }
+    else if ((it.kind === 'tx' || it.kind === 'budget') && remap.has(it.categoryId)) {
+      it.categoryId = remap.get(it.categoryId); it.updatedAt = now; changed.push(it);
+    }
+  }
+  /* Два бюджета на одну категорию после склейки — оставляем один */
+  const seenBudget = new Set();
+  for (const b of all('budget').sort((a, c) => (a.id < c.id ? -1 : 1))) {
+    const k = b.categoryId + '|' + (b.month || '');
+    if (seenBudget.has(k)) { b.deleted = true; b.updatedAt = now; changed.push(b); }
+    else seenBudget.add(k);
+  }
+  for (const it of changed) await dbPut(STORE, it);
+  console.info('[finance] склеено дублей категорий:', remap.size);
+  return true;
 }
 async function put(item) {
   item.updatedAt = new Date().toISOString();
@@ -131,6 +182,7 @@ export async function applyFinanceMerged(list) {
   }
   state.items = [...byId.values()];
   try { await dbBulk(STORE, state.items); } catch (e) { console.error('[finance] dbBulk:', e); }
+  if (await dedupeCategories()) userChange();   // разнести склейку по остальным устройствам
   notify();
 }
 
