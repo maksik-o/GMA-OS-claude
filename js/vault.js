@@ -22,6 +22,7 @@ import { buildSnapshot, applySnapshot, isSnapshot } from './snapshot.js';
 import { dbGetKV, dbSetKV } from './db.js';
 import { esc } from './store.js';
 import * as legacy from './sync.js';
+import { YANDEX_CLIENT_ID } from './config.js';
 
 const MODE_KEY = 'rl_storage';
 const LAST_KEY = 'rl_vault_last';
@@ -42,7 +43,7 @@ export const STORAGES = [
   { id: 'file', label: 'Локальный файл', icon: 'file',
     desc: 'JSON-файл на компьютере. Положите его в папку Яндекс Диска, Dropbox или OneDrive — их программа разнесёт файл по вашим компьютерам.',
     note: 'Chrome и Edge на компьютере', available: hasFileApi },
-  { id: 'yandex', label: 'Яндекс Диск', icon: 'cloud', soon: true, desc: 'Папка «Приложения/GMA-OS» в вашем Яндекс Диске.' },
+  { id: 'yandex', label: 'Яндекс Диск', icon: 'cloud', soon: () => !YANDEX_CLIENT_ID, desc: 'Папка «Приложения/GMA-OS» в вашем Яндекс Диске. Работает на телефоне и компьютере.' },
   { id: 'gdrive', label: 'Google Диск', icon: 'cloud', soon: true, desc: 'Скрытая папка приложения в вашем Google Диске.' },
   { id: 'dropbox', label: 'Dropbox', icon: 'cloud', soon: true, desc: 'Папка «Apps/GMA-OS» в вашем Dropbox.' },
   { id: 'onedrive', label: 'OneDrive', icon: 'cloud', soon: true, desc: 'Папка приложения в вашем OneDrive.' },
@@ -50,6 +51,7 @@ export const STORAGES = [
     desc: 'Прежняя синхронизация: данные хранятся на Google Диске владельца приложения.' },
 ];
 const storageById = id => STORAGES.find(s => s.id === id);
+const isSoon = s => (typeof s.soon === 'function' ? s.soon() : !!s.soon);
 
 /* ── Выбранное хранилище ──
    Тем, кто уже вошёл в прежнюю синхронизацию, ничего не ломаем:
@@ -104,6 +106,94 @@ const fileStore = {
     return { ok: true };
   },
 };
+
+/* ══════════════ Хранилище «Яндекс Диск» ══════════════
+   Вход — через окно Яндекса (OAuth, implicit flow): токен приходит в
+   адресе страницы после возврата и хранится только в этом браузере.
+   Права — только на папку приложения: «Приложения/<имя приложения>».
+   Файл данных — gma-os-data.json в этой папке. */
+const Y_TOKEN = 'rl_yandex_token';
+const Y_STATE = 'rl_yandex_state';
+const Y_PENDING = 'rl_yandex_pending';
+const Y_API = 'https://cloud-api.yandex.net/v1/disk';
+const Y_PATH = 'app:/gma-os-data.json';
+const yRedirect = () => location.origin + location.pathname.replace(/index\.html$/, '');
+const yandexStore = {
+  token() {
+    try {
+      const t = JSON.parse(localStorage.getItem(Y_TOKEN) || 'null');
+      return t && t.exp > Date.now() + 60000 ? t.t : '';
+    } catch { return ''; }
+  },
+  login() {
+    const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { sessionStorage.setItem(Y_STATE, st); localStorage.setItem(Y_PENDING, '1'); } catch {}
+    location.href = 'https://oauth.yandex.ru/authorize?response_type=token'
+      + '&client_id=' + encodeURIComponent(YANDEX_CLIENT_ID)
+      + '&redirect_uri=' + encodeURIComponent(yRedirect())
+      + '&state=' + encodeURIComponent(st);
+  },
+  /* После возврата из окна Яндекса токен лежит в #access_token=… */
+  takeTokenFromUrl() {
+    if (!/access_token=/.test(location.hash) && !/error=/.test(location.hash)) return false;
+    const q = new URLSearchParams(location.hash.slice(1));
+    let expected = '';
+    try { expected = sessionStorage.getItem(Y_STATE) || ''; sessionStorage.removeItem(Y_STATE); } catch {}
+    history.replaceState(null, '', location.pathname + location.search);   // токен не должен остаться в адресе
+    if (q.get('error')) { lastError = 'Яндекс не дал доступ: ' + (q.get('error_description') || q.get('error')); return true; }
+    if (!expected || q.get('state') !== expected) { lastError = 'Ответ Яндекса не прошёл проверку — попробуйте войти ещё раз'; return true; }
+    const exp = Date.now() + (parseInt(q.get('expires_in'), 10) || 31536000) * 1000;
+    try { localStorage.setItem(Y_TOKEN, JSON.stringify({ t: q.get('access_token'), exp })); } catch {}
+    let pending = false;
+    try { pending = localStorage.getItem(Y_PENDING) === '1'; localStorage.removeItem(Y_PENDING); } catch {}
+    if (pending) setMode('yandex');
+    return true;
+  },
+  disconnect() { try { localStorage.removeItem(Y_TOKEN); } catch {} },
+  async ready() { return this.token() ? true : 'auth'; },
+  async api(path) {
+    let res;
+    try { res = await fetch(Y_API + path, { headers: { Authorization: 'OAuth ' + this.token(), Accept: 'application/json' } }); }
+    catch { throw new Error('Не удалось связаться с Яндекс Диском — проверьте интернет'); }
+    if (res.status === 401) { this.disconnect(); const e = new Error('Вход в Яндекс истёк — войдите снова'); e.auth = true; throw e; }
+    return res;
+  },
+  /* Версия файла: revision (если отдаётся) или md5 + время изменения */
+  async meta() {
+    const res = await this.api('/resources?path=' + encodeURIComponent(Y_PATH) + '&fields=md5,modified,revision');
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error('Яндекс Диск ответил ошибкой ' + res.status);
+    const m = await res.json();
+    return { rev: m.revision != null ? String(m.revision) : (m.md5 || '') + '|' + (m.modified || '') };
+  },
+  async read() {
+    const m = await this.meta();
+    if (!m) return { data: null, rev: null };
+    const res = await this.api('/resources/download?path=' + encodeURIComponent(Y_PATH));
+    if (!res.ok) throw new Error('Не удалось получить ссылку на файл (' + res.status + ')');
+    const { href } = await res.json();
+    let file;
+    try { file = await fetch(href); } catch { throw new Error('Яндекс Диск не отдал файл браузеру — сообщите разработчику'); }
+    if (!file.ok) throw new Error('Не удалось скачать файл (' + file.status + ')');
+    const text = (await file.text()).trim();
+    let data = null;
+    if (text) { try { data = JSON.parse(text); } catch { throw new Error('Файл на Яндекс Диске повреждён'); } }
+    return { data, rev: m.rev };
+  },
+  async write(data, rev) {
+    const m = await this.meta();
+    if ((m ? m.rev : null) !== rev) return { conflict: true };
+    const res = await this.api('/resources/upload?path=' + encodeURIComponent(Y_PATH) + '&overwrite=true');
+    if (!res.ok) throw new Error('Не удалось начать загрузку (' + res.status + ')');
+    const { href, method } = await res.json();
+    let up;
+    try { up = await fetch(href, { method: method || 'PUT', body: JSON.stringify(data) }); }
+    catch { throw new Error('Яндекс Диск не принял файл от браузера — сообщите разработчику'); }
+    if (!up.ok) throw new Error('Загрузка не удалась (' + up.status + ')');
+    return { ok: true };
+  },
+};
+
 const PICK_TYPES = [{ description: 'Данные GMA-OS', accept: { 'application/json': ['.json'] } }];
 async function pickFile(create) {
   try {
@@ -117,27 +207,45 @@ async function pickFile(create) {
 }
 
 /* ── Синхронизация с выбранным хранилищем ── */
+/* Единый интерфейс хранилища для движка:
+   ready(manual) → true | 'perm' | 'auth' | 'error'; read() → { data, rev };
+   write(data, rev) → { conflict } — конфликт, если версия уже не та. */
+const PROVIDERS = {
+  file: {
+    async ready(manual) {
+      const h = await fileStore.handle();
+      if (!h) { lastError = 'Файл не выбран'; return 'error'; }
+      return (await fileStore.permitted(h, manual)) ? true : 'perm';
+    },
+    async read() { return fileStore.read(await fileStore.handle()); },
+    async write(data, rev) { return fileStore.write(await fileStore.handle(), data, rev); },
+  },
+  yandex: yandexStore,
+};
+const syncable = m => !!PROVIDERS[m];
+
 async function vaultSync(manual) {
   const mode = getMode();
-  if (mode !== 'file') {
+  const pv = PROVIDERS[mode];
+  if (!pv) {
     if (mode === 'device' || !mode) status('local');
     return;
   }
   if (busy) { pending = true; return; }
   busy = true;
   try {
-    const h = await fileStore.handle();
-    if (!h) { lastError = 'Файл не выбран'; status('error'); return; }
-    if (!(await fileStore.permitted(h, manual))) { status('perm'); return; }
+    const ok = await pv.ready(manual);
+    if (ok !== true) { status(ok); return; }
+    if (!navigator.onLine && mode !== 'file') { status('offline'); return; }
     status('syncing');
     let written = false;
     for (let i = 0; i < 3 && !written; i++) {
-      const { data, rev } = await fileStore.read(h);
+      const { data, rev } = await pv.read();
       if (data) {
-        if (!isSnapshot(data)) throw new Error('В выбранном файле не данные GMA-OS — выберите другой файл');
+        if (!isSnapshot(data)) throw new Error('В хранилище лежат не данные GMA-OS');
         await applySnapshot(data);
       }
-      const res = await fileStore.write(h, buildSnapshot(), rev);
+      const res = await pv.write(buildSnapshot(), rev);
       written = !res.conflict;   // файл изменили между чтением и записью — повторяем
     }
     if (!written) throw new Error('Файл постоянно меняется другим устройством — попробуйте ещё раз');
@@ -148,7 +256,7 @@ async function vaultSync(manual) {
   } catch (e) {
     lastError = (e && e.message) || String(e);
     if (e && e.name === 'NotFoundError') lastError = 'Файл не найден — его переместили или удалили. Выберите файл заново.';
-    status('error');
+    status(e && e.auth ? 'auth' : 'error');
   } finally {
     busy = false;
     if (pending) { pending = false; schedule(); }
@@ -164,7 +272,7 @@ export function syncNow(manual) {
 export function schedule() {
   const m = getMode();
   if (m === 'legacy') { legacy.schedule(); return; }
-  if (m !== 'file') return;
+  if (!syncable(m)) return;
   clearTimeout(timer);
   timer = setTimeout(() => vaultSync(false), 2000);
 }
@@ -177,12 +285,14 @@ export function syncInit() {
   window.addEventListener('offline', () => { if (getMode() === 'legacy') status('offline'); });
   /* Файл мог изменить другой компьютер через папку облака — подтягиваем,
      когда приложение снова на экране */
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && getMode() === 'file') vaultSync(false); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && syncable(getMode())) vaultSync(false); });
+  /* Вернулись из окна входа Яндекса — забираем токен из адреса */
+  if (YANDEX_CLIENT_ID) yandexStore.takeTokenFromUrl();
   const m = getMode();
   if (m === 'legacy') {
     legacy.refreshStatus();
     if (legacy.configured() && legacy.signedIn()) setTimeout(() => legacy.syncNow(), 300);
-  } else if (m === 'file') {
+  } else if (syncable(m)) {
     setTimeout(() => vaultSync(false), 300);
   } else {
     status('local');
@@ -233,8 +343,8 @@ export function importBackup(onDone) {
 
 /* ══════════════ Интерфейс ══════════════ */
 function optionHTML(s, current) {
-  const off = s.soon || (s.available && !s.available());
-  const badge = s.soon ? '<span class="vo-badge">скоро</span>'
+  const off = isSoon(s) || (s.available && !s.available());
+  const badge = isSoon(s) ? '<span class="vo-badge">скоро</span>'
     : s.id === current ? '<span class="vo-badge on">выбрано</span>'
     : (s.available && !s.available()) ? `<span class="vo-badge">${esc(s.note || 'недоступно')}</span>` : '';
   return `<button type="button" class="vault-opt${s.id === current ? ' on' : ''}" data-st="${s.id}"${off ? ' disabled' : ''}>
@@ -262,8 +372,10 @@ function bindOptions(root, onChange) {
       if (box) { box.hidden = false; box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
       return;
     }
+    if (id === 'yandex' && !yandexStore.token()) { yandexStore.login(); return; }   // вернёмся уже с доступом
     setMode(id);
     if (id === 'legacy') { legacy.refreshStatus(); legacy.syncNow(); }
+    else if (syncable(id)) vaultSync(true);
     else status('local');
     onChange(id);
   });
@@ -316,18 +428,37 @@ export function renderSyncPanel(el) {
         if (row) row.insertAdjacentHTML('beforebegin', '<p class="hint">Браузер просит заново разрешить доступ к файлу — нажмите «Синхронизировать».</p>');
       }
     });
+  } else if (mode === 'yandex') {
+    const has = !!yandexStore.token();
+    st.innerHTML = `<div class="vault-card">
+      <div class="vc-row"><span>Яндекс Диск</span><b>${has ? 'подключён' : 'нужен вход'}</b></div>
+      <div class="vc-row"><span>Файл</span><b>Приложения/GMA-OS/gma-os-data.json</b></div>
+      <div class="vc-row"><span>Последняя синхронизация</span><b>${lastSyncText()}</b></div>
+      ${lastError ? `<p class="hint err">${esc(lastError)}</p>` : ''}
+      <div class="auth-row">
+        ${has ? '<button type="button" class="btn primary" data-act="sync">Синхронизировать</button><button type="button" class="btn" data-act="yout">Отключить</button>'
+              : '<button type="button" class="btn primary" data-act="ylogin">Войти через Яндекс</button>'}
+      </div></div>`;
   } else if (mode === 'device' || !mode) {
     st.innerHTML = `<p class="hint">${mode ? 'Данные хранятся только в этом браузере. Если очистить данные сайта или сменить устройство, они пропадут — сохраняйте резервную копию.' : 'Хранилище ещё не выбрано — пока данные лежат только на этом устройстве.'}</p>`;
   } else if (mode === 'legacy') {
     st.innerHTML = '<div class="vault-legacy"></div>';
     legacy.renderSyncPanel(st.querySelector('.vault-legacy'));
-  } else if (s && s.soon) {
+  } else if (s && isSoon(s)) {
     st.innerHTML = '<p class="hint">Это хранилище появится в следующем обновлении.</p>';
   }
   bindOptions(el, () => renderSyncPanel(el));
   const act = a => el.querySelector(`[data-act="${a}"]`);
   if (act('sync')) act('sync').onclick = async () => { await vaultSync(true); renderSyncPanel(el); };
   if (act('refile')) act('refile').onclick = () => { el.querySelector('.vault-filepick').hidden = false; };
+  if (act('ylogin')) act('ylogin').onclick = () => yandexStore.login();
+  if (act('yout')) act('yout').onclick = () => {
+    if (!confirm('Отключить Яндекс Диск на этом устройстве? Данные останутся и на устройстве, и на Диске.')) return;
+    yandexStore.disconnect();
+    setMode('device');
+    status('local');
+    renderSyncPanel(el);
+  };
   act('export').onclick = () => exportBackup();
   act('import').onclick = () => importBackup(() => renderSyncPanel(el));
 }
