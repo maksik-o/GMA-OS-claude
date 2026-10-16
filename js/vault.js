@@ -185,7 +185,7 @@ const yandexStore = {
       try {
         const r = await fetch(px + (px.includes('?') ? '&' : '?') + 'u=' + encodeURIComponent(href), { cache: 'no-store', signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined });
         if (r.ok) { file = r; break; }
-        const why = (await r.text().catch(() => '')).slice(0, 200);
+        const why = (await r.text().catch(() => '')).slice(0, 300);
         fails.push(host + ': ' + r.status + (why ? ' ' + why : ''));
       } catch (e) { fails.push(host + ': ' + (e && e.name === 'TimeoutError' ? 'нет ответа' : 'не открылся')); }
     }
