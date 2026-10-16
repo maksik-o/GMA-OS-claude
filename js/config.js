@@ -16,4 +16,4 @@ export const YANDEX_CLIENT_ID = '08e532e75ecb430baf6f86bf1e7aaeac';
 // Адрес своего Cloudflare Worker (proxy/yandex-worker.js) — Яндекс не даёт
 // браузеру скачать файл напрямую. Прокси только пересылает файл, не хранит.
 // Пусто — вариант «Яндекс Диск» помечен «скоро».
-export const YANDEX_PROXY = '';
+export const YANDEX_PROXY = 'https://gma-os-yandex.maksimgomzyakov1.workers.dev/';
