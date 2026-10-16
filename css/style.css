@@ -5333,3 +5333,129 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .vault-note { margin-top: 0; }
 .vault-modal { width: min(520px, 100%); overflow-y: auto; }
 .vault-modal .notes-list-head { margin-bottom: 6px; }
+
+/* ══════════════ Панель новой задачи: варианты (quick.js) ══════════════ */
+.q-alt { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.q-alt[hidden], .sheet .q-classic[hidden] { display: none !important; }
+.qx { overflow-y: auto; padding: 0 16px 6px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; min-height: 0; }
+.qx-actions { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--brd); }
+.qx-cap { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 2px 0 8px; }
+.qx-row { display: flex; align-items: center; gap: 8px; padding: 7px 2px; font-size: 13.5px; }
+.qx-row i { width: 4px; height: 18px; border-radius: 2px; flex: none; }
+.qx-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.qx-row em { font-style: normal; font-size: 11.5px; color: var(--dim); white-space: nowrap; }
+.qx-p1 { color: var(--accent); }
+.qx-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.qx-seg button, .qx-filebtn {
+  border: 0; border-radius: 10px; padding: 8px 11px; font-size: 13px; font-weight: 700; cursor: pointer;
+  background: var(--card); color: var(--text); transition: background .15s, transform .15s;
+}
+.qx-seg button:active, .qx-filebtn:active { transform: scale(.96); }
+.qx-seg button.on { background: var(--accent); color: var(--on-accent, #fff); }
+
+/* умная строка */
+.qx-line { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 6%, transparent); }
+.qx-in { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: var(--text); font: inherit; font-size: 16px; font-weight: 600; padding: 10px 0; }
+.qx-send { flex: none; width: 40px; height: 40px; border: 0; border-radius: 12px; background: var(--accent); color: var(--on-accent, #fff); font-size: 19px; font-weight: 800; cursor: pointer; }
+.qx-send:disabled { opacity: .35; cursor: default; }
+.qx-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 30px; margin: 10px 0 0; }
+.qx-chip { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; padding: 5px 10px; font-size: 12.5px; font-weight: 800; cursor: pointer;
+  --k: var(--dim); background: color-mix(in srgb, var(--k) 15%, transparent); color: var(--k); animation: qxpop .25s var(--ease-bounce, ease); }
+.qx-chip span { opacity: .55; font-size: 10px; }
+.qx-chip.k-day { --k: #6d4aff; } .qx-chip.k-time { --k: #0284c7; } .qx-chip.k-dur { --k: var(--c-time, #64748b); }
+.qx-chip.k-pri { --k: var(--accent); } .qx-chip.k-mode { --k: #0ea371; } .qx-chip.k-type { --k: #c2670a; }
+@keyframes qxpop { from { transform: scale(.7); opacity: 0; } }
+.qx-to { font-size: 12px; color: var(--dim); }
+.qx-sugg { display: flex; gap: 6px; overflow-x: auto; margin: 10px -16px 0; padding: 0 16px 2px; scrollbar-width: none; }
+.qx-sugg::-webkit-scrollbar { display: none; }
+.qx-sugg button { flex: none; border: 1px dashed color-mix(in srgb, var(--text) 22%, transparent); background: none; color: var(--dim);
+  border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.qx-added { margin-top: 8px; }
+.qx-added .qx-row { animation: qxin .5s ease; border-radius: 8px; }
+@keyframes qxin { from { background: color-mix(in srgb, var(--accent) 16%, transparent); transform: translateX(-8px); } }
+.qx-help { margin: 8px 0 4px; font-size: 11.5px; color: var(--dim); }
+
+/* конструктор */
+.qx-title { font-size: 19px; font-weight: 700; }
+.qx-tools { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
+.qx-tools::-webkit-scrollbar { display: none; }
+.qx-tool { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 190px; padding: 8px 11px; border-radius: 12px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); background: color-mix(in srgb, var(--text) 4%, transparent); color: var(--text); font-size: 13px; font-weight: 700; }
+.qx-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.qx-tool span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qx-tool.set { background: color-mix(in srgb, var(--accent) 13%, transparent); border-color: transparent; color: var(--accent); }
+.qx-tool.open { box-shadow: inset 0 0 0 2px var(--accent); }
+.qx-pop { margin-top: 10px; padding: 10px; border-radius: 14px; background: color-mix(in srgb, var(--text) 5%, transparent); }
+.qx-pop .q-days { margin: 0 0 8px; }
+.qx-wk { margin-left: auto; display: inline-flex; gap: 4px; }
+.qx-wk button { width: 26px; height: 22px; border: 0; border-radius: 7px; background: var(--card); color: var(--text); font-weight: 800; cursor: pointer; }
+.qx-timein { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); margin: 0 0 10px; }
+.qx-timein input { border: 0; border-radius: 9px; padding: 6px 8px; background: var(--card); color: var(--text); font: inherit; }
+.qx-subin { display: flex; gap: 6px; }
+.qx-subin input { flex: 1; min-width: 0; border: 0; border-radius: 10px; padding: 8px 10px; background: var(--card); color: var(--text); font: inherit; font-size: 14px; outline: none; }
+.qx-subs { list-style: none; margin: 6px 0 0; padding: 0; }
+.qx-subs li { display: flex; align-items: center; gap: 8px; padding: 4px 2px; font-size: 13.5px; }
+.qx-subs li span { flex: 1; min-width: 0; }
+.qx-subs li button { border: 0; background: none; color: var(--dim); cursor: pointer; }
+.qx-filename { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.qx-preview { margin: 12px 0 4px; padding: 8px 10px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--text) 20%, transparent); }
+.qx-preview .qx-cap { margin: 0; }
+
+/* штурм и раскладка */
+.qx-steps { display: flex; gap: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 10px; }
+.qx-steps .on { color: var(--accent); }
+.qx-lines { width: 100%; min-height: 180px; height: 34dvh; max-height: 300px; border: 0; outline: none; resize: none; border-radius: 14px; padding: 10px 12px;
+  background-color: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text); font: inherit; font-size: 16px; font-weight: 600; line-height: 28px;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 27px, color-mix(in srgb, var(--text) 9%, transparent) 27px 28px); background-position: 0 10px; background-attachment: local; }
+.qx-count { font-size: 12px; color: var(--dim); margin: 6px 2px 4px; }
+.qx-deck { position: relative; height: 210px; margin: 2px 0 12px; }
+.qx-card { position: absolute; inset: 0 10px 22px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; text-align: center;
+  padding: 22px; border-radius: 20px; background: var(--card); color: var(--text); box-shadow: 0 14px 30px -14px rgba(0,0,0,.35), var(--inner-glow, 0 0 0 transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent); font-weight: 800; font-size: 19px; line-height: 1.3; user-select: none; -webkit-user-select: none; transition: transform .25s, opacity .25s; }
+.qx-card.top { touch-action: none; cursor: grab; }
+.qx-card.top:active { cursor: grabbing; }
+.qx-card.back { transform: translateY(12px) scale(.95); opacity: .6; }
+.qx-card.back2 { transform: translateY(22px) scale(.9); opacity: .3; }
+.qx-card-t { overflow-wrap: anywhere; }
+.qx-card small { font-size: 12px; font-weight: 600; color: var(--dim); }
+.qx-stamp { position: absolute; top: 14px; padding: 3px 9px; border: 2px solid; border-radius: 8px; font-size: 12.5px; font-weight: 900; opacity: 0; pointer-events: none; }
+.qx-stamp.l { left: 14px; color: #6d4aff; transform: rotate(-8deg); }
+.qx-stamp.r { right: 14px; color: #0ea371; transform: rotate(8deg); }
+.qx-stamp.u { left: 50%; translate: -50% 0; color: var(--dim); }
+.qx-dirs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.qx-dirs button { border: 0; border-radius: 12px; padding: 10px 4px; font-size: 13px; font-weight: 800; cursor: pointer; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); }
+.qx-load { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.qx-load button { border: 0; border-radius: 10px; padding: 6px 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--dim); font-size: 10.5px; font-weight: 800; transition: box-shadow .15s, background .15s; }
+.qx-load button b { font-size: 15px; color: var(--text); }
+.qx-load button.today b { color: var(--accent); }
+.qx-load button.busy { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.qx-load button.hl { box-shadow: inset 0 0 0 2px var(--accent); }
+.qx-done { text-align: center; padding: 34px 10px; font-size: 18px; font-weight: 800; }
+.qx-done small { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--dim); }
+
+/* компьютер: умная строка — посередине экрана, как поиск */
+@media (min-width: 900px) and (hover: hover) {
+  .sheet[data-qs="smart"] { top: 16vh; bottom: auto; border-radius: 22px; max-height: 70vh;
+    transform: translate(-50%, -24px) scale(.97); opacity: 0;
+    transition: transform .28s var(--ease-spring, ease), opacity .2s ease, visibility 0s linear .28s; }
+  .sheet[data-qs="smart"].open { transform: translate(-50%, 0); opacity: 1; transition: transform .28s var(--ease-spring, ease), opacity .2s ease, visibility 0s; }
+  .sheet[data-qs="smart"] .grip { display: none; }
+  .sheet[data-qs="smart"] .qx { padding-top: 14px; }
+}
+
+/* Настройки → Ввод новой задачи */
+.qs-opts { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 12px; }
+.qs-opt { padding: 12px; border-radius: var(--r-md, 14px); cursor: pointer; background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); transition: border-color .2s, background .2s; }
+.qs-opt:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.qs-opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--card)); }
+.qs-top { display: flex; align-items: center; gap: 10px; }
+.qs-top b { flex: 1; font-size: 14.5px; }
+.qs-ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 16px; flex: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.qs-desc { margin: 8px 0 0; font-size: 13px; line-height: 1.45; }
+.qs-how { display: none; margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: var(--dim); }
+.qs-how li { margin: 3px 0; }
+.qs-opt.on .qs-how { display: block; }

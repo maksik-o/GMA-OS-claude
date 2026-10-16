@@ -6,6 +6,7 @@ import {
 } from './store.js';
 import { attachFile, openTaskFile, removeTaskFile, fmtSize } from './files.js';
 import { limitNote } from './attach.js';
+import { quickStyle, renderQuickAlt } from './quick.js';
 import { renderAll } from './week.js';
 import { createCalDrum, calTitle } from './cal.js';
 import * as tm from './timer.js';
@@ -85,6 +86,18 @@ export function closeDay() {
   refreshBackdrop();
 }
 function openQuick() {
+  const style = quickStyle();
+  const alt = $('qAlt');
+  if (sheet) sheet.dataset.qs = style;
+  sheet?.querySelectorAll('.q-classic').forEach(x => { x.hidden = style !== 'classic'; });
+  if (alt) alt.hidden = style === 'classic';
+  if (style !== 'classic' && alt) {
+    editId = null;
+    renderQuickAlt(alt, { close: closeSheet, openEditor, rerender: renderAll });
+    if (sheet) sheet.classList.add('open');
+    refreshBackdrop();
+    return;
+  }
   editId = null;
   calOpen = false;
   calAnchor = null;
@@ -121,6 +134,7 @@ on('fNoDate', 'click', () => { draft.days = {}; renderQuick(); });
 on('fCustom', 'click', () => { calOpen = !calOpen; renderQuick(); });
 sheet?.addEventListener('submit', async e => {
   e.preventDefault();
+  if (quickStyle() !== 'classic') return;   // у других вариантов свой ввод (quick.js)
   const title = ft ? ft.value.trim() : '';
   if (!title) { ft && ft.focus(); return; }
   await createTask({ title, days: draft.days, priority: 2, type: 'task', tags: [], notes: '' });
