@@ -4004,7 +4004,7 @@ body.cc-dragging, body.cc-dragging #app { touch-action: none; }
 .tl-wd { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); }
 .tl-colhead b { font-size: 15px; font-weight: 800; }
 .tl-colhead i { font-style: normal; font-size: 10.5px; color: var(--dim); }
-.tl-col.today .tl-colhead b { color: var(--accent); }
+.tl-col.today .tl-colhead b, .tl-colhead.today b { color: var(--accent); }
 .tl-col.today .tl-colhead { box-shadow: inset 0 -2px 0 var(--accent); }
 .tl-area { position: relative; }
 .tl-line { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--text) 8%, transparent); }
@@ -5460,19 +5460,19 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   background: none !important; box-shadow: none !important; border: 0 !important;
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
   padding: 0 !important; overflow: visible !important; border-radius: 0;
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 12px;   /* как от шапки приложения до шапки таймлайна */
 }
 #dayPanel.timeline-panel::before, #dayPanel.timeline-panel::after { display: none !important; }
 #dayPanel > .tl-headbox {
   position: relative; top: auto; z-index: 2; flex: none;
-  margin: 0 !important; padding: 10px 16px !important; border-radius: var(--r-lg);
+  margin: 0 !important; padding: 5px 12px 5px 14px !important; border-radius: var(--r-lg);
   display: flex; flex-direction: column; justify-content: center;
 }
 #dayPanel > .tl-headbox::after { display: none; }
-#dayPanel > .tl-headbox .kb-row { min-height: 38px; align-items: center; padding-left: 0; }
+#dayPanel > .tl-headbox .kb-row { min-height: 32px; align-items: center; padding-left: 0; }
 #dayPanel > .tl-headbox .kb-row > * { align-self: center; }
 #dayPanel > .tl-headbox .kb-right { margin-left: auto; padding-right: 2px; gap: 8px; }
-#dayPanel > .tl-body { border-radius: var(--r-lg); overflow: auto; }
+
 
 /* Лоток задач без времени — анимация высоты через grid */
 #dayPanel .tl-tray {
@@ -5510,7 +5510,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   background: color-mix(in srgb, var(--text) 6%, var(--panel-solid)); box-shadow: none;
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
-#dayPanel .tl-col.today .tl-colhead {
+#dayPanel .tl-colhead.today {
   background: color-mix(in srgb, var(--accent) 20%, var(--panel-solid));
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 70%, transparent);
 }
@@ -5520,4 +5520,37 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 @media (max-width: 720px) {
   #dayPanel > .tl-headbox { padding: 8px 12px !important; }
   #dayPanel .tl-colhead { margin: 5px 3px 3px; }
+}
+
+/* Сетка таймлайна: столбик времени — свой бокс, колонки — свой.
+   Строка дней не прокручивается, часы едут вместе с колонками.
+   Прокрутка не «запирается»: у 00:00 и 24:00 она уходит странице. */
+#dayPanel > .tl-body {
+  display: flex; gap: 12px; align-items: stretch;
+  overflow: visible !important; max-height: none !important; border-radius: 0; background: none;
+}
+#dayPanel .tl-gutterbox {
+  flex: none; width: 52px; display: flex; flex-direction: column;
+  border-radius: var(--r-lg); overflow: hidden;
+}
+#dayPanel .tl-gutterbox .tl-corner { position: static; flex: none; height: var(--tl-head-h); min-height: var(--tl-head-h); background: none; border: 0; }
+#dayPanel .tl-gscroll { flex: 1 1 auto; min-height: 0; overflow: hidden; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
+#dayPanel .tl-gscroll .tl-hours span { right: 9px; }
+#dayPanel .tl-gridbox {
+  flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column;
+  border-radius: var(--r-lg); overflow: hidden;
+}
+#dayPanel .tl-heads {
+  flex: none; display: flex; height: var(--tl-head-h); padding: 0 3px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+}
+#dayPanel .tl-heads .tl-colhead { position: static; flex: 1 1 0; min-width: 0; margin: 5px 3px; }
+#dayPanel .tl-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: auto; }
+#dayPanel .tl-cols { display: flex; min-width: 0; }
+#dayPanel .tl-col { border-left: 0; }
+#dayPanel .tl-col + .tl-col { border-left: 1px solid color-mix(in srgb, var(--text) 7%, transparent); }
+@media (max-width: 720px) {
+  #dayPanel > .tl-body { gap: 6px; }
+  #dayPanel .tl-gutterbox { width: 42px; }
+  #dayPanel .tl-heads .tl-colhead { margin: 5px 2px; }
 }

@@ -74,7 +74,7 @@ function bindPaneMoveHandle() {
     handle = document.createElement('div');
     handle.className = 'pane-move-handle';
     handle.title = 'Перетащи, чтобы поменять сторону';
-    handle.innerHTML = '<svg viewBox="0 0 32 32"><path d="M2 22 A20 20 0 0 1 12 4.68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
+    handle.innerHTML = '<svg viewBox="0 0 32 32"><path d="M2.68 16.82 A20 20 0 0 1 16.82 2.68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
     pane.appendChild(handle);
   }
   if (handle._bound) return;

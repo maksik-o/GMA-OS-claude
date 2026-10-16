@@ -202,28 +202,40 @@ export function renderTimeline(panel) {
           : '<span class="tl-tray-empty">Все задачи этих дней уже расставлены</span>') +
       '</div></div>' +
     '</div>' +
-    '<div class="tl-body glass tl-box">' +
-      '<div class="tl-gutter">' +
+    /* Сетка — два бокса: столбик времени и колонки дней. Строка дней
+       стоит на месте, прокручиваются только часы; столбик времени едет
+       синхронно с колонками (своей прокрутки у него нет). */
+    '<div class="tl-body">' +
+      '<div class="tl-gutterbox glass tl-box">' +
         '<div class="tl-corner"></div>' +
-        `<div class="tl-hours" style="height:${24 * HOUR + 1}px">` +
-          hours.map(h => `<span class="${h === 0 ? 'first' : h === 24 ? 'last' : ''}" style="top:${h * HOUR}px">${String(h).padStart(2, '0')}:00</span>`).join('') +
+        '<div class="tl-gscroll">' +
+          `<div class="tl-hours" style="height:${24 * HOUR + 1}px">` +
+            hours.map(h => `<span class="${h === 0 ? 'first' : h === 24 ? 'last' : ''}" style="top:${h * HOUR}px">${String(h).padStart(2, '0')}:00</span>`).join('') +
+          '</div>' +
         '</div>' +
       '</div>' +
-      '<div class="tl-cols">' +
-        list.map(d => {
-          const items = dayItems(d);
-          const wd = WEEKDAYS[(parseISO(d).getDay() + 6) % 7];
-          return `<section class="tl-col${d === t0 ? ' today' : ''}" data-day="${d}">
-            <header class="tl-colhead"><span class="tl-wd">${wd}</span><b>${+d.slice(8)}</b><i>${MONTHS[+d.slice(5, 7) - 1]}</i></header>
-
-            <div class="tl-area" style="height:${24 * HOUR}px">
-              ${hours.map(h => `<i class="tl-line" style="top:${h * HOUR}px"></i>${h < 24 ? `<i class="tl-line half" style="top:${h * HOUR + HOUR / 2}px"></i>` : ''}`).join('')}
-              ${routinesForDay(d).map(r => routineHTML(r)).join('')}
-              ${items.map(b => blockHTML(b, d)).join('')}
-              ${d === t0 ? `<div class="tl-now" style="top:${(nowMin / 60) * HOUR}px"><i></i></div>` : ''}
-            </div>
-          </section>`;
-        }).join('') +
+      '<div class="tl-gridbox glass tl-box">' +
+        '<div class="tl-heads">' +
+          list.map(d => {
+            const wd = WEEKDAYS[(parseISO(d).getDay() + 6) % 7];
+            return `<header class="tl-colhead${d === t0 ? ' today' : ''}" data-day="${d}"><span class="tl-wd">${wd}</span><b>${+d.slice(8)}</b><i>${MONTHS[+d.slice(5, 7) - 1]}</i></header>`;
+          }).join('') +
+        '</div>' +
+        '<div class="tl-scroll">' +
+          '<div class="tl-cols">' +
+            list.map(d => {
+              const items = dayItems(d);
+              return `<section class="tl-col${d === t0 ? ' today' : ''}" data-day="${d}">
+                <div class="tl-area" style="height:${24 * HOUR}px">
+                  ${hours.map(h => `<i class="tl-line" style="top:${h * HOUR}px"></i>${h < 24 ? `<i class="tl-line half" style="top:${h * HOUR + HOUR / 2}px"></i>` : ''}`).join('')}
+                  ${routinesForDay(d).map(r => routineHTML(r)).join('')}
+                  ${items.map(b => blockHTML(b, d)).join('')}
+                  ${d === t0 ? `<div class="tl-now" style="top:${(nowMin / 60) * HOUR}px"><i></i></div>` : ''}
+                </div>
+              </section>`;
+            }).join('') +
+          '</div>' +
+        '</div>' +
       '</div>' +
     '</div>';
 
@@ -272,26 +284,40 @@ export function renderTimeline(panel) {
   panel.querySelectorAll('.tl-routine').forEach(n => bindRoutine(n));
   panel.querySelectorAll('.tl-area').forEach(a => bindArea(a));
 
-  const body = panel.querySelector('.tl-body');
+  const body = panel.querySelector('.tl-scroll');
+  const gscroll = panel.querySelector('.tl-gscroll');
   panel.classList.toggle('tl-expanded', expanded);
   if (expanded) {
     body.style.maxHeight = '';
+    gscroll.style.maxHeight = '';
     if (_scroll != null) body.scrollTop = _scroll;
     else centerNow(body);
   } else {
     /* Окно на 8 часов: панель не растёт на весь экран и не мешает
        странице скроллиться. */
-    body.style.maxHeight = (WINDOW_H * HOUR + 42) + 'px';
+    body.style.maxHeight = (WINDOW_H * HOUR) + 'px';
+    gscroll.style.maxHeight = (WINDOW_H * HOUR) + 'px';
     centerNow(body);
   }
+  const syncGutter = () => { gscroll.scrollTop = body.scrollTop; };
+  syncGutter();
   body.addEventListener('scroll', () => {
+    syncGutter();
     _scroll = body.scrollTop;
     _userScrolledAt = Date.now();
   }, { passive: true });
+  /* Колесо над столбиком времени крутит колонки. Дошли до 00:00 или
+     24:00 — не мешаем: прокрутка уходит странице, как и у самих колонок. */
+  panel.querySelector('.tl-gutterbox').addEventListener('wheel', e => {
+    const max = body.scrollHeight - body.clientHeight;
+    if ((e.deltaY < 0 && body.scrollTop <= 0) || (e.deltaY > 0 && body.scrollTop >= max - 1)) return;
+    e.preventDefault();
+    body.scrollTop += e.deltaY;
+  }, { passive: false });
   clearInterval(_recenter);
   if (!expanded) {
     _recenter = setInterval(() => {
-      const b = _panel && _panel.querySelector('.tl-body');
+      const b = _panel && _panel.querySelector('.tl-scroll');
       if (!b || !b.isConnected) { clearInterval(_recenter); return; }
       if (Date.now() - _userScrolledAt < 20000) return;   // не мешаем ручной прокрутке
       centerNow(b, true);
@@ -536,7 +562,7 @@ function bindTrayChip(chip, panel) {
 /* ── Перетаскивание и растягивание ── */
 function bindBlock(node) {
   let mode = null, sy = 0, s0 = 0, len0 = 0, moved = false, raf = null, lastY = 0;
-  const scroller = node.closest('.tl-body');
+  const scroller = node.closest('.tl-scroll');
   const apply = (s, len) => {
     node.style.top = `${(s / 60) * HOUR}px`;
     node.style.height = `${(len / 60) * HOUR}px`;

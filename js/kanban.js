@@ -203,7 +203,7 @@ function cardHTML(t) {
     '<div class="kb-cbody"><div class="kb-ctitle">' + esc(t.title) + '</div>' +
     '<div class="g-meta">' + metaBits(t) + '</div></div></div>';
 }
-const COL_HANDLE = '<svg class="dock-handle kb-col-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 12 4.68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
+const COL_HANDLE = '<svg class="dock-handle kb-col-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2.68 16.82 A20 20 0 0 1 16.82 2.68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
 function colHTML(c) {
   const head =
     (c.color ? '<i class="kb-dot' + (c.dotClass ? ' ' + c.dotClass : '') + '" style="background:' + c.color + '"></i>' : '') +
