@@ -20,5 +20,6 @@ export const YANDEX_CLIENT_ID = '08e532e75ecb430baf6f86bf1e7aaeac';
 // Cloudflare Worker (proxy/yandex-worker.js) — запасной.
 // Пусто — вариант «Яндекс Диск» помечен «скоро».
 export const YANDEX_PROXY = [
+  'https://functions.yandexcloud.net/d4ent3fmd56srgdal3s7',
   'https://gma-os-yandex.maksimgomzyakov1.workers.dev/',
 ];
