@@ -6,3 +6,9 @@ export const CLIENT_ID = '40124617550-80jhol56dkg6jq84l14k96d57kvrhret.apps.goog
 // Заполни своим Google-email, чтобы раздавать ключи друзьям из приложения.
 // Оставь пустым, чтобы панель не показывалась никому.
 export const OWNER_EMAIL = 'maksimgomzyakov1@gmail.com';
+
+// ── Хранилища пользователя (данные лежат у него, не у нас) ──
+// ClientID приложения на oauth.yandex.ru. Это публичный идентификатор,
+// он не даёт доступа ни к чьим данным. Client secret сюда НЕ вписывать.
+// Пусто — вариант «Яндекс Диск» в приложении помечен «скоро».
+export const YANDEX_CLIENT_ID = '08e532e75ecb430baf6f86bf1e7aaeac';
