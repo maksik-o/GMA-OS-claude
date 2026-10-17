@@ -191,6 +191,7 @@ const dropFile = f => (f.src ? deleteAttachment(f) : dbDel(FILES, f.id)).catch((
    • миниатюра текущей заметки в списке меняется прямо при наборе,
      без перерисовки. */
 let curGroup = '';     // '' — все
+const LOOSE = '__none';   // заметки без группы (в т.ч. с удалённой группой)
 const openGroups = new Set();
 let curNote = null;
 let notesOpen = false;      // колонка заметок выбранной группы: скрыта, пока группу не выбрали
@@ -288,7 +289,7 @@ function buildShell(el) {
       </div>
     </section>
     <main class="kb-main"></main>
-    <section class="kb-board" aria-label="Структура базы знаний"></section>`;
+    <section class="kb-board" data-drop="${LOOSE}" aria-label="Структура базы знаний"></section>`;
   const side = el.querySelector('.kb-side');
   const qi = side.querySelector('.kb-q');
   qi.oninput = () => { query = qi.value; if (query.trim()) notesOpen = true; renderSide(); };
@@ -304,6 +305,17 @@ function buildShell(el) {
   bindGroupDrag(side);
   el.querySelector('.kb-board').addEventListener('click', onBoardClick);
   bindBoardDrag(el.querySelector('.kb-board'));
+  /* Название новой группы: сохраняем по Enter или когда поле теряет фокус */
+  const boardEl = el.querySelector('.kb-board');
+  const saveName = async inp => {
+    const v = inp.value.trim();
+    if (!v || inp._saved) return;
+    inp._saved = true;
+    if (freshId === inp.dataset.gid) freshId = null;
+    await kbSave('group', { name: v }, inp.dataset.gid);
+  };
+  boardEl.addEventListener('keydown', e => { if (e.target.classList.contains('kb-bcol-input') && e.key === 'Enter') { e.preventDefault(); saveName(e.target); } });
+  boardEl.addEventListener('focusout', e => { if (e.target.classList.contains('kb-bcol-input')) saveName(e.target); });
 }
 
 /* Ручка колонки заметок: тап — свернуть, свайп влево — колонка едет
@@ -361,10 +373,13 @@ function onSideClick(e) {
   const t = e.target;
   if (t.closest('.kb-to-graph')) {
     flushEditor();
-    if (view === 'structure') { _host.classList.remove('kb-structure'); }
-    view = view === 'graph' ? 'note' : 'graph';
-    renderKbView(_host);
-    if (view === 'graph') revealMain();
+    if (view === 'structure') { setStructure(false); return; }
+    /* Окно заметки уезжает вправо, на его место выезжает граф (и обратно) */
+    swapMainAnimated(() => {
+      view = view === 'graph' ? 'note' : 'graph';
+      renderKbView(_host);
+      if (view === 'graph') revealMain();
+    });
     return;
   }
   if (t.closest('.kb-to-struct')) { setStructure(view !== 'structure'); return; }
@@ -385,7 +400,7 @@ function onSideClick(e) {
   /* И карандаш, и сам кружок ведут в одно окно: там же меняется
      и название, и цвет. */
   if (t.classList.contains('kb-g-edit') || t.classList.contains('kb-g-dot')) {
-    if (gid) openGroupSheet(gid, _host);
+    if (gid && gid !== LOOSE) openGroupSheet(gid, _host);
     return;
   }
   /* Повторный тап по открытой группе прячет колонку заметок */
@@ -433,8 +448,11 @@ function renderSide() {
   const allNotes = kbNotes().sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
   const q = query.trim().toLowerCase();
   let notes = allNotes;
-  if (curGroup && !known.has(curGroup)) curGroup = '';
-  if (curGroup) { const br = groupBranch(curGroup, groups); notes = notes.filter(n => br.has(n.groupId)); }
+  if (curGroup && curGroup !== LOOSE && !known.has(curGroup)) curGroup = '';
+  const isLoose = n => !n.groupId || !known.has(n.groupId);
+  if (curGroup === LOOSE) notes = notes.filter(isLoose);
+  else if (curGroup) { const br = groupBranch(curGroup, groups); notes = notes.filter(n => br.has(n.groupId)); }
+  const looseN = allNotes.filter(isLoose).length;
   if (q) notes = notes.filter(n => (titleOf(n) + ' ' + plain(n.html)).toLowerCase().includes(q));
   const countIn = gid => { const br = groupBranch(gid, groups); return allNotes.filter(n => br.has(n.groupId)).length; };
 
@@ -444,7 +462,7 @@ function renderSide() {
     return `<div class="kb-gwrap${open ? ' open' : ''}" data-drop="${g.id}" style="--depth:${depth}">
       <button type="button" class="kb-g${curGroup === g.id ? ' on' : ''}" data-g="${g.id}" style="--gc:${g.color || '#94a3b8'}">
         <span class="kb-g-caret${kids.length ? '' : ' none'}">${kids.length ? (open ? '▾' : '▸') : ''}</span>
-        <span class="kb-g-dot"></span><span class="kb-g-name">${esc(g.name)}</span>
+        <span class="kb-g-dot"></span><span class="kb-g-name">${esc(g.name || 'Без названия')}</span>
         <span class="kb-g-n">${countIn(g.id)}</span>
         <span class="kb-g-edit" title="Изменить или добавить подгруппу">✎</span></button>
       ${open && kids.length ? `<div class="kb-sub">${kids.map(k => row(k, depth + 1)).join('')}</div>` : ''}
@@ -460,12 +478,15 @@ function renderSide() {
       <span class="kb-g-caret none"></span>
       <span class="kb-g-dot"></span><span class="kb-g-name">Все заметки</span><span class="kb-g-n">${allNotes.length}</span></button>
     ${roots.map(g => row(g, 0)).join('')}
+    ${looseN ? `<div class="kb-gwrap kb-loose-row" data-drop="${LOOSE}" style="--depth:0">
+      <button type="button" class="kb-g${curGroup === LOOSE ? ' on' : ''}" data-g="${LOOSE}" style="--gc:#94a3b8">
+        <span class="kb-g-caret none"></span><span class="kb-g-dot"></span><span class="kb-g-name">Без группы</span><span class="kb-g-n">${looseN}</span></button></div>` : ''}
     <button type="button" class="kb-g-new">＋ Группа</button>`);
 
   /* Колонка заметок выбранной группы */
   const col = _host.querySelector('.kb-notes');
   const cg = curGroup ? groups.find(g => g.id === curGroup) : null;
-  col.querySelector('.kb-notes-title').textContent = q ? 'Поиск' : cg ? cg.name : 'Все заметки';
+  col.querySelector('.kb-notes-title').textContent = q ? 'Поиск' : curGroup === LOOSE ? 'Без группы' : cg ? (cg.name || 'Без названия') : 'Все заметки';
   col.querySelector('.kb-notes-n').textContent = notes.length;
   col.style.setProperty('--gc', q ? 'var(--accent)' : cg ? (cg.color || '#94a3b8') : 'var(--dim)');
   setHTML(col.querySelector('.kb-list'), notes.length
@@ -1067,16 +1088,18 @@ function bindNoteDrag(el, side) {
       const r = src.getBoundingClientRect();
       gx = sx - r.left;
       gy = sy - r.top;
-      ghost = document.createElement('div');
-      ghost.className = 'kb-note-ghost';
-      ghost.textContent = (src.querySelector('b') || src).textContent;
+      /* Тянем миниатюру самой заметки — так, как она нарисована в колонке */
+      ghost = src.cloneNode(true);
+      ghost.classList.remove('on', 'dragging');
+      ghost.classList.add('kb-drag-card');
       ghost.style.width = r.width + 'px';
+      ghost.style.height = r.height + 'px';
       document.body.appendChild(ghost);
       src.classList.add('dragging');
       document.body.classList.add('kb-dragging');
       try { navigator.vibrate(8); } catch {}
     }
-    ghost.style.transform = `translate(${e.clientX - gx}px, ${e.clientY - gy}px)`;
+    ghost.style.transform = `translate(${e.clientX - gx}px, ${e.clientY - gy}px) rotate(2deg)`;
     const d = dropAt(e.clientX, e.clientY);
     if (d !== over) { clearOver(); if (d) { over = d; d.classList.add('kb-drop-over'); } }
   };
@@ -1095,11 +1118,12 @@ function bindNoteDrag(el, side) {
     clearOver();
     src = null;
     started = false;
-    if (node && gid) {
+    if (node && gid != null) {
+      const to = gid === LOOSE ? '' : gid;   // на свободное место доски — заметка без группы
       const n = kbItem(node.dataset.id);
-      if (n && n.groupId !== gid) {
+      if (n && (n.groupId || '') !== to) {
         if (editing && editing.id === node.dataset.id) flushEditor();
-        await kbSave('note', { groupId: gid }, node.dataset.id);
+        await kbSave('note', { groupId: to }, node.dataset.id);
       }
     }
   };
@@ -1137,25 +1161,116 @@ function flatGroups() {
   return out;
 }
 const BCOL_HANDLE = '<svg class="dock-handle kb-bcol-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
+let freshId = null;   // только что созданная группа/заметка — подсветить и (для группы) дать ввести название
 function renderBoard(animate) {
   if (!_host) return;
   const board = _host.querySelector('.kb-board');
   const notes = kbNotes();
+  const known = new Set(kbGroups().map(g => g.id));
   const cols = flatGroups().map(({ g, path }) => {
     const list = notes.filter(n => n.groupId === g.id);
-    return `<div class="kb-bcol" data-drop="${g.id}" data-col="${g.id}" style="--gc:${g.color || '#94a3b8'}">${BCOL_HANDLE}
-      <header class="kb-bcol-head"><span class="kb-g-dot"></span>
-        <span class="kb-bcol-name">${path.length ? `<i>${esc(path.join(' › '))} ›</i> ` : ''}${esc(g.name)}</span>
+    const name = g.name
+      ? `${path.length ? `<i>${esc(path.join(' › '))} ›</i> ` : ''}${esc(g.name)}`
+      : `<input class="kb-bcol-input" data-gid="${g.id}" type="text" maxlength="60" placeholder="Введите наименование группы">`;
+    return `<div class="kb-bcol${freshId === g.id ? ' kb-new' : ''}" data-drop="${g.id}" data-col="${g.id}" style="--gc:${g.color || '#94a3b8'}">${BCOL_HANDLE}
+      <header class="kb-bcol-head"><button type="button" class="kb-g-dot kb-bcol-dot" data-gid="${g.id}" title="Цвет группы"></button>
+        <span class="kb-bcol-name">${name}</span>
         <span class="kb-g-n">${list.length}</span></header>
       <div class="kb-bcol-list">${list.map(itemHTML).join('') || '<p class="empty">Перетащите сюда заметку</p>'}</div>
     </div>`;
   }).join('');
+  /* Заметки без группы — отдельными серыми плашками после групп */
+  const loose = notes.filter(n => !n.groupId || !known.has(n.groupId))
+    .map(n => `<div class="kb-loose${freshId === n.id ? ' kb-new' : ''}" style="--gc:#94a3b8">${itemHTML(n)}</div>`).join('');
   const html = `<header class="kb-board-head"><b>Структура</b>
-      <span class="kb-board-hint">Перетаскивайте заметки между колонками, колонки — за ручку в углу</span>
+      <span class="kb-board-hint">Перетаскивайте заметки между колонками или на свободное место, колонки — за ручку в углу</span>
       <button type="button" class="btn mini kb-board-close">✕ Закрыть</button></header>
-    <div class="kb-board-cols">${cols || '<p class="empty">Групп пока нет</p>'}</div>`;
+    <div class="kb-board-cols" data-drop="${LOOSE}">${cols}${loose}${cols || loose ? '' : '<p class="empty">Пусто — нажмите «+», чтобы создать группу или заметку</p>'}</div>`;
   setHTML(board, html);
-  if (animate) cascadeIn([...board.querySelectorAll('.kb-board-head, .kb-bcol')]);
+  const inp = board.querySelector('.kb-bcol-input');
+  if (inp && freshId && inp.dataset.gid === freshId && document.activeElement !== inp) inp.focus();
+  if (animate) cascadeIn([...board.querySelectorAll('.kb-board-head, .kb-bcol, .kb-loose')]);
+}
+/* Цвета групп: новая группа получает ещё не занятый цвет */
+const GROUP_COLORS = ['#ef4444', '#f59e0b', '#10b981', '#2563eb', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+  '#f97316', '#6366f1', '#14b8a6', '#e879f9', '#eab308', '#0ea5e9', '#22c55e', '#f43f5e'];
+function freeColor() {
+  const used = new Set(kbGroups().map(g => String(g.color || '').toLowerCase()));
+  return GROUP_COLORS.find(c => !used.has(c)) || `hsl(${Math.floor(Math.random() * 360)} 70% 55%)`;
+}
+async function createBoardGroup() {
+  const roots = kbGroups().filter(g => !g.parentId);
+  const order = roots.reduce((m, g) => Math.max(m, g.order || 0), 0) + 10;
+  const g = await kbSave('group', { name: '', color: freeColor(), order, parentId: '' });
+  freshId = g.id;
+  renderBoard(false);
+  setTimeout(() => { if (freshId === g.id) freshId = null; }, 3500);
+}
+async function createBoardNote() {
+  const n = await kbSave('note', { title: '', html: '', groupId: '', files: [], links: [], tags: [] });
+  freshId = n.id;
+  renderBoard(false);
+  setTimeout(() => { if (freshId === n.id) { freshId = null; } }, 3500);
+}
+/* Меню над кнопкой «+»: «+ Группа» / «+ Заметка» */
+let addMenu = null;
+function closeAddMenu() { if (addMenu) { addMenu.remove(); addMenu = null; } }
+function toggleAddMenu(anchor) {
+  if (addMenu) { closeAddMenu(); return; }
+  addMenu = document.createElement('div');
+  addMenu.className = 'kb-add-menu glass';
+  addMenu.innerHTML = '<button type="button" class="btn" data-add="group">＋ Группа</button><button type="button" class="btn" data-add="note">＋ Заметка</button>';
+  document.body.appendChild(addMenu);
+  const r = anchor ? anchor.getBoundingClientRect() : { top: innerHeight - 80, right: innerWidth - 16 };
+  addMenu.style.right = Math.max(8, innerWidth - r.right) + 'px';
+  addMenu.style.bottom = (innerHeight - r.top + 10) + 'px';
+  addMenu.onclick = e => {
+    const b = e.target.closest('[data-add]');
+    if (!b) return;
+    closeAddMenu();
+    if (b.dataset.add === 'group') createBoardGroup(); else createBoardNote();
+  };
+  setTimeout(() => {
+    const away = e => {
+      if (addMenu && !addMenu.contains(e.target) && !(anchor && anchor.contains(e.target))) { closeAddMenu(); document.removeEventListener('pointerdown', away); }
+    };
+    document.addEventListener('pointerdown', away);
+  }, 0);
+}
+/* Выбор цвета группы по точке в колонке */
+function openColorPop(dot) {
+  document.querySelectorAll('.kb-color-pop').forEach(x => x.remove());
+  const gid = dot.dataset.gid;
+  const g = rawItem(gid);
+  if (!g) return;
+  const pop = document.createElement('div');
+  pop.className = 'kb-color-pop glass';
+  pop.innerHTML = GROUP_COLORS.map(c => `<button type="button" class="kg-dot${String(g.color).toLowerCase() === c ? ' on' : ''}" data-c="${c}" style="--c:${c}"></button>`).join('')
+    + `<input type="color" class="kg-custom" value="${/^#[0-9a-f]{6}$/i.test(g.color || '') ? g.color : '#94a3b8'}" title="Свой цвет">`;
+  document.body.appendChild(pop);
+  const r = dot.getBoundingClientRect();
+  pop.style.left = Math.min(innerWidth - pop.offsetWidth - 8, Math.max(8, r.left - 8)) + 'px';
+  pop.style.top = (r.bottom + 8) + 'px';
+  const set = async c => { pop.remove(); await kbSave('group', { color: c, customColor: true }, gid); };
+  pop.onclick = e => { const b = e.target.closest('[data-c]'); if (b) set(b.dataset.c); };
+  pop.querySelector('.kg-custom').onchange = e => set(e.target.value);
+  setTimeout(() => {
+    const away = e => { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('pointerdown', away); } };
+    document.addEventListener('pointerdown', away);
+  }, 0);
+}
+/* Окно заметки уезжает вправо, на его место выезжает другое (граф) */
+async function swapMainAnimated(apply) {
+  const main = _host && _host.querySelector('.kb-main');
+  if (!main || reduceMotion() || !main.offsetWidth) { apply(); return; }
+  const off = innerWidth - main.getBoundingClientRect().left + 40;
+  const out = main.animate([{ transform: 'none' }, { transform: `translateX(${off}px)` }],
+    { duration: 300, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+  await out.finished.catch(() => {});
+  apply();
+  out.cancel();
+  main.animate([{ transform: `translateX(${off}px)` }, { transform: 'none' }],
+    { duration: 440, easing: 'cubic-bezier(.32,.72,.28,1)', fill: 'backwards' });
 }
 /* ── Каскад «как кубики» ──
    Панели группируются в ряды по положению на экране. Въезд — снизу,
@@ -1215,7 +1330,20 @@ async function setStructure(on) {
       renderSide();
       renderBoard(true);
     } else {
-      const anims = await cascadeOut([...board.querySelectorAll('.kb-board-head, .kb-bcol')]);
+      closeAddMenu();
+      /* Шапка падает последней — после всех рядов колонок и поверх них */
+      const items = [...board.querySelectorAll('.kb-bcol, .kb-loose')];
+      const head = board.querySelector('.kb-board-head');
+      const nRows = rowsOf(items).length;
+      let headAnim = null;
+      if (head && !reduceMotion()) {
+        head.style.position = 'relative'; head.style.zIndex = '6';
+        headAnim = head.animate([{ transform: 'none' }, { transform: `translateY(${innerHeight}px)` }],
+          { duration: 480, delay: nRows * 100 + 60, easing: 'cubic-bezier(.55,0,.85,.35)', fill: 'forwards' });
+      }
+      const colAnims = await cascadeOut(items);
+      if (headAnim) await headAnim.finished.catch(() => {});
+      const anims = [...(colAnims || []), ...(headAnim ? [headAnim] : [])];
       view = 'note';
       _host.classList.remove('kb-structure');
       board.innerHTML = ''; board._html = '';
@@ -1268,6 +1396,9 @@ function bindBoardDrag(board) {
 async function onBoardClick(e) {
   if (Date.now() - dragGuard < 250) return;
   if (e.target.closest('.kb-board-close')) { setStructure(false); return; }
+  const dot = e.target.closest('.kb-bcol-dot');
+  if (dot) { openColorPop(dot); return; }
+  if (e.target.closest('.kb-bcol-input')) return;
   const item = e.target.closest('.kb-item');
   if (!item) return;
   const id = item.dataset.id;
@@ -1304,7 +1435,7 @@ function bindGroupDrag(side) {
     target = null; zone = '';
     const el = document.elementFromPoint(x, y);
     const row = el && el.closest('.kb-g[data-g]');
-    if (!row || !row.dataset.g || row.dataset.g === srcId) return;
+    if (!row || !row.dataset.g || row.dataset.g === LOOSE || row.dataset.g === srcId) return;
     if (groupBranch(srcId).has(row.dataset.g)) return;   // в себя или в свою подгруппу нельзя
     const r = row.getBoundingClientRect();
     const f = (y - r.top) / r.height;
@@ -1344,7 +1475,7 @@ function bindGroupDrag(side) {
   };
   side.addEventListener('pointerdown', e => {
     const row = e.target.closest('.kb-g[data-g]');
-    if (!row || !row.dataset.g || e.button > 0) return;
+    if (!row || !row.dataset.g || row.dataset.g === LOOSE || e.button > 0) return;
     if (e.target.closest('.kb-g-caret, .kb-g-edit')) return;
     src = row; srcId = row.dataset.g; sx = e.clientX; sy = e.clientY; started = false;
     document.addEventListener('pointermove', move);
@@ -1374,10 +1505,11 @@ async function moveGroup(id, targetId, zone) {
 }
 
 /* Кнопка «+» приложения в этом режиме заводит заметку */
-export async function newKbNote() {
+export async function newKbNote(anchor) {
+  if (view === 'structure') { toggleAddMenu(anchor || document.getElementById('addBtn')); return; }
   flushEditor();
   const n = await kbSave('note', {
-    title: '', html: '', groupId: curGroup || (kbGroups()[0] || {}).id || '',
+    title: '', html: '', groupId: curGroup === LOOSE ? '' : (curGroup || (kbGroups()[0] || {}).id || ''),
     files: [], links: [], tags: [],
   });
   notesOpen = true;   // новая заметка видна в колонке своей группы
