@@ -117,7 +117,6 @@ html[data-theme] {
   /* Пластина Лего: ряды «пупырышков» — светлая верхушка с бликом и
      мягкая тень справа-снизу. Цвета близки к фону: заметно, но не пёстро. */
   --bg-mesh:
-    radial-gradient(circle at 44% 40%, rgba(255, 255, 255, .45) 0 2.2px, transparent 4.5px) 0 0 / 26px 26px,
     radial-gradient(circle at 50% 50%, #ffdc5c 0 7px, #f3c425 7.2px 8px, transparent 8.6px) 0 0 / 26px 26px,
     radial-gradient(circle at 56% 60%, rgba(150, 100, 0, .22) 0 8px, transparent 9.6px) 0 0 / 26px 26px;
   --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
