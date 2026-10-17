@@ -1074,7 +1074,7 @@ function openGroupSheet(id, host, parentPreset = '') {
    один, делегированием на панели: список перерисовывается, а
    привязка остаётся. */
 function bindNoteDrag(el, side) {
-  let src = null, ghost = null, over = null, started = false, sx = 0, sy = 0, gx = 0, gy = 0;
+  let src = null, ghost = null, over = null, started = false, sx = 0, sy = 0, gx = 0, gy = 0, board = null, slot = null;
   const dropAt = (x, y) => {
     const n = document.elementFromPoint(x, y);
     return n ? n.closest('[data-drop]') : null;
@@ -1104,6 +1104,12 @@ function bindNoteDrag(el, side) {
     ghost.style.transformOrigin = `${gx}px ${gy}px`;
     ghost.style.transform = `translate(${e.clientX - gx}px, ${e.clientY - gy}px) rotate(2deg)${inTrash ? ' scale(.35)' : ''}`;
     ghost.classList.toggle('kb-to-trash', inTrash);
+    if (view === 'structure' && board) {
+      /* на доске: место между элементами или середина группы */
+      slot = inTrash ? null : slotAt(board, e.clientX, e.clientY, null, true);
+      showSlot(board, slot);
+      return;
+    }
     const d = inTrash ? null : dropAt(e.clientX, e.clientY);
     if (d !== over) { clearOver(); if (d) { over = d; d.classList.add('kb-drop-over'); } }
   };
@@ -1113,10 +1119,30 @@ function bindNoteDrag(el, side) {
     document.removeEventListener('pointercancel', up);
     document.removeEventListener('touchmove', block);
     document.body.classList.remove('kb-dragging');
+    const ghostRect = ghost ? ghost.getBoundingClientRect() : null;
     if (ghost) { ghost.remove(); ghost = null; }
     if (src) src.classList.remove('dragging');
     const toTrash = started && trackTrash(e.clientX, e.clientY);
     resetTrash();
+    if (started && board && view === 'structure' && !toTrash) {
+      const sl = slot, node = src;
+      const snaps = snapBoard(board);
+      if (ghostRect) snaps.set(node.dataset.id, ghostRect);
+      dragGuard = Date.now();
+      src = null; started = false; slot = null;
+      if (!sl) { showSlot(board, null); return; }
+      const nid = node.dataset.id;
+      const to = sl.into || '';
+      if (!sl.into) placeInLayout(board, nid, sl);
+      await settleBoard(board, snaps, async () => {
+        const n = kbItem(nid);
+        if (n && (n.groupId || '') !== to) {
+          if (editing && editing.id === nid) flushEditor();
+          await kbSave('note', { groupId: to }, nid);
+        }
+      });
+      return;
+    }
     const target = started && !toTrash ? dropAt(e.clientX, e.clientY) : null;
     const gid = target ? target.dataset.drop : null;
     const node = src;
@@ -1139,6 +1165,8 @@ function bindNoteDrag(el, side) {
     const node = e.target.closest('.kb-item');
     if (!node || e.button > 0) return;
     if (node.closest('.kb-loose')) return;   // отдельная заметка на доске тянется за ручку
+    board = node.closest('.kb-board');
+    slot = null;
     src = node;
     sx = e.clientX;
     sy = e.clientY;
@@ -1172,7 +1200,7 @@ const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const LOOSE_HANDLE = '<svg class="dock-handle kb-loose-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
 const BCOL_HANDLE = '<svg class="dock-handle kb-bcol-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
 let freshId = null;   // только что созданная группа — сразу дать ввести название
-function renderBoard(animate) {
+function renderBoard(animate, force) {
   if (!_host) return;
   const board = _host.querySelector('.kb-board');
   const notes = kbNotes();
@@ -1182,8 +1210,8 @@ function renderBoard(animate) {
     const list = notes.filter(n => n.groupId === g.id);
     const name = g.name
       ? `${path.length ? `<i>${esc(path.join(' › '))} ›</i> ` : ''}${esc(g.name)}`
-      : `<input class="kb-bcol-input" data-gid="${g.id}" type="text" maxlength="60" placeholder="Введите наименование группы">`;
-    return `<div class="kb-bcol" data-i="${i++}" data-drop="${g.id}" data-col="${g.id}" style="--gc:${g.color || '#94a3b8'}">${BCOL_HANDLE}
+      : `<input class="kb-bcol-input" data-gid="${g.id}" type="text" maxlength="60" placeholder="Введите наименование">`;
+    return `<div class="kb-bcol" data-i="${i++}" data-bid="${g.id}" data-drop="${g.id}" data-col="${g.id}" style="--gc:${g.color || '#94a3b8'}">${BCOL_HANDLE}
       <header class="kb-bcol-head"><button type="button" class="kb-g-dot kb-bcol-dot" data-gid="${g.id}" title="Цвет группы"></button>
         <span class="kb-bcol-name">${name}</span>
         <span class="kb-g-n">${list.length}</span></header>
@@ -1193,7 +1221,7 @@ function renderBoard(animate) {
   /* Заметки без группы — отдельными серыми плашками после групп; тянутся
      за ручку, как колонки, и бросаются в группу */
   const loose = notes.filter(n => !n.groupId || !known.has(n.groupId))
-    .map(n => `<div class="kb-loose" data-i="${i++}" data-note="${n.id}" style="--gc:#94a3b8">${LOOSE_HANDLE}${itemHTML(n)}</div>`).join('');
+    .map(n => `<div class="kb-loose" data-i="${i++}" data-bid="${n.id}" data-note="${n.id}" style="--gc:#94a3b8">${LOOSE_HANDLE}${itemHTML(n)}</div>`).join('');
   const html = `<header class="kb-board-head"><b>Структура</b>
       <span class="kb-board-hint">Перетаскивайте заметки между колонками или на свободное место, колонки и отдельные заметки — за ручку в углу</span>
       <button type="button" class="btn mini kb-board-close">✕ Закрыть</button></header>
@@ -1201,7 +1229,7 @@ function renderBoard(animate) {
     <div class="btn danger kb-trash" aria-hidden="true">${TRASH_SVG}<span>Удалить</span></div>`;
   const changed = board._html !== html;
   setHTML(board, html);
-  if (changed) layoutBoard(board);
+  if (changed || force) layoutBoard(board);
   const inp = board.querySelector('.kb-bcol-input');
   if (inp && freshId && inp.dataset.gid === freshId && document.activeElement !== inp) inp.focus();
   if (animate) cascadeIn([...board.querySelectorAll('.kb-board-head, .kb-bcol, .kb-loose')]);
@@ -1293,11 +1321,17 @@ function askGroupDelete() {
 }
 
 /* ── Раскладка доски по столбцам ──
-   Первые элементы встают первым рядом — по одному в столбец. Каждый
-   следующий ложится в самый левый столбец, где под уже стоящими ещё
-   хватает места до низа экрана; если не помещается нигде — в самый
-   короткий. Так экран заполняется сверху вниз без «линейки» рядов. */
+   Где что стоит, запоминается на устройстве (столбец и место в нём):
+   перенесённая группа или заметка остаётся там, куда её положили.
+   Новые элементы сначала занимают пустые столбцы (первый ряд), потом
+   ложатся в самый левый столбец, где до низа экрана ещё есть место;
+   если не помещается нигде — в самый короткий. */
 const BOARD_GAP = 12;
+const LAYOUT_KEY = 'rl_kb_board';
+function loadLayout() {
+  try { const v = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null'); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function saveLayout(lists) { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(lists)); } catch {} }
 function layoutBoard(board) {
   const wrap = board && board.querySelector('.kb-board-cols');
   if (!wrap || !wrap.offsetWidth) return;
@@ -1309,18 +1343,93 @@ function layoutBoard(board) {
   /* все столбцы одной ширины — высоту меряем, поставив элементы в первый */
   wrap.replaceChildren(...cols);
   cols[0].append(...items);
-  const hs = items.map(el => el.offsetHeight);
+  const byId = new Map(items.map(el => [el.dataset.bid, el]));
+  const hs = new Map(items.map(el => [el.dataset.bid, el.offsetHeight]));
+  const lists = cols.map(() => []);
+  const placed = new Set();
+  loadLayout().slice(0, n).forEach((ids, c) => (Array.isArray(ids) ? ids : []).forEach(id => {
+    if (byId.has(id) && !placed.has(id)) { lists[c].push(id); placed.add(id); }
+  }));
   const limit = innerHeight - wrap.getBoundingClientRect().top - 16;
-  const fill = new Array(n).fill(0);
-  items.forEach((el, k) => {
-    let c = k;
-    if (k >= n) {
-      c = fill.findIndex(h => h + BOARD_GAP + hs[k] <= limit);
-      if (c < 0) c = fill.indexOf(Math.min(...fill));
-    }
-    cols[c].appendChild(el);
-    fill[c] += (fill[c] ? BOARD_GAP : 0) + hs[k];
+  const fill = lists.map(l => l.reduce((h, id, k) => h + (k ? BOARD_GAP : 0) + hs.get(id), 0));
+  items.forEach(el => {
+    const id = el.dataset.bid;
+    if (placed.has(id)) return;
+    let c = fill.indexOf(0);
+    if (c < 0) c = fill.findIndex(h => h + BOARD_GAP + hs.get(id) <= limit);
+    if (c < 0) c = fill.indexOf(Math.min(...fill));
+    lists[c].push(id);
+    fill[c] += (fill[c] ? BOARD_GAP : 0) + hs.get(id);
   });
+  lists.forEach((ids, c) => cols[c].append(...ids.map(id => byId.get(id))));
+  saveLayout(lists);
+}
+/* ── Перенос по доске (как виджеты на экране задач) ──
+   Пока тянем, место вставки показывают соседи: элементы ниже него
+   в столбце расступаются. Отпустили — всё плавно встаёт по местам, а
+   перенесённый элемент «падает» в освободившееся место (FLIP). */
+const SLOT_SHIFT = 28;
+const colItems = (mcol, skip) => [...mcol.children].filter(x => x.dataset.bid && x.dataset.bid !== skip);
+function slotAt(board, x, y, skip, canInto) {
+  const wrap = board.querySelector('.kb-board-cols');
+  if (!wrap) return null;
+  const br = wrap.getBoundingClientRect();
+  if (x < br.left - 24 || x > br.right + 24 || y < br.top - 30) return null;
+  const cols = [...wrap.querySelectorAll('.kb-mcol')];
+  if (!cols.length) return { c: 0, k: 0 };
+  let c = cols.findIndex(m => x < m.getBoundingClientRect().right + BOARD_GAP / 2);
+  if (c < 0) c = cols.length - 1;
+  const items = colItems(cols[c], skip);
+  for (let k = 0; k < items.length; k++) {
+    const el = items[k];
+    const r = el.getBoundingClientRect();
+    const top = r.top - (el._shift || 0);
+    /* заметку на середину группы — положить в группу */
+    if (canInto && el.classList.contains('kb-bcol') && y > top + r.height * .2 && y < top + r.height * .8) return { into: el.dataset.col, el };
+    if (y < top + r.height / 2) return { c, k };
+  }
+  return { c, k: items.length };
+}
+function showSlot(board, slot, skip) {
+  board.querySelectorAll('.kb-drop-over').forEach(x => x.classList.remove('kb-drop-over'));
+  board.querySelectorAll('.kb-mcol').forEach((m, c) => colItems(m, skip).forEach((el, k) => {
+    const sh = slot && !slot.into && slot.c === c ? (k >= slot.k ? SLOT_SHIFT : k === slot.k - 1 ? -6 : 0) : 0;
+    if ((el._shift || 0) !== sh) { el._shift = sh; el.style.transform = sh ? `translateY(${sh}px)` : ''; }
+  }));
+  if (slot && slot.into) slot.el.classList.add('kb-drop-over');
+}
+function snapBoard(board) {
+  const m = new Map();
+  board.querySelectorAll('[data-bid]').forEach(el => m.set(el.dataset.bid, el.getBoundingClientRect()));
+  return m;
+}
+function flipBoard(board, snaps, ms = 440) {
+  if (reduceMotion()) return;
+  board.querySelectorAll('[data-bid]').forEach(el => {
+    const sn = snaps.get(el.dataset.bid);
+    if (!sn) return;
+    const r = el.getBoundingClientRect();
+    const dx = sn.left - r.left, dy = sn.top - r.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
+      { duration: ms, easing: 'cubic-bezier(.32,.72,.28,1)' });
+  });
+}
+/* Запомнить раскладку: текущие столбцы, bid вставлен на место slot */
+function placeInLayout(board, bid, slot) {
+  const lists = [...board.querySelectorAll('.kb-mcol')].map(m => colItems(m, bid).map(x => x.dataset.bid));
+  if (slot && !slot.into && lists.length) lists[Math.min(slot.c, lists.length - 1)].splice(slot.k, 0, bid);
+  saveLayout(lists);
+}
+/* Отпустили: соседи без «двойного» сдвига, данные, раскладка, FLIP */
+async function settleBoard(board, snaps, work) {
+  board.classList.add('kb-settling');
+  showSlot(board, null);
+  board.querySelectorAll('[data-bid]').forEach(el => { el._shift = 0; el.style.transform = ''; });
+  if (work) await work();
+  renderBoard(false, true);
+  flipBoard(board, snaps);
+  requestAnimationFrame(() => board.classList.remove('kb-settling'));
 }
 let boardW = 0;
 addEventListener('resize', () => {
@@ -1488,27 +1597,21 @@ async function setStructure(on) {
     }
   } finally { structBusy = false; }
 }
-/* Колонки «Структуры» переставляются за ручку: бросили на левую половину
-   другой колонки — встанет перед ней, на правую — после неё.
-   Отдельная заметка тоже тянется за ручку целой плашкой: бросили на
-   колонку — заметка ушла в эту группу. */
+/* Колонки-группы и отдельные заметки переносятся за ручку: элемент
+   «поднимается» над доской, остальные смыкаются; место вставки
+   показывают расступившиеся соседи. Отдельную заметку можно бросить
+   на середину группы — она уйдёт в эту группу. */
 function bindBoardDrag(board) {
-  let el = null, id = '', note = false, sx = 0, sy = 0, target = null, zone = '', trash = false;
-  const clear = () => board.querySelectorAll('.col-before, .col-after, .kb-drop-over').forEach(x => x.classList.remove('col-before', 'col-after', 'kb-drop-over'));
+  let el = null, id = '', note = false, gx = 0, gy = 0, slot = null, home = null, trash = false;
   const move = e => {
     if (!el) return;
-    clear(); target = null; zone = '';
     trash = trackTrash(e.clientX, e.clientY);
-    el.style.transform = `translate(${e.clientX - sx}px, ${e.clientY - sy}px) rotate(1.5deg)${trash ? ' scale(.3)' : ''}`;
+    el.style.left = (e.clientX - gx) + 'px';
+    el.style.top = (e.clientY - gy) + 'px';
+    el.style.transform = `rotate(1.5deg)${trash ? ' scale(.3)' : ''}`;
     el.classList.toggle('kb-to-trash', trash);
-    if (trash) return;
-    const hit = document.elementsFromPoint(e.clientX, e.clientY).find(x => x.classList && x.classList.contains('kb-bcol') && x !== el);
-    if (!hit) return;
-    target = hit.dataset.col;
-    if (note) { zone = 'into'; hit.classList.add('kb-drop-over'); return; }
-    const r = hit.getBoundingClientRect();
-    zone = e.clientX < r.left + r.width / 2 ? 'before' : 'after';
-    hit.classList.add('col-' + zone);
+    slot = trash ? null : slotAt(board, e.clientX, e.clientY, id, note);
+    showSlot(board, slot, id);
   };
   const up = async () => {
     document.removeEventListener('pointermove', move);
@@ -1516,36 +1619,50 @@ function bindBoardDrag(board) {
     document.removeEventListener('pointercancel', up);
     if (!el) return;
     const from = el.getBoundingClientRect();
-    el.style.transform = ''; el.style.zIndex = ''; el.style.transformOrigin = ''; el.classList.remove('dragging', 'kb-to-trash');
-    clear();
+    const snaps = snapBoard(board);
+    snaps.set(id, from);
+    el.classList.remove('kb-lifted', 'kb-to-trash');
+    el.style.left = el.style.top = el.style.width = el.style.transform = el.style.transformOrigin = '';
     resetTrash();
     dragGuard = Date.now();
-    const t = target, z = zone, src = id, isNote = note, toTrash = trash;
-    el = null; trash = false;
+    const src = id, isNote = note, toTrash = trash, sl = slot || home;
+    el = null; trash = false; slot = null;
     if (toTrash) {
+      showSlot(board, null);
       if (isNote) await trashNote(src); else await trashGroup(src, from);
-      renderBoard(false);
+      renderBoard(false, true);
       return;
     }
-    if (isNote) {
-      if (t) {
+    if (sl.into) {
+      await settleBoard(board, snaps, async () => {
         if (editing && editing.id === src) flushEditor();
-        await kbSave('note', { groupId: t }, src);
-      }
-    } else if (t && z && !groupBranch(src).has(t)) await moveGroup(src, t, z);
-    renderBoard(false);
+        await kbSave('note', { groupId: sl.into }, src);
+      });
+      return;
+    }
+    placeInLayout(board, src, sl);
+    await settleBoard(board, snaps);
   };
   board.addEventListener('pointerdown', e => {
     const h = e.target.closest('.kb-bcol-handle, .kb-loose-handle');
     if (!h || e.button > 0) return;
     e.preventDefault();
     note = h.classList.contains('kb-loose-handle');
-    el = h.closest(note ? '.kb-loose' : '.kb-bcol');
-    id = note ? el.dataset.note : el.dataset.col;
-    sx = e.clientX; sy = e.clientY;
+    el = h.closest('[data-bid]');
+    id = el.dataset.bid;
+    const mcol = el.parentElement;
+    home = { c: [...board.querySelectorAll('.kb-mcol')].indexOf(mcol), k: colItems(mcol).indexOf(el) };
     const r = el.getBoundingClientRect();
-    el.style.transformOrigin = `${sx - r.left}px ${sy - r.top}px`;   // сжимается над корзиной к курсору
-    el.classList.add('dragging'); el.style.zIndex = '30';
+    gx = e.clientX - r.left; gy = e.clientY - r.top;
+    const snaps = snapBoard(board);
+    el.style.width = r.width + 'px';
+    el.style.left = r.left + 'px';
+    el.style.top = r.top + 'px';
+    el.style.transformOrigin = `${gx}px ${gy}px`;   // над корзиной сжимается к курсору
+    el.classList.add('kb-lifted');
+    flipBoard(board, snaps, 260);   // столбец смыкается на месте поднятого элемента
+    slot = home;
+    showSlot(board, slot, id);
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
     document.addEventListener('pointercancel', up);
