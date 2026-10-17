@@ -1131,6 +1131,7 @@ function bindNoteDrag(el, side) {
   side.addEventListener('pointerdown', e => {
     const node = e.target.closest('.kb-item');
     if (!node || e.button > 0) return;
+    if (node.closest('.kb-loose')) return;   // отдельная заметка на доске тянется за ручку
     src = node;
     sx = e.clientX;
     sy = e.clientY;
@@ -1160,37 +1161,79 @@ function flatGroups() {
   groups.filter(g => !g.parentId || !known.has(g.parentId)).forEach(g => walk(g, 0, []));
   return out;
 }
+const LOOSE_HANDLE = '<svg class="dock-handle kb-loose-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
 const BCOL_HANDLE = '<svg class="dock-handle kb-bcol-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
-let freshId = null;   // только что созданная группа/заметка — подсветить и (для группы) дать ввести название
+let freshId = null;   // только что созданная группа — сразу дать ввести название
 function renderBoard(animate) {
   if (!_host) return;
   const board = _host.querySelector('.kb-board');
   const notes = kbNotes();
   const known = new Set(kbGroups().map(g => g.id));
+  let i = 0;   // порядок элементов: раскладка по столбцам переставляет узлы
   const cols = flatGroups().map(({ g, path }) => {
     const list = notes.filter(n => n.groupId === g.id);
     const name = g.name
       ? `${path.length ? `<i>${esc(path.join(' › '))} ›</i> ` : ''}${esc(g.name)}`
       : `<input class="kb-bcol-input" data-gid="${g.id}" type="text" maxlength="60" placeholder="Введите наименование группы">`;
-    return `<div class="kb-bcol${freshId === g.id ? ' kb-new' : ''}" data-drop="${g.id}" data-col="${g.id}" style="--gc:${g.color || '#94a3b8'}">${BCOL_HANDLE}
+    return `<div class="kb-bcol" data-i="${i++}" data-drop="${g.id}" data-col="${g.id}" style="--gc:${g.color || '#94a3b8'}">${BCOL_HANDLE}
       <header class="kb-bcol-head"><button type="button" class="kb-g-dot kb-bcol-dot" data-gid="${g.id}" title="Цвет группы"></button>
         <span class="kb-bcol-name">${name}</span>
         <span class="kb-g-n">${list.length}</span></header>
       <div class="kb-bcol-list">${list.map(itemHTML).join('') || '<p class="empty">Перетащите сюда заметку</p>'}</div>
     </div>`;
   }).join('');
-  /* Заметки без группы — отдельными серыми плашками после групп */
+  /* Заметки без группы — отдельными серыми плашками после групп; тянутся
+     за ручку, как колонки, и бросаются в группу */
   const loose = notes.filter(n => !n.groupId || !known.has(n.groupId))
-    .map(n => `<div class="kb-loose${freshId === n.id ? ' kb-new' : ''}" style="--gc:#94a3b8">${itemHTML(n)}</div>`).join('');
+    .map(n => `<div class="kb-loose" data-i="${i++}" data-note="${n.id}" style="--gc:#94a3b8">${LOOSE_HANDLE}${itemHTML(n)}</div>`).join('');
   const html = `<header class="kb-board-head"><b>Структура</b>
-      <span class="kb-board-hint">Перетаскивайте заметки между колонками или на свободное место, колонки — за ручку в углу</span>
+      <span class="kb-board-hint">Перетаскивайте заметки между колонками или на свободное место, колонки и отдельные заметки — за ручку в углу</span>
       <button type="button" class="btn mini kb-board-close">✕ Закрыть</button></header>
     <div class="kb-board-cols" data-drop="${LOOSE}">${cols}${loose}${cols || loose ? '' : '<p class="empty">Пусто — нажмите «+», чтобы создать группу или заметку</p>'}</div>`;
+  const changed = board._html !== html;
   setHTML(board, html);
+  if (changed) layoutBoard(board);
   const inp = board.querySelector('.kb-bcol-input');
   if (inp && freshId && inp.dataset.gid === freshId && document.activeElement !== inp) inp.focus();
   if (animate) cascadeIn([...board.querySelectorAll('.kb-board-head, .kb-bcol, .kb-loose')]);
 }
+/* ── Раскладка доски по столбцам ──
+   Первые элементы встают первым рядом — по одному в столбец. Каждый
+   следующий ложится в самый левый столбец, где под уже стоящими ещё
+   хватает места до низа экрана; если не помещается нигде — в самый
+   короткий. Так экран заполняется сверху вниз без «линейки» рядов. */
+const BOARD_GAP = 12;
+function layoutBoard(board) {
+  const wrap = board && board.querySelector('.kb-board-cols');
+  if (!wrap || !wrap.offsetWidth) return;
+  const items = [...wrap.querySelectorAll('.kb-bcol, .kb-loose')].sort((a, b) => a.dataset.i - b.dataset.i);
+  if (!items.length) return;
+  const min = innerWidth <= 720 ? 160 : 230;
+  const n = Math.max(1, Math.floor((wrap.clientWidth + BOARD_GAP) / (min + BOARD_GAP)));
+  const cols = Array.from({ length: n }, () => Object.assign(document.createElement('div'), { className: 'kb-mcol' }));
+  /* все столбцы одной ширины — высоту меряем, поставив элементы в первый */
+  wrap.replaceChildren(...cols);
+  cols[0].append(...items);
+  const hs = items.map(el => el.offsetHeight);
+  const limit = innerHeight - wrap.getBoundingClientRect().top - 16;
+  const fill = new Array(n).fill(0);
+  items.forEach((el, k) => {
+    let c = k;
+    if (k >= n) {
+      c = fill.findIndex(h => h + BOARD_GAP + hs[k] <= limit);
+      if (c < 0) c = fill.indexOf(Math.min(...fill));
+    }
+    cols[c].appendChild(el);
+    fill[c] += (fill[c] ? BOARD_GAP : 0) + hs[k];
+  });
+}
+let boardW = 0;
+addEventListener('resize', () => {
+  const board = view === 'structure' && _host && _host.querySelector('.kb-board');
+  if (!board || board.offsetWidth === boardW) return;
+  boardW = board.offsetWidth;
+  layoutBoard(board);
+});
 /* Цвета групп: новая группа получает ещё не занятый цвет */
 const GROUP_COLORS = ['#ef4444', '#f59e0b', '#10b981', '#2563eb', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
   '#f97316', '#6366f1', '#14b8a6', '#e879f9', '#eab308', '#0ea5e9', '#22c55e', '#f43f5e'];
@@ -1204,13 +1247,10 @@ async function createBoardGroup() {
   const g = await kbSave('group', { name: '', color: freeColor(), order, parentId: '' });
   freshId = g.id;
   renderBoard(false);
-  setTimeout(() => { if (freshId === g.id) freshId = null; }, 3500);
 }
 async function createBoardNote() {
-  const n = await kbSave('note', { title: '', html: '', groupId: '', files: [], links: [], tags: [] });
-  freshId = n.id;
+  await kbSave('note', { title: '', html: '', groupId: '', files: [], links: [], tags: [] });
   renderBoard(false);
-  setTimeout(() => { if (freshId === n.id) { freshId = null; } }, 3500);
 }
 /* Меню над кнопкой «+»: «+ Группа» / «+ Заметка» */
 let addMenu = null;
@@ -1354,40 +1394,51 @@ async function setStructure(on) {
   } finally { structBusy = false; }
 }
 /* Колонки «Структуры» переставляются за ручку: бросили на левую половину
-   другой колонки — встанет перед ней, на правую — после неё. */
+   другой колонки — встанет перед ней, на правую — после неё.
+   Отдельная заметка тоже тянется за ручку целой плашкой: бросили на
+   колонку — заметка ушла в эту группу. */
 function bindBoardDrag(board) {
-  let col = null, id = '', sx = 0, sy = 0, target = null, zone = '';
-  const clear = () => board.querySelectorAll('.col-before, .col-after').forEach(x => x.classList.remove('col-before', 'col-after'));
+  let el = null, id = '', note = false, sx = 0, sy = 0, target = null, zone = '';
+  const clear = () => board.querySelectorAll('.col-before, .col-after, .kb-drop-over').forEach(x => x.classList.remove('col-before', 'col-after', 'kb-drop-over'));
   const move = e => {
-    if (!col) return;
-    col.style.transform = `translate(${e.clientX - sx}px, ${e.clientY - sy}px) rotate(1.5deg)`;
+    if (!el) return;
+    el.style.transform = `translate(${e.clientX - sx}px, ${e.clientY - sy}px) rotate(1.5deg)`;
     clear(); target = null; zone = '';
-    const hit = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList && el.classList.contains('kb-bcol') && el !== col);
+    const hit = document.elementsFromPoint(e.clientX, e.clientY).find(x => x.classList && x.classList.contains('kb-bcol') && x !== el);
     if (!hit) return;
+    target = hit.dataset.col;
+    if (note) { zone = 'into'; hit.classList.add('kb-drop-over'); return; }
     const r = hit.getBoundingClientRect();
     zone = e.clientX < r.left + r.width / 2 ? 'before' : 'after';
-    target = hit.dataset.col;
     hit.classList.add('col-' + zone);
   };
   const up = async () => {
     document.removeEventListener('pointermove', move);
     document.removeEventListener('pointerup', up);
     document.removeEventListener('pointercancel', up);
-    if (!col) return;
-    col.style.transform = ''; col.style.zIndex = ''; col.classList.remove('dragging');
+    if (!el) return;
+    el.style.transform = ''; el.style.zIndex = ''; el.classList.remove('dragging');
     clear();
     dragGuard = Date.now();
-    const t = target, z = zone, src = id;
-    col = null;
-    if (t && z && !groupBranch(src).has(t)) await moveGroup(src, t, z);
+    const t = target, z = zone, src = id, isNote = note;
+    el = null;
+    if (isNote) {
+      if (t) {
+        if (editing && editing.id === src) flushEditor();
+        await kbSave('note', { groupId: t }, src);
+      }
+    } else if (t && z && !groupBranch(src).has(t)) await moveGroup(src, t, z);
     renderBoard(false);
   };
   board.addEventListener('pointerdown', e => {
-    const h = e.target.closest('.kb-bcol-handle');
+    const h = e.target.closest('.kb-bcol-handle, .kb-loose-handle');
     if (!h || e.button > 0) return;
     e.preventDefault();
-    col = h.closest('.kb-bcol'); id = col.dataset.col; sx = e.clientX; sy = e.clientY;
-    col.classList.add('dragging'); col.style.zIndex = '30';
+    note = h.classList.contains('kb-loose-handle');
+    el = h.closest(note ? '.kb-loose' : '.kb-bcol');
+    id = note ? el.dataset.note : el.dataset.col;
+    sx = e.clientX; sy = e.clientY;
+    el.classList.add('dragging'); el.style.zIndex = '30';
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
     document.addEventListener('pointercancel', up);
