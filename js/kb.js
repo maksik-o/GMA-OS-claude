@@ -303,6 +303,7 @@ function buildShell(el) {
   bindNoteDrag(el, el);
   bindGroupDrag(side);
   el.querySelector('.kb-board').addEventListener('click', onBoardClick);
+  bindBoardDrag(el.querySelector('.kb-board'));
 }
 
 /* Ручка колонки заметок: тап — свернуть, свайп влево — колонка едет
@@ -1135,13 +1136,14 @@ function flatGroups() {
   groups.filter(g => !g.parentId || !known.has(g.parentId)).forEach(g => walk(g, 0, []));
   return out;
 }
+const BCOL_HANDLE = '<svg class="dock-handle kb-bcol-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
 function renderBoard(animate) {
   if (!_host) return;
   const board = _host.querySelector('.kb-board');
   const notes = kbNotes();
-  const cols = flatGroups().map(({ g, depth, path }) => {
+  const cols = flatGroups().map(({ g, path }) => {
     const list = notes.filter(n => n.groupId === g.id);
-    return `<div class="kb-bcol" data-drop="${g.id}" style="--gc:${g.color || '#94a3b8'}">
+    return `<div class="kb-bcol" data-drop="${g.id}" data-col="${g.id}" style="--gc:${g.color || '#94a3b8'}">${BCOL_HANDLE}
       <header class="kb-bcol-head"><span class="kb-g-dot"></span>
         <span class="kb-bcol-name">${path.length ? `<i>${esc(path.join(' › '))} ›</i> ` : ''}${esc(g.name)}</span>
         <span class="kb-g-n">${list.length}</span></header>
@@ -1149,22 +1151,52 @@ function renderBoard(animate) {
     </div>`;
   }).join('');
   const html = `<header class="kb-board-head"><b>Структура</b>
-      <span class="kb-board-hint">Перетаскивайте заметки между колонками — они переедут в другую группу</span>
+      <span class="kb-board-hint">Перетаскивайте заметки между колонками, колонки — за ручку в углу</span>
       <button type="button" class="btn mini kb-board-close">✕ Закрыть</button></header>
     <div class="kb-board-cols">${cols || '<p class="empty">Групп пока нет</p>'}</div>`;
   setHTML(board, html);
-  if (animate && !reduceMotion()) {
-    board.querySelectorAll('.kb-bcol').forEach((c, i) => c.animate(
-      [{ transform: 'translateY(70px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
-      { duration: 420, delay: 120 + i * 70, easing: 'cubic-bezier(.32,.72,.28,1)', fill: 'backwards' }));
-    const head = board.querySelector('.kb-board-head');
-    if (head) head.animate([{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 300, fill: 'backwards' });
+  if (animate) cascadeIn([...board.querySelectorAll('.kb-board-head, .kb-bcol')]);
+}
+/* ── Каскад «как кубики» ──
+   Панели группируются в ряды по положению на экране. Въезд — снизу,
+   ряд за рядом (следующий ряд не ждёт весь предыдущий — небольшая
+   задержка на ряд и на место в ряду). Падение — вниз, начиная с
+   нижнего ряда. Сдвиг у всех один и тот же (высота экрана), поэтому
+   панели одной колонки никогда не наезжают друг на друга. */
+function rowsOf(els) {
+  const items = els.map(el => ({ el, r: el.getBoundingClientRect() })).filter(o => o.r.width > 0);
+  items.sort((a, b) => a.r.top - b.r.top || a.r.left - b.r.left);
+  const rows = [];
+  for (const it of items) {
+    const row = rows[rows.length - 1];
+    if (row && Math.abs(it.r.top - row.top) < 24) row.items.push(it);
+    else rows.push({ top: it.r.top, items: [it] });
   }
+  rows.forEach(r => r.items.sort((a, b) => a.r.left - b.r.left));
+  return rows.map(r => r.items.map(i => i.el));
+}
+function cascadeIn(els) {
+  if (reduceMotion()) return Promise.resolve();
+  const X = innerHeight;
+  const anims = [];
+  rowsOf(els).forEach((row, ri) => row.forEach((el, ci) => anims.push(el.animate(
+    [{ transform: `translateY(${X}px)` }, { transform: 'none' }],
+    { duration: 620, delay: ri * 120 + ci * 55, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' }))));
+  return Promise.all(anims.map(a => a.finished.catch(() => {})));
+}
+async function cascadeOut(els) {
+  if (reduceMotion()) return;
+  const X = innerHeight;
+  const anims = [];
+  rowsOf(els).reverse().forEach((row, ri) => row.forEach((el, ci) => anims.push(el.animate(
+    [{ transform: 'none' }, { transform: `translateY(${X}px)` }],
+    { duration: 480, delay: ri * 100 + ci * 45, easing: 'cubic-bezier(.55,0,.85,.35)', fill: 'forwards' }))));
+  await Promise.all(anims.map(a => a.finished.catch(() => {})));
+  return anims;
 }
 async function setStructure(on) {
   if (!_host || structBusy) return;
   structBusy = true;
-  const reduce = reduceMotion();
   const side = _host.querySelector('.kb-side');
   const notesEl = _host.querySelector('.kb-notes');
   const main = _host.querySelector('.kb-main');
@@ -1174,41 +1206,64 @@ async function setStructure(on) {
     if (on) {
       flushEditor();
       if (graph) { graph.destroy(); graph = null; main.dataset.key = ''; }
-      const falling = [notesOpen && visible(notesEl) ? notesEl : null, main].filter(Boolean);
-      if (!reduce) {
-        const anims = falling.map((el, i) => el.animate(
-          [{ transform: 'none', opacity: 1 }, { transform: 'translateY(70vh)', opacity: 0 }],
-          { duration: 430, delay: i * 120, easing: 'cubic-bezier(.55,0,.8,.2)', fill: 'forwards' }));
-        if (visible(side)) anims.push(side.animate(
-          [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-40px)', opacity: 0 }],
-          { duration: 320, delay: 80, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }));
-        await Promise.all(anims.map(a => a.finished.catch(() => {})));
-        anims.forEach(a => a.cancel());
-      }
+      /* Все три панели падают вниз — так же, как окно заметки */
+      const falling = [visible(side) ? side : null, notesOpen && visible(notesEl) ? notesEl : null, main].filter(Boolean);
+      const anims = await cascadeOut(falling);
       view = 'structure';
       _host.classList.add('kb-structure');
+      (anims || []).forEach(a => a.cancel());
       renderSide();
       renderBoard(true);
     } else {
-      const cols = [...board.querySelectorAll('.kb-bcol, .kb-board-head')];
-      if (!reduce) {
-        const anims = cols.map((c, i) => c.animate(
-          [{ transform: 'none', opacity: 1 }, { transform: 'translateY(70px)', opacity: 0 }],
-          { duration: 260, delay: i * 35, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }));
-        await Promise.all(anims.map(a => a.finished.catch(() => {})));
-      }
+      const anims = await cascadeOut([...board.querySelectorAll('.kb-board-head, .kb-bcol')]);
       view = 'note';
       _host.classList.remove('kb-structure');
       board.innerHTML = ''; board._html = '';
+      (anims || []).forEach(a => a.cancel());
       renderKbView(_host);
-      if (!reduce) {
-        const back = [side, notesOpen ? notesEl : null, main].filter(Boolean);
-        back.forEach((el, i) => el.animate(
-          [{ transform: i === 0 ? 'translateY(-40px)' : 'translateY(60px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
-          { duration: 380, delay: i * 100, easing: 'cubic-bezier(.32,.72,.28,1)', fill: 'backwards' }));
-      }
+      cascadeIn([notesOpen ? notesEl : side, main].filter(Boolean));
     }
   } finally { structBusy = false; }
+}
+/* Колонки «Структуры» переставляются за ручку: бросили на левую половину
+   другой колонки — встанет перед ней, на правую — после неё. */
+function bindBoardDrag(board) {
+  let col = null, id = '', sx = 0, sy = 0, target = null, zone = '';
+  const clear = () => board.querySelectorAll('.col-before, .col-after').forEach(x => x.classList.remove('col-before', 'col-after'));
+  const move = e => {
+    if (!col) return;
+    col.style.transform = `translate(${e.clientX - sx}px, ${e.clientY - sy}px) rotate(1.5deg)`;
+    clear(); target = null; zone = '';
+    const hit = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList && el.classList.contains('kb-bcol') && el !== col);
+    if (!hit) return;
+    const r = hit.getBoundingClientRect();
+    zone = e.clientX < r.left + r.width / 2 ? 'before' : 'after';
+    target = hit.dataset.col;
+    hit.classList.add('col-' + zone);
+  };
+  const up = async () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up);
+    if (!col) return;
+    col.style.transform = ''; col.style.zIndex = ''; col.classList.remove('dragging');
+    clear();
+    dragGuard = Date.now();
+    const t = target, z = zone, src = id;
+    col = null;
+    if (t && z && !groupBranch(src).has(t)) await moveGroup(src, t, z);
+    renderBoard(false);
+  };
+  board.addEventListener('pointerdown', e => {
+    const h = e.target.closest('.kb-bcol-handle');
+    if (!h || e.button > 0) return;
+    e.preventDefault();
+    col = h.closest('.kb-bcol'); id = col.dataset.col; sx = e.clientX; sy = e.clientY;
+    col.classList.add('dragging'); col.style.zIndex = '30';
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  });
 }
 async function onBoardClick(e) {
   if (Date.now() - dragGuard < 250) return;

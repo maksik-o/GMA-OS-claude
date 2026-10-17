@@ -5586,7 +5586,7 @@ body[data-surf="light"] .pp-arrow::after {
 /* ══════════════ База знаний: колонка заметок на месте колонки групп ══════════════
    Группы и заметки делят одну колонку: при открытии группы колонка групп
    уезжает влево за экран, а колонка заметок выезжает слева на её место. */
-.kb-view { grid-template-columns: minmax(230px, 270px) minmax(0, 1fr); }
+.kb-view { grid-template-columns: minmax(230px, 270px) minmax(0, 1fr); column-gap: 14px; row-gap: 12px; }
 .kb-view > .kb-side, .kb-view > .kb-notes { grid-row: 1; grid-column: 1; }
 .kb-view > .kb-main { grid-row: 1; grid-column: 2; }
 .kb-side {
@@ -5633,10 +5633,11 @@ body[data-surf="light"] .pp-arrow::after {
 }
 .kb-board-head b { font: 800 16px/1.2 var(--font-head); color: var(--accent); }
 .kb-board-hint { flex: 1; min-width: 0; font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kb-board-cols { display: flex; gap: 12px; overflow-x: auto; align-items: flex-start; padding: 2px 2px 12px; scroll-snap-type: x proximity; }
+/* Колонки-группы переносятся рядами и все видны на экране */
+.kb-board-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; align-items: start; padding: 2px 2px 12px; }
 .kb-bcol {
-  flex: 0 0 260px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100dvh - 210px);
-  padding: 10px; border-radius: var(--r-lg); scroll-snap-align: start;
+  position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  padding: 10px 10px 10px 12px; border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass)); box-shadow: var(--shadow), var(--inner-glow);
   -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
   border-top: 3px solid var(--gc); transition: box-shadow .15s, background .15s;
@@ -5645,9 +5646,13 @@ body[data-surf="light"] .pp-arrow::after {
 .kb-bcol-head { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 800; font-size: 14px; }
 .kb-bcol-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kb-bcol-name i { font-style: normal; font-weight: 600; font-size: 11.5px; color: var(--dim); }
-.kb-bcol-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 40px; }
+.kb-bcol-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 40px; max-height: 38vh; }
+.kb-bcol-head { padding-left: 16px; }
+.kb-bcol.dragging { opacity: .4; }
+.kb-bcol.col-before { box-shadow: -4px 0 0 var(--accent), var(--shadow); }
+.kb-bcol.col-after { box-shadow: 4px 0 0 var(--accent), var(--shadow); }
 .kb-bcol-list .empty { margin: 0; padding: 14px 6px; font-size: 12.5px; text-align: center; border: 1.5px dashed color-mix(in srgb, var(--text) 16%, transparent); border-radius: var(--r-md); }
 @media (max-width: 720px) {
-  .kb-bcol { flex-basis: 78vw; max-height: calc(100dvh - 240px); }
+  .kb-board-cols { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
   .kb-board-hint { display: none; }
 }
