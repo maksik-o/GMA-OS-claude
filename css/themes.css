@@ -484,18 +484,19 @@ html[data-theme] {
 }
 /* Лего — ручка-«пупырышек»: та же форма, что у шипов на фоне
    (светлая верхушка, ободок и мягкая тень справа-снизу), только в
-   цвете режима и уменьшенная, чтобы уместиться в скруглении угла и не
+   цвете плитки под ним, чуть серее — чтобы был виден, — и уменьшенная, чтобы уместиться в скруглении угла и не
    наезжать на содержимое панели. --stud — диаметр шипа. */
 :root[data-theme="brutal"] :is(.dock-handle, .pane-move-handle) {
   --stud: 11px;
-  --stud-top: color-mix(in srgb, var(--accent) 80%, #fff);
-  --stud-rim: color-mix(in srgb, var(--accent) 85%, #000);
+  --stud-tile: var(--panel-solid);
+  --stud-top: color-mix(in srgb, var(--stud-tile) 90%, #000);
+  --stud-rim: color-mix(in srgb, var(--stud-tile) 78%, #000);
   width: calc(var(--stud) + 3px) !important; height: calc(var(--stud) + 3px) !important;
   top: 3px !important; left: 3px !important;
   border: 0 !important; border-radius: 0 !important; -webkit-mask: none; mask: none; filter: none;
   background:
     radial-gradient(circle at calc(var(--stud) / 2) calc(var(--stud) / 2), var(--stud-top) 0 calc(var(--stud) * .44), var(--stud-rim) calc(var(--stud) * .45) calc(var(--stud) * .5), transparent calc(var(--stud) * .5 + .6px)),
-    radial-gradient(circle at calc(var(--stud) / 2 + 1px) calc(var(--stud) / 2 + 1.7px), rgba(120, 80, 0, .32) 0 calc(var(--stud) * .5), transparent calc(var(--stud) * .5 + 1.2px));
+    radial-gradient(circle at calc(var(--stud) / 2 + 1px) calc(var(--stud) / 2 + 1.7px), rgba(0, 0, 0, .22) 0 calc(var(--stud) * .5), transparent calc(var(--stud) * .5 + 1.2px));
   background-repeat: no-repeat;
 }
 :root[data-theme="brutal"] .dock-handle path, :root[data-theme="brutal"] .pane-move-handle svg { display: none !important; }
