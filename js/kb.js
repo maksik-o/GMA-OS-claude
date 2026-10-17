@@ -1099,8 +1099,12 @@ function bindNoteDrag(el, side) {
       document.body.classList.add('kb-dragging');
       try { navigator.vibrate(8); } catch {}
     }
-    ghost.style.transform = `translate(${e.clientX - gx}px, ${e.clientY - gy}px) rotate(2deg)`;
-    const d = dropAt(e.clientX, e.clientY);
+    const inTrash = trackTrash(e.clientX, e.clientY);
+    /* над корзиной миниатюра сжимается к курсору — поле «Удалить» видно */
+    ghost.style.transformOrigin = `${gx}px ${gy}px`;
+    ghost.style.transform = `translate(${e.clientX - gx}px, ${e.clientY - gy}px) rotate(2deg)${inTrash ? ' scale(.35)' : ''}`;
+    ghost.classList.toggle('kb-to-trash', inTrash);
+    const d = inTrash ? null : dropAt(e.clientX, e.clientY);
     if (d !== over) { clearOver(); if (d) { over = d; d.classList.add('kb-drop-over'); } }
   };
   const up = async e => {
@@ -1111,13 +1115,16 @@ function bindNoteDrag(el, side) {
     document.body.classList.remove('kb-dragging');
     if (ghost) { ghost.remove(); ghost = null; }
     if (src) src.classList.remove('dragging');
-    const target = started ? dropAt(e.clientX, e.clientY) : null;
+    const toTrash = started && trackTrash(e.clientX, e.clientY);
+    resetTrash();
+    const target = started && !toTrash ? dropAt(e.clientX, e.clientY) : null;
     const gid = target ? target.dataset.drop : null;
     const node = src;
     if (started) dragGuard = Date.now();
     clearOver();
     src = null;
     started = false;
+    if (node && toTrash) { await trashNote(node.dataset.id); return; }
     if (node && gid != null) {
       const to = gid === LOOSE ? '' : gid;   // на свободное место доски — заметка без группы
       const n = kbItem(node.dataset.id);
@@ -1161,6 +1168,7 @@ function flatGroups() {
   groups.filter(g => !g.parentId || !known.has(g.parentId)).forEach(g => walk(g, 0, []));
   return out;
 }
+const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 const LOOSE_HANDLE = '<svg class="dock-handle kb-loose-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
 const BCOL_HANDLE = '<svg class="dock-handle kb-bcol-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
 let freshId = null;   // только что созданная группа — сразу дать ввести название
@@ -1189,7 +1197,8 @@ function renderBoard(animate) {
   const html = `<header class="kb-board-head"><b>Структура</b>
       <span class="kb-board-hint">Перетаскивайте заметки между колонками или на свободное место, колонки и отдельные заметки — за ручку в углу</span>
       <button type="button" class="btn mini kb-board-close">✕ Закрыть</button></header>
-    <div class="kb-board-cols" data-drop="${LOOSE}">${cols}${loose}${cols || loose ? '' : '<p class="empty">Пусто — нажмите «+», чтобы создать группу или заметку</p>'}</div>`;
+    <div class="kb-board-cols" data-drop="${LOOSE}">${cols}${loose}${cols || loose ? '' : '<p class="empty">Пусто — нажмите «+», чтобы создать группу или заметку</p>'}</div>
+    <div class="btn danger kb-trash" aria-hidden="true">${TRASH_SVG}<span>Удалить</span></div>`;
   const changed = board._html !== html;
   setHTML(board, html);
   if (changed) layoutBoard(board);
@@ -1197,6 +1206,92 @@ function renderBoard(animate) {
   if (inp && freshId && inp.dataset.gid === freshId && document.activeElement !== inp) inp.focus();
   if (animate) cascadeIn([...board.querySelectorAll('.kb-board-head, .kb-bcol, .kb-loose')]);
 }
+/* ── Корзина «Структуры» (левый нижний угол) ──
+   Пока тянем заметку или группу, корзина следит за курсором: поднесли
+   ближе — разворачивается в поле «Удалить», курсор над полем —
+   поле подсвечено, отпустили над ним — элемент удаляется сразу, без
+   подтверждения. Только группа с заметками спрашивает, что делать с
+   заметками. */
+const TRASH_NEAR = 110;   // px от корзины, с которых она разворачивается
+function boardTrash() {
+  const t = view === 'structure' && _host && _host.querySelector('.kb-trash');
+  return t && t.offsetWidth ? t : null;
+}
+function trackTrash(x, y) {
+  const t = boardTrash();
+  if (!t) return false;
+  const r = t.getBoundingClientRect();
+  const dx = Math.max(r.left - x, 0, x - r.right), dy = Math.max(r.top - y, 0, y - r.bottom);
+  const hot = t.classList.contains('open') && dx === 0 && dy === 0;
+  t.classList.toggle('open', Math.hypot(dx, dy) < TRASH_NEAR);
+  t.classList.toggle('hot', hot);
+  return hot;
+}
+function resetTrash() {
+  const t = _host && _host.querySelector('.kb-trash');
+  if (t) t.classList.remove('open', 'hot');
+}
+async function trashNote(id) {
+  if (editing && editing.id === id) editing = null;
+  if (curNote === id) curNote = null;
+  await kbRemove(id);
+}
+async function trashGroup(gid, from) {
+  const inside = kbNotes().filter(n => n.groupId === gid);
+  const choice = inside.length ? await askGroupDelete() : 'group';
+  if (!choice) return;
+  if (choice === 'all') {
+    for (const n of inside) await trashNote(n.id);
+  } else {
+    /* заметки остаются — без группы, со своими названиями */
+    for (const n of inside) {
+      if (editing && editing.id === n.id) flushEditor();
+      await kbSave('note', { groupId: '' }, n.id);
+    }
+  }
+  await kbRemove(gid);
+  if (curGroup === gid) curGroup = '';
+  renderBoard(false);
+  if (choice === 'group' && from) flyOut(inside.map(n => n.id), from);
+}
+/* Заметки «вылетают» из удалённой группы и встают на свои места */
+function flyOut(ids, from) {
+  if (reduceMotion() || !_host) return;
+  const cx = from.left + from.width / 2, cy = from.top + Math.min(from.height, 120) / 2;
+  ids.forEach((id, k) => {
+    const el = _host.querySelector(`.kb-loose[data-note="${CSS.escape(id)}"]`);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const dx = cx - (r.left + r.width / 2), dy = cy - (r.top + r.height / 2);
+    el.animate([
+      { transform: `translate(${dx}px, ${dy}px) scale(.35)`, opacity: 0 },
+      { transform: `translate(${dx * .15}px, ${dy * .15 - 30}px) scale(1.04)`, opacity: 1, offset: .6 },
+      { transform: 'none', opacity: 1 }
+    ], { duration: 620, delay: k * 70, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' });
+  });
+}
+function askGroupDelete() {
+  return new Promise(done => {
+    const ov = document.createElement('div');
+    ov.className = 'notes-list-overlay';
+    ov.innerHTML = `<div class="notes-list-modal glass kb-del-dlg" role="dialog" aria-modal="true">
+      <p class="kb-del-text">В группе, которую вы хотите удалить, содержатся заметки</p>
+      <div class="kb-del-actions">
+        <button type="button" class="btn danger" data-a="all">Удалить вместе с содержимым</button>
+        <button type="button" class="btn" data-a="group">Удалить только группу</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    const close = v => { ov.remove(); document.removeEventListener('keydown', esc); done(v); };
+    const esc = e => { if (e.key === 'Escape') close(null); };
+    document.addEventListener('keydown', esc);
+    ov.onclick = e => {
+      if (e.target === ov) { close(null); return; }
+      const b = e.target.closest('[data-a]');
+      if (b) close(b.dataset.a);
+    };
+  });
+}
+
 /* ── Раскладка доски по столбцам ──
    Первые элементы встают первым рядом — по одному в столбец. Каждый
    следующий ложится в самый левый столбец, где под уже стоящими ещё
@@ -1398,12 +1493,15 @@ async function setStructure(on) {
    Отдельная заметка тоже тянется за ручку целой плашкой: бросили на
    колонку — заметка ушла в эту группу. */
 function bindBoardDrag(board) {
-  let el = null, id = '', note = false, sx = 0, sy = 0, target = null, zone = '';
+  let el = null, id = '', note = false, sx = 0, sy = 0, target = null, zone = '', trash = false;
   const clear = () => board.querySelectorAll('.col-before, .col-after, .kb-drop-over').forEach(x => x.classList.remove('col-before', 'col-after', 'kb-drop-over'));
   const move = e => {
     if (!el) return;
-    el.style.transform = `translate(${e.clientX - sx}px, ${e.clientY - sy}px) rotate(1.5deg)`;
     clear(); target = null; zone = '';
+    trash = trackTrash(e.clientX, e.clientY);
+    el.style.transform = `translate(${e.clientX - sx}px, ${e.clientY - sy}px) rotate(1.5deg)${trash ? ' scale(.3)' : ''}`;
+    el.classList.toggle('kb-to-trash', trash);
+    if (trash) return;
     const hit = document.elementsFromPoint(e.clientX, e.clientY).find(x => x.classList && x.classList.contains('kb-bcol') && x !== el);
     if (!hit) return;
     target = hit.dataset.col;
@@ -1417,11 +1515,18 @@ function bindBoardDrag(board) {
     document.removeEventListener('pointerup', up);
     document.removeEventListener('pointercancel', up);
     if (!el) return;
-    el.style.transform = ''; el.style.zIndex = ''; el.classList.remove('dragging');
+    const from = el.getBoundingClientRect();
+    el.style.transform = ''; el.style.zIndex = ''; el.style.transformOrigin = ''; el.classList.remove('dragging', 'kb-to-trash');
     clear();
+    resetTrash();
     dragGuard = Date.now();
-    const t = target, z = zone, src = id, isNote = note;
-    el = null;
+    const t = target, z = zone, src = id, isNote = note, toTrash = trash;
+    el = null; trash = false;
+    if (toTrash) {
+      if (isNote) await trashNote(src); else await trashGroup(src, from);
+      renderBoard(false);
+      return;
+    }
     if (isNote) {
       if (t) {
         if (editing && editing.id === src) flushEditor();
@@ -1438,6 +1543,8 @@ function bindBoardDrag(board) {
     el = h.closest(note ? '.kb-loose' : '.kb-bcol');
     id = note ? el.dataset.note : el.dataset.col;
     sx = e.clientX; sy = e.clientY;
+    const r = el.getBoundingClientRect();
+    el.style.transformOrigin = `${sx - r.left}px ${sy - r.top}px`;   // сжимается над корзиной к курсору
     el.classList.add('dragging'); el.style.zIndex = '30';
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
