@@ -635,7 +635,10 @@ function applyView(v) {
   const focusPanel = $('focusPanel');
   const topbar = document.querySelector('.topbar');
   const week = v === 'week';
-  if (grid) grid.hidden = !week;
+  /* Сетку Running-list показываем, только если в неделе выбран именно он:
+     при открытых канбане или Timeline повторное «Задачи» поднимало
+     вторую панель поверх доски. */
+  if (grid) grid.hidden = !week || currentBlock() !== 'week';
   if (cv) cv.hidden = v !== 'contacts';
   if (fv) fv.hidden = v !== 'finance';
   if (kv) kv.hidden = v !== 'kb';
