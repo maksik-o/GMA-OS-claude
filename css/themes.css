@@ -482,21 +482,26 @@ html[data-theme] {
      центру длиной --h-len, так длину ручки задаёт тема, а не разметка */
   stroke-dasharray: var(--h-len) 100; stroke-dashoffset: calc((100 - var(--h-len)) / -2);
 }
-/* Лего — ручка-«пупырышек»: та же форма, что у шипов на фоне
-   (светлая верхушка, ободок и мягкая тень справа-снизу), только в
-   цвете плитки под ним, чуть серее — чтобы был виден, — и уменьшенная, чтобы уместиться в скруглении угла и не
-   наезжать на содержимое панели. --stud — диаметр шипа. */
+/* Лего — ручка-«пупырышек»: та же форма и размер, что у шипов на фоне
+   (верхушка, ободок и мягкая тень справа-снизу). Цвет — плитки под ним,
+   чуть темнее, чтобы был виден: на белой панели — светло-серый, на
+   полупрозрачной (сквозь неё виден жёлтый фон) — жёлтый, как сама
+   панель. Цвет плитки = белый с непрозрачностью панели поверх фона.
+   --stud — диаметр шипа. */
 :root[data-theme="brutal"] :is(.dock-handle, .pane-move-handle) {
-  --stud: 11px;
-  --stud-tile: var(--panel-solid);
-  --stud-top: color-mix(in srgb, var(--stud-tile) 90%, #000);
-  --stud-rim: color-mix(in srgb, var(--stud-tile) 78%, #000);
+  --stud: 16px;
+  --stud-tile: color-mix(in srgb, #fff calc(var(--panel-a, 1) * 100%), var(--bg));
+  --stud-top: color-mix(in srgb, var(--stud-tile) 91%, #000);
+  --stud-rim: color-mix(in srgb, var(--stud-tile) 80%, #000);
+  /* затемняем по светлоте, сохраняя оттенок: жёлтый не уходит в олив */
+  --stud-top: oklch(from var(--stud-tile) calc(l - .07) calc(c * 1.15) h);
+  --stud-rim: oklch(from var(--stud-tile) calc(l - .16) calc(c * 1.2) h);
   width: calc(var(--stud) + 3px) !important; height: calc(var(--stud) + 3px) !important;
   top: 3px !important; left: 3px !important;
   border: 0 !important; border-radius: 0 !important; -webkit-mask: none; mask: none; filter: none;
   background:
     radial-gradient(circle at calc(var(--stud) / 2) calc(var(--stud) / 2), var(--stud-top) 0 calc(var(--stud) * .44), var(--stud-rim) calc(var(--stud) * .45) calc(var(--stud) * .5), transparent calc(var(--stud) * .5 + .6px)),
-    radial-gradient(circle at calc(var(--stud) / 2 + 1px) calc(var(--stud) / 2 + 1.7px), rgba(0, 0, 0, .22) 0 calc(var(--stud) * .5), transparent calc(var(--stud) * .5 + 1.2px));
+    radial-gradient(circle at calc(var(--stud) / 2 + 1px) calc(var(--stud) / 2 + 1.7px), oklch(from var(--stud-tile) calc(l - .3) c h / .35) 0 calc(var(--stud) * .5), transparent calc(var(--stud) * .5 + 1.4px));
   background-repeat: no-repeat;
 }
 :root[data-theme="brutal"] .dock-handle path, :root[data-theme="brutal"] .pane-move-handle svg { display: none !important; }
