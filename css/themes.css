@@ -482,11 +482,24 @@ html[data-theme] {
      центру длиной --h-len, так длину ручки задаёт тема, а не разметка */
   stroke-dasharray: var(--h-len) 100; stroke-dashoffset: calc((100 - var(--h-len)) / -2);
 }
-/* Лего — жирная дуга в тонкой чёрной обводке */
+/* Лего — ручка-«пупырышек»: такой же, как на фоне, но выраженный —
+   верхушка цвета режима, тёмный бортик снизу (видна «высота» шипа),
+   тонкая чёрная обводка и жёсткая тень, как у остальных деталей темы. */
 :root[data-theme="brutal"] :is(.dock-handle, .pane-move-handle) {
-  --h-d: 4px; --h-sw: 3px; --h-len: 92;
-  filter: drop-shadow(1px 0 0 #111) drop-shadow(-1px 0 0 #111) drop-shadow(0 1px 0 #111) drop-shadow(0 -1px 0 #111);
+  --stud: 13px;
+  --stud-top: color-mix(in srgb, var(--accent) 82%, #fff);
+  --stud-rim: color-mix(in srgb, var(--accent) 88%, #fff);
+  --stud-side: color-mix(in srgb, var(--accent) 72%, #000);
+  width: var(--stud) !important; height: var(--stud) !important;
+  top: 5px !important; left: 5px !important;
+  border: 0 !important; border-radius: 0 !important; -webkit-mask: none; mask: none;
+  background:
+    radial-gradient(circle at 50% 41%, var(--stud-top) 0 calc(var(--stud) * .28), var(--stud-rim) calc(var(--stud) * .33), transparent calc(var(--stud) * .36)),
+    radial-gradient(circle at 50% 56%, var(--stud-side) 0 calc(var(--stud) * .39), #111 calc(var(--stud) * .40) calc(var(--stud) * .45), transparent calc(var(--stud) * .47));
+  background-size: var(--stud) var(--stud); background-repeat: no-repeat;
+  filter: drop-shadow(1.5px 1.5px 0 rgba(17, 17, 17, .55));
 }
+:root[data-theme="brutal"] .dock-handle path, :root[data-theme="brutal"] .pane-move-handle svg { display: none !important; }
 /* Стекло — светящаяся дуга-блик большего радиуса (панели скруглены сильнее) */
 :root[data-theme="glass"] :is(.dock-handle, .pane-move-handle) {
   --h-d: 4px; --h-sw: 3px; --h-len: 62;
