@@ -530,7 +530,7 @@ function ensureWidgetsPanel() {
   if (_panel) return _panel;
   _panel = document.createElement('div');
   _panel.className = 'widgets-panel glass';
-  _panel.innerHTML = `<div class="wp-head">Панель виджетов</div><div class="wp-tiles"></div><div class="wp-hint">Кликни по плитке — виджет встанет вниз. Удерживай плитку и отведи на 20px — блок выйдет из пилюли и полетит как обычный. Перетащи панель за ручку на пилюлю «＋ Панель виджетов» — она вернётся в хранилище.</div>`;
+  _panel.innerHTML = `<div class="wp-head">Панель виджетов</div><div class="wp-tiles"></div><div class="wp-hint">Удерживайте строку, пока её не заполнит полоса, — виджет возьмётся, и его можно поставить на любое место. Чтобы убрать виджет, нажмите ✕ или перетащите его за ручку обратно сюда.</div>`;
   document.body.appendChild(_panel);
   return _panel;
 }
@@ -576,24 +576,42 @@ export function openWidgetsPanel(btn) {
   }, 0);
 }
 export function closeWidgetsPanel() { if (_panel) _panel.classList.remove('open'); }
+/* Удержание строки: её заполняет полоса-индикатор; заполнилась —
+   виджет «взят» и его можно нести на место. Отпустили или сдвинули
+   палец раньше — полоса быстро откатывается. */
+const HOLD_MS = 650;
 function bindTileHold(tile, id) {
   let t = null, started = false, sx = 0, sy = 0;
+  const fill = document.createElement('i');
+  fill.className = 'w-hold';
+  fill.style.setProperty('--hold-ms', HOLD_MS + 'ms');
+  tile.prepend(fill);
+  const cancel = () => {
+    if (t) { clearTimeout(t); t = null; }
+    tile.classList.remove('holding');
+  };
   tile.addEventListener('pointerdown', e => {
     if (e.target.closest('.w-un')) return;
     sx = e.clientX; sy = e.clientY; started = false;
+    tile.classList.add('holding');
     t = setTimeout(() => {
+      t = null;
       started = true;
+      tile.classList.remove('holding');
+      tile.classList.add('held');
+      try { navigator.vibrate && navigator.vibrate(12); } catch {}
       closeWidgetsPanel();
       startPlacement(id, sx, sy);
-    }, 350);
+      setTimeout(() => tile.classList.remove('held'), 400);
+    }, HOLD_MS);
   });
   tile.addEventListener('pointermove', e => {
     if (started) return;
-    if (Math.hypot(e.clientX - sx, e.clientY - sy) > 6) { if (t) { clearTimeout(t); t = null; } }
+    if (Math.hypot(e.clientX - sx, e.clientY - sy) > 8) cancel();
   });
-  tile.addEventListener('pointerup', () => {
-    if (t) { clearTimeout(t); t = null; }
-  });
+  tile.addEventListener('pointerup', cancel);
+  tile.addEventListener('pointercancel', cancel);
+  tile.addEventListener('pointerleave', () => { if (!started) cancel(); });
 }
 export function unplace(id) {
   state.widgets = (state.widgets || []).filter(w => w !== id);

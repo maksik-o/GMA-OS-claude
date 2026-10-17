@@ -5569,3 +5569,85 @@ body[data-surf="light"] .pp-arrow::after {
    на нажатие, как остальные кнопки */
 .kb-board-title { transition: transform .15s var(--ease-bounce, ease); }
 .kb-board-title:active { transform: scale(.95); }
+
+/* Панель виджетов: индикатор удержания строки */
+.w-tile { overflow: hidden; isolation: isolate; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.w-tile > :not(.w-hold) { position: relative; z-index: 1; }
+.w-hold {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform .18s ease;
+}
+.w-tile.holding .w-hold { transform: scaleX(1); transition: transform var(--hold-ms, 650ms) linear; }
+.w-tile.held .w-hold { transform: scaleX(1); background: color-mix(in srgb, var(--accent) 40%, transparent); transition: none; }
+.w-tile.holding { transform: scale(.985); transition: transform .2s ease; }
+
+/* ══════════════ База знаний: колонка заметок на месте колонки групп ══════════════
+   Группы и заметки делят одну колонку: при открытии группы колонка групп
+   уезжает влево за экран, а колонка заметок выезжает слева на её место. */
+.kb-view { grid-template-columns: minmax(230px, 270px) minmax(0, 1fr); }
+.kb-view > .kb-side, .kb-view > .kb-notes { grid-row: 1; grid-column: 1; }
+.kb-view > .kb-main { grid-row: 1; grid-column: 2; }
+.kb-side {
+  margin-right: 0;
+  transition: transform .42s var(--ease-spring, cubic-bezier(.32,.72,.28,1)) .06s, visibility 0s;
+}
+.kb-view.kb-notes-open > .kb-side {
+  transform: translateX(calc(-100% - 90px)); visibility: hidden; pointer-events: none;
+  transition: transform .36s cubic-bezier(.4, 0, .2, 1), visibility 0s linear .36s;
+}
+.kb-notes { clip-path: none; z-index: 3; pointer-events: none; align-self: stretch; }
+.kb-view.kb-notes-open .kb-notes { pointer-events: auto; }
+.kb-notes-in { width: 100%; transform: translateX(calc(-100% - 90px)); transition: transform .36s cubic-bezier(.4, 0, .2, 1), visibility 0s linear .36s; }
+.kb-view.kb-notes-open .kb-notes-in { transform: none; transition: transform .45s var(--ease-spring, cubic-bezier(.32,.72,.28,1)) .08s, visibility 0s; }
+.kb-notes-back {
+  flex: none; width: 26px; height: 26px; margin: -2px 0 -2px -4px; border: 0; border-radius: 8px; cursor: pointer;
+  background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); font-size: 17px; font-weight: 800; line-height: 1;
+}
+.kb-notes-back:hover { color: var(--accent); }
+@media (max-width: 720px) {
+  .kb-view > .kb-main { grid-row: 2; grid-column: 1; }
+}
+
+/* Кнопки «Граф» и «Структура» — как остальные кнопки темы */
+.kb-tools .btn.kb-tool { flex: 1; justify-content: center; font-size: 12.5px; padding: 7px 10px; }
+.kb-tools .btn.kb-tool.on { background: var(--accent); color: var(--on-accent, #fff); border-color: var(--accent); }
+
+/* Перетаскивание групп: метки «перед / после / внутрь» */
+.kb-g.drop-before { box-shadow: inset 0 3px 0 var(--accent); }
+.kb-g.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
+.kb-g.drop-into { background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
+.kb-g.dragging { opacity: .45; }
+.kb-group-ghost { font-weight: 800; }
+
+/* ══════════════ Структура: группы колонками ══════════════ */
+.kb-view > .kb-board { display: none; }
+.kb-view.kb-structure { grid-template-columns: minmax(0, 1fr); }
+.kb-view.kb-structure > .kb-side, .kb-view.kb-structure > .kb-notes, .kb-view.kb-structure > .kb-main { display: none; }
+.kb-view.kb-structure > .kb-board { display: flex; flex-direction: column; gap: 10px; grid-row: 1; grid-column: 1 / -1; min-width: 0; }
+.kb-board-head {
+  display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass)); box-shadow: var(--shadow), var(--inner-glow);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+}
+.kb-board-head b { font: 800 16px/1.2 var(--font-head); color: var(--accent); }
+.kb-board-hint { flex: 1; min-width: 0; font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-board-cols { display: flex; gap: 12px; overflow-x: auto; align-items: flex-start; padding: 2px 2px 12px; scroll-snap-type: x proximity; }
+.kb-bcol {
+  flex: 0 0 260px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100dvh - 210px);
+  padding: 10px; border-radius: var(--r-lg); scroll-snap-align: start;
+  background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass)); box-shadow: var(--shadow), var(--inner-glow);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  border-top: 3px solid var(--gc); transition: box-shadow .15s, background .15s;
+}
+.kb-bcol.kb-drop-over { box-shadow: 0 0 0 2px var(--gc), var(--shadow); background: color-mix(in srgb, var(--gc) 10%, var(--glass)); }
+.kb-bcol-head { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 800; font-size: 14px; }
+.kb-bcol-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-bcol-name i { font-style: normal; font-weight: 600; font-size: 11.5px; color: var(--dim); }
+.kb-bcol-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 40px; }
+.kb-bcol-list .empty { margin: 0; padding: 14px 6px; font-size: 12.5px; text-align: center; border: 1.5px dashed color-mix(in srgb, var(--text) 16%, transparent); border-radius: var(--r-md); }
+@media (max-width: 720px) {
+  .kb-bcol { flex-basis: 78vw; max-height: calc(100dvh - 240px); }
+  .kb-board-hint { display: none; }
+}
