@@ -5823,17 +5823,15 @@ body[data-surf="light"] .pp-arrow::after {
 .qp-def.on i::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 3px; height: 6px; border: solid var(--on-accent, #fff); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
 .qp-def:not(.on):hover { color: var(--text); }
 /* справка внутри окна */
-.qp-helpbox { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 2px 26px 2px 2px; animation: qpHelpIn .22s ease;
-  flex: 1 1 auto; min-height: 0; overflow: hidden;
-  -webkit-mask: linear-gradient(#000 calc(100% - 20px), transparent); mask: linear-gradient(#000 calc(100% - 20px), transparent); }
+.qp-helpbox { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 4px 32px 4px 2px; animation: qpHelpIn .22s ease; }
 .qp-helpbox b { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .qp-helpbox p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text); }
 .qp-helpbox ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 1.45; color: var(--dim); }
-.qp-x { position: absolute; top: 0; right: 0; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+.qp-x { position: absolute; top: 2px; right: 2px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
   color: var(--dim); background: color-mix(in srgb, var(--text) 8%, transparent); font-size: 12px; }
 .qp-x:hover { color: var(--text); }
 @keyframes qpHelpIn { from { opacity: 0; transform: translateY(6px); } }
-.qpick.qp-top .qp-helpbox { max-height: var(--qp-avail, 60dvh); }
+
 /* компактно — когда панель ввода низкая («Умная строка») */
 .qpick.qp-compact { padding: 8px; gap: 5px; }
 .qpick.qp-compact .qp-head { display: none; }
@@ -5871,9 +5869,9 @@ body[data-surf="light"] .pp-arrow::after {
 .qp-close .qp-chev { transform: rotate(180deg); }
 .qp-close:hover .qp-chev { transform: rotate(180deg) translateX(2px); }
 .qpick.open .qp-close { opacity: 1; pointer-events: auto; transition: opacity .25s ease .55s; }
-.sheet .qp-tab.qp-tab-top { top: calc(-20px - var(--pbw, 0px)); right: 26px; margin-top: 0; width: 76px; height: 22px; }
+.sheet .qp-tab.qp-tab-top { top: calc(-20px - var(--pbw, 0px)); right: var(--pinset, 24px); margin-top: 0; width: 76px; height: 22px; }
 .sheet .qp-tab.qp-tab-top .qp-chev { transform: rotate(-90deg); }
 .sheet .qp-tab.qp-tab-top:hover .qp-chev { transform: rotate(-90deg) translateX(2px); }
-.qpick.qp-top .qp-close { top: auto; bottom: calc(-20px - var(--pbw, 0px)); left: auto; right: 14px; margin-top: 0; width: 76px; height: 22px; }
+.qpick.qp-top .qp-close { top: auto; bottom: calc(-20px - var(--pbw, 0px)); left: auto; right: var(--pinset, 24px); margin-top: 0; width: 76px; height: 22px; }
 .qpick.qp-top .qp-close .qp-chev { transform: rotate(90deg); }
 .qpick.qp-top .qp-close:hover .qp-chev { transform: rotate(90deg) translateX(2px); }

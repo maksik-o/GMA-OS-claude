@@ -166,6 +166,7 @@ export function skinPanel(panel, getBump) {
     draw,
     get depth() { return depth; },
     get bw() { return st ? st.bw : 0; },
+    get r() { return st ? st.r : [0, 0, 0, 0]; },
     /* выступ пупырки: 0 — разглажена, BUMP_DEPTH — выпуклая */
     setDepth(to, ms = 0, delay = 0) {
       cancelAnimationFrame(anim);

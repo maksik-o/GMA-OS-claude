@@ -107,8 +107,8 @@ function ensurePicker() {
      часть края, а не накладка. Пупырка панели — справа по центру
      (компьютер) или сверху у правого угла (телефон); у окна — на краю,
      обращённом к панели. */
-  if (sheet) sheetSkin = skinPanel(sheet, (W, H) => (isSide() ? { side: 'right', at: H / 2 } : { side: 'top', at: W - TAB_INSET - BUMP_LEN / 2 }));
-  pickSkin = skinPanel(picker, (W, H) => (isSide() ? { side: 'left', at: H / 2 } : { side: 'bottom', at: W - CLOSE_INSET - BUMP_LEN / 2 }));
+  if (sheet) sheetSkin = skinPanel(sheet, (W, H) => (isSide() ? { side: 'right', at: H / 2 } : { side: 'top', at: W - topInset() - BUMP_LEN / 2 }));
+  pickSkin = skinPanel(picker, (W, H) => (isSide() ? { side: 'left', at: H / 2 } : { side: 'bottom', at: W - topInset() - BUMP_LEN / 2 }));
   new MutationObserver(() => { if (sheet && sheet.classList.contains('open')) refreshSkins(); })
     .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
   if (window.ResizeObserver && sheet) { pickerRO = new ResizeObserver(placePicker); pickerRO.observe(sheet); pickerRO.observe(picker); }
@@ -152,7 +152,7 @@ function placePicker() {
     const pad = parseFloat(getComputedStyle(picker).paddingTop) * 2;
     if (!helpFor && picker.querySelector('.qp-in').offsetHeight + pad > maxH) picker.classList.add('qp-compact');
     /* справке даём больше места: она временная, окно может подрасти */
-    picker.style.maxHeight = (helpFor ? Math.max(maxH, 360) : maxH) + 'px';
+    picker.style.maxHeight = helpFor ? '' : maxH + 'px';   // справка — целиком
     picker.style.left = (sl + sw + GAP_SIDE) + 'px';
     picker.style.right = 'auto';
     picker.style.bottom = Math.max(8, (sh - picker.offsetHeight) / 2) + 'px';
@@ -160,17 +160,24 @@ function placePicker() {
   } else {
     picker.style.maxHeight = '';
     picker.classList.remove('qp-compact');
-    picker.style.width = Math.min(sw - 24, 320) + 'px';
-    picker.style.left = 'auto';
-    picker.style.right = (innerWidth - sl - sw + 12) + 'px';
+    /* над высокой панелью места мало: окно не должно заезжать под
+       статус-бар — тогда компактные строки */
+    const avail = innerHeight - sh - GAP_TOP - 64;
+    const padM = parseFloat(getComputedStyle(picker).paddingTop) * 2;
+    if (!helpFor && picker.querySelector('.qp-in').offsetHeight + padM > avail) picker.classList.add('qp-compact');
+    /* на телефоне окно — во всю ширину, как сама панель */
+    picker.style.width = sw + 'px';
+    picker.style.left = sl + 'px';
+    picker.style.right = 'auto';
     picker.style.bottom = (sh + GAP_TOP) + 'px';
     picker.style.setProperty('--qp-hide', `translateY(${picker.offsetHeight + GAP_TOP + 24}px)`);
-    picker.style.setProperty('--qp-avail', Math.max(140, innerHeight - sh - GAP_TOP - 90) + 'px');
   }
-  if (sheetSkin) { sheetSkin.draw(); if (tab) tab.style.setProperty('--pbw', sheetSkin.bw + 'px'); }
-  if (pickSkin) { pickSkin.draw(); picker.style.setProperty('--pbw', pickSkin.bw + 'px'); }
+  if (sheetSkin) { sheetSkin.draw(); if (tab) { tab.style.setProperty('--pbw', sheetSkin.bw + 'px'); tab.style.setProperty('--pinset', topInset() + 'px'); } }
+  if (pickSkin) { pickSkin.draw(); picker.style.setProperty('--pbw', pickSkin.bw + 'px'); picker.style.setProperty('--pinset', topInset() + 'px'); }
 }
-const TAB_INSET = 26, CLOSE_INSET = 14;   // пупырки на телефоне — от правого края
+/* на телефоне пупырки — у самого правого скругления: панель и окно одной
+   ширины, поэтому пупырки друг над другом */
+const topInset = () => Math.max(sheetSkin ? sheetSkin.r[1] : 24, pickSkin ? pickSkin.r[2] : 0, 12);
 function refreshSkins() {
   if (sheetSkin) sheetSkin.refresh();
   if (pickSkin) pickSkin.refresh();
