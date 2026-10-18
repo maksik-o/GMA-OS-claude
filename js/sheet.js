@@ -74,6 +74,7 @@ function renderQuick() {
    «?» у режима показывает справку прямо в окне; любой клик, прокрутка
    или ✕ закрывают её. */
 let picker = null, pickerRO = null, switching = false, helpFor = '';
+const GAP_SIDE = 28;   // отступ окна от панели на компьютере
 function ensurePicker() {
   if (picker) return picker;
   picker = document.createElement('aside');
@@ -111,17 +112,18 @@ function placePicker() {
   const sw = sheet.offsetWidth, sh = sheet.offsetHeight;
   const sl = (innerWidth - sw) / 2;
   const pw = picker.offsetWidth;
-  const side = innerWidth > 720 && sl + sw + 14 + pw <= innerWidth - 12;
+  const side = innerWidth > 720 && sl + sw + GAP_SIDE + pw <= innerWidth - 12;
   picker.classList.toggle('qp-side', side);
   picker.classList.toggle('qp-top', !side);
   if (side) {
-    picker.style.left = (sl + sw + 14) + 'px';
+    /* справа от панели с отступом, по центру её высоты */
+    picker.style.left = (sl + sw + GAP_SIDE) + 'px';
     picker.style.width = '';
-    picker.style.bottom = '16px';
+    picker.style.bottom = Math.max(12, (sh - picker.offsetHeight) / 2) + 'px';
   } else {
     picker.style.width = Math.min(sw - 16, 560) + 'px';
     picker.style.left = (innerWidth - picker.offsetWidth) / 2 + 'px';
-    picker.style.bottom = (sh + 10) + 'px';
+    picker.style.bottom = (sh + 14) + 'px';
     /* сколько места над панелью — справке: до верха экрана с запасом на
        статус-бар/Dynamic Island и отступы окна */
     picker.style.setProperty('--qp-avail', Math.max(120, innerHeight - sh - 10 - 24 - 64) + 'px');

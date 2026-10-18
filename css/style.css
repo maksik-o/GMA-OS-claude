@@ -5467,21 +5467,6 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .qx-done { text-align: center; padding: 34px 10px; font-size: 18px; font-weight: 800; }
 .qx-done small { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--dim); }
 
-/* Настройки → Ввод новой задачи */
-.qs-opts { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 12px; }
-.qs-opt { padding: 12px; border-radius: var(--r-md, 14px); cursor: pointer; background: var(--card);
-  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); transition: border-color .2s, background .2s; }
-.qs-opt:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
-.qs-opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--card)); }
-.qs-top { display: flex; align-items: center; gap: 10px; }
-.qs-top b { flex: 1; font-size: 14.5px; }
-.qs-ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 16px; flex: none;
-  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
-.qs-desc { margin: 8px 0 0; font-size: 13px; line-height: 1.45; }
-.qs-how { display: none; margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: var(--dim); }
-.qs-how li { margin: 3px 0; }
-.qs-opt.on .qs-how { display: block; }
-
 /* ══════════════ Timeline: шапка — отдельный бокс ══════════════
    Сама секция больше не панель, а прозрачная обёртка: внутри два бокса —
    шапка (выглядит как шапка приложения) и сетка. Лоток «Без времени»
@@ -5782,7 +5767,7 @@ body[data-surf="light"] .pp-arrow::after {
    Компьютер: справа от панели (.qp-side). Телефон и узкое окно — над
    панелью (.qp-top), режимы в ряд. Материал и рамку даёт тема (.glass). */
 .qpick {
-  position: fixed; z-index: 31; width: 248px; box-sizing: border-box;
+  position: fixed; z-index: 31; width: 288px; box-sizing: border-box;
   padding: 12px; border-radius: var(--r-lg);
   display: flex; flex-direction: column; gap: 8px;
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
@@ -5806,8 +5791,9 @@ body[data-surf="light"] .pp-arrow::after {
 .qp-opt:active { transform: scale(.98); }
 .qp-opt.on { background: color-mix(in srgb, var(--accent) 15%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .qp-opt.on { padding-top: 20px; }
-.qp-ico { flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; font-size: 14px;
+.qp-ico { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px;
   background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.qp-ico svg { width: 18px; height: 18px; }
 .qp-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qp-help {
   flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
@@ -5843,6 +5829,7 @@ body[data-surf="light"] .pp-arrow::after {
 .qpick.qp-top .qp-opt .qp-name { font-size: 12px; letter-spacing: -.01em; white-space: normal; line-height: 1.2; text-overflow: clip; }
 .qpick.qp-top .qp-help { width: 18px; height: 18px; font-size: 10.5px; }
 .qpick.qp-top .qp-ico { display: none; }
+.qpick.qp-top .qp-helpbox .qp-ico { display: grid; width: 26px; height: 26px; }
 .qpick.qp-top .qp-def { left: 5px; right: auto; font-size: 9.5px; padding-right: 4px; }
 /* справка над панелью растёт вверх, до верха экрана; не влезла — край тает */
 .qpick.qp-top .qp-helpbox { max-height: var(--qp-avail, 60dvh); overflow: hidden;

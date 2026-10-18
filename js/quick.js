@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════════
-   Панель ввода новой задачи — варианты на выбор (Настройки → Ввод
-   новой задачи):
+   Панель ввода новой задачи — варианты на выбор (окно режимов рядом с
+   панелью, sheet.js):
 
    smart   — «умная строка»: одна фраза, дата/время/приоритет/режим/
              тип распознаются из текста и показываются чипами;
@@ -25,7 +25,9 @@ const DUMP_KEY = 'rl_quick_dump';
 
 export const QUICK_STYLES = [
   {
-    id: 'builder', label: 'Конструктор', icon: '⚙',
+    id: 'builder', label: 'Конструктор',
+    /* ползунки: свойства задачи настраиваются кнопками */
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
     desc: 'Название и кнопки-свойства: всё задаётся сразу, без большого редактора.',
     how: [
       'Под названием — кнопки: Дни · Время · Приоритет · Режим · Тип · Теги · Подзадачи · Файл.',
@@ -35,7 +37,9 @@ export const QUICK_STYLES = [
     ],
   },
   {
-    id: 'smart', label: 'Умная строка', icon: '⌁',
+    id: 'smart', label: 'Умная строка',
+    /* строка с искрой: фраза разбирается сама */
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17h10M3 12h6"/><path d="M17 3l1.4 3.6L22 8l-3.6 1.4L17 13l-1.4-3.6L12 8l3.6-1.4z"/></svg>',
     desc: 'Одна фраза — приложение само понимает дату, время, приоритет, режим и тип.',
     how: [
       'Даты: «сегодня», «завтра», «послезавтра», «в пятницу», «пн», «20.10».',
@@ -47,7 +51,9 @@ export const QUICK_STYLES = [
     ],
   },
   {
-    id: 'dump', label: 'Штурм и раскладка', icon: '❖',
+    id: 'dump', label: 'Штурм и раскладка',
+    /* стопка карточек: записать подряд, потом разложить */
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="8" width="13" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/><path d="M11 13h5M11 16h3"/></svg>',
     desc: 'Сначала записать всё из головы, потом разложить по дням жестами.',
     how: [
       'Шаг 1: пишете задачи подряд — каждая строка станет задачей.',
@@ -528,24 +534,4 @@ function dumpInit(host) {
     top.addEventListener('pointercancel', end);
   }
   render();
-}
-
-/* ══════════════ Настройки: «Ввод новой задачи» ══════════════ */
-export function renderQuickSettings(el, onTry) {
-  if (!el) return;
-  const cur = quickStyle();
-  el.innerHTML = `<p class="hint">Как выглядит панель, которая открывается по «＋» и клавише N. Выбор хранится на этом устройстве.</p>
-    <div class="qs-opts">${QUICK_STYLES.map(s => `
-      <div class="qs-opt${s.id === cur ? ' on' : ''}" data-qs="${s.id}" role="button" tabindex="0">
-        <div class="qs-top"><span class="qs-ico">${s.icon}</span><b>${esc(s.label)}</b>${s.id === cur ? '<span class="vo-badge on">выбрано</span>' : ''}</div>
-        <p class="qs-desc">${esc(s.desc)}</p>
-        <ul class="qs-how">${s.how.map(h => `<li>${esc(h)}</li>`).join('')}</ul>
-      </div>`).join('')}</div>
-    <div class="auth-row"><button type="button" class="btn primary qs-try">Открыть панель</button></div>`;
-  el.querySelectorAll('.qs-opt').forEach(o => {
-    const pick = () => { setQuickStyle(o.dataset.qs); renderQuickSettings(el, onTry); };
-    o.onclick = pick;
-    o.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } };
-  });
-  el.querySelector('.qs-try').onclick = () => onTry && onTry();
 }
