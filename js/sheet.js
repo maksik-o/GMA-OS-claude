@@ -6,7 +6,7 @@ import {
 } from './store.js';
 import { attachFile, openTaskFile, removeTaskFile, fmtSize } from './files.js';
 import { limitNote } from './attach.js';
-import { quickStyle, renderQuickAlt } from './quick.js';
+import { quickStyle, setQuickStyle, renderQuickAlt, QUICK_STYLES } from './quick.js';
 import { renderAll } from './week.js';
 import { createCalDrum, calTitle } from './cal.js';
 import * as tm from './timer.js';
@@ -37,6 +37,7 @@ function mkChip(label, on, cls, fn) {
 function growEl(el) { if (!el) return; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 export function openSheet(task) { if (task) openEditor(task); else openQuick(); }
 export function closeSheet() {
+  hidePicker();
   if (sheet) {
     sheet.classList.remove('open', 'drag');
     sheet.style.transform = '';
@@ -52,12 +53,135 @@ export function closeDay() {
   refreshBackdrop();
 }
 function openQuick() {
-  const alt = $('qAlt');
   editId = null;
-  if (sheet) sheet.dataset.qs = quickStyle();
-  renderQuickAlt(alt, { close: closeSheet, openEditor, rerender: renderAll });
+  qStyle = quickStyle();
+  renderQuick();
   if (sheet) sheet.classList.add('open');
+  showPicker();
   refreshBackdrop();
+}
+let qStyle = 'builder';
+function renderQuick() {
+  if (sheet) sheet.dataset.qs = qStyle;
+  renderQuickAlt($('qAlt'), { style: qStyle, close: closeSheet, openEditor, rerender: renderAll });
+}
+
+/* ══════════ Окно режимов панели ввода ══════════
+   На компьютере — справа от панели, на телефоне (и когда справа нет
+   места) — над ней. Выбор режима меняет панель на этот раз: она уезжает
+   вниз, и снизу выезжает панель выбранного режима. У выбранной строки в
+   углу — «По умолчанию»: отмеченный режим открывается по «＋» всегда.
+   «?» у режима показывает справку прямо в окне; любой клик, прокрутка
+   или ✕ закрывают её. */
+let picker = null, pickerRO = null, switching = false, helpFor = '';
+function ensurePicker() {
+  if (picker) return picker;
+  picker = document.createElement('aside');
+  picker.className = 'qpick glass';
+  picker.setAttribute('aria-label', 'Режим панели ввода');
+  document.body.appendChild(picker);
+  picker.addEventListener('click', onPickerClick);
+  picker.addEventListener('keydown', e => {
+    const o = e.target.closest('.qp-opt');
+    if (o && (e.key === 'Enter' || e.key === ' ') && e.target === o) { e.preventDefault(); switchQuick(o.dataset.qs); }
+  });
+  if (window.ResizeObserver && sheet) { pickerRO = new ResizeObserver(placePicker); pickerRO.observe(sheet); }
+  addEventListener('resize', placePicker);
+  return picker;
+}
+function renderPicker() {
+  const p = ensurePicker();
+  const def = quickStyle();
+  const help = QUICK_STYLES.find(x => x.id === helpFor);
+  p.innerHTML = `<div class="qp-head">Режим панели</div>
+    <div class="qp-list"${help ? ' hidden' : ''}>${QUICK_STYLES.map(x => `
+      <div class="qp-opt${x.id === qStyle ? ' on' : ''}" data-qs="${x.id}" role="button" tabindex="0" aria-pressed="${x.id === qStyle}">
+        <span class="qp-ico">${x.icon}</span><span class="qp-name">${esc(x.label)}</span>
+        <button type="button" class="qp-help" data-help="${x.id}" title="Справка: ${esc(x.label)}" aria-label="Справка: ${esc(x.label)}">?</button>
+        ${x.id === qStyle ? `<button type="button" class="qp-def${x.id === def ? ' on' : ''}" aria-pressed="${x.id === def}" title="Открывать этот режим по «＋»"><i></i>По умолчанию</button>` : ''}
+      </div>`).join('')}</div>
+    ${help ? `<div class="qp-helpbox"><button type="button" class="qp-x" aria-label="Закрыть справку">✕</button>
+      <b><span class="qp-ico">${help.icon}</span>${esc(help.label)}</b>
+      <p>${esc(help.desc)}</p><ul>${help.how.map(h => `<li>${esc(h)}</li>`).join('')}</ul></div>` : ''}`;
+  placePicker();
+}
+function placePicker() {
+  if (!picker || !picker.classList.contains('open') || !sheet) return;
+  /* геометрия панели без учёта её transform (она может ещё выезжать) */
+  const sw = sheet.offsetWidth, sh = sheet.offsetHeight;
+  const sl = (innerWidth - sw) / 2;
+  const pw = picker.offsetWidth;
+  const side = innerWidth > 720 && sl + sw + 14 + pw <= innerWidth - 12;
+  picker.classList.toggle('qp-side', side);
+  picker.classList.toggle('qp-top', !side);
+  if (side) {
+    picker.style.left = (sl + sw + 14) + 'px';
+    picker.style.width = '';
+    picker.style.bottom = '16px';
+  } else {
+    picker.style.width = Math.min(sw - 16, 560) + 'px';
+    picker.style.left = (innerWidth - picker.offsetWidth) / 2 + 'px';
+    picker.style.bottom = (sh + 10) + 'px';
+    /* сколько места над панелью — справке: до верха экрана с запасом на
+       статус-бар/Dynamic Island и отступы окна */
+    picker.style.setProperty('--qp-avail', Math.max(120, innerHeight - sh - 10 - 24 - 64) + 'px');
+  }
+}
+function showPicker() {
+  helpFor = '';
+  const p = ensurePicker();
+  p.classList.add('open');
+  renderPicker();
+}
+function hidePicker() {
+  closeHelp(true);
+  if (picker) picker.classList.remove('open');
+}
+function onPickerClick(e) {
+  const h = e.target.closest('.qp-help');
+  if (h) { e.stopPropagation(); openHelp(h.dataset.help); return; }
+  const d = e.target.closest('.qp-def');
+  if (d) { setQuickStyle(qStyle); renderPicker(); return; }
+  const o = e.target.closest('.qp-opt');
+  if (o) switchQuick(o.dataset.qs);
+}
+/* Справка: любой клик (в том числе по ней), прокрутка или Esc — закрыть */
+const helpCloser = e => { if (e.type !== 'keydown' || e.key === 'Escape') closeHelp(); };
+function openHelp(id) {
+  helpFor = id;
+  renderPicker();
+  setTimeout(() => {
+    if (!helpFor) return;
+    ['pointerdown', 'wheel', 'touchmove'].forEach(t => document.addEventListener(t, helpCloser, { capture: true, passive: true }));
+    document.addEventListener('scroll', helpCloser, { capture: true, passive: true });
+    document.addEventListener('keydown', helpCloser, true);
+  }, 0);
+}
+function closeHelp(silent) {
+  ['pointerdown', 'wheel', 'touchmove', 'scroll'].forEach(t => document.removeEventListener(t, helpCloser, { capture: true }));
+  document.removeEventListener('keydown', helpCloser, true);
+  if (!helpFor) return;
+  helpFor = '';
+  if (!silent) renderPicker();
+}
+/* Смена режима: панель уезжает вниз, выбранная выезжает снизу */
+async function switchQuick(st) {
+  if (!sheet || switching || st === qStyle || !QUICK_STYLES.some(x => x.id === st)) return;
+  qStyle = st;
+  renderPicker();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !sheet.animate) { renderQuick(); return; }
+  switching = true;
+  try {
+    const out = sheet.animate([{ transform: 'translate(-50%, 0)' }, { transform: 'translate(-50%, 110%)' }],
+      { duration: 240, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards' });
+    await out.finished.catch(() => {});
+    renderQuick();
+    const inn = sheet.animate([{ transform: 'translate(-50%, 110%)' }, { transform: 'translate(-50%, 0)' }],
+      { duration: 460, easing: 'cubic-bezier(.32, 1.15, .4, 1)', fill: 'backwards' });
+    out.cancel();
+    placePicker();
+    await inn.finished.catch(() => {});
+  } finally { switching = false; }
 }
 /* Ввод в панели идёт через quick.js; Enter в поле не должен отправлять форму */
 sheet?.addEventListener('submit', e => e.preventDefault());

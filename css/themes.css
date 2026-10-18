@@ -57,7 +57,7 @@ html[data-theme] {
     radial-gradient(900px 600px at 50% 100%, var(--time-atmosphere), transparent 70%),
     var(--bg);
 }
-:root[data-theme] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .fin-hero, .fs-card, .fin-card, .tl-wrap, .tl-box) {
+:root[data-theme] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .qpick, .fin-hero, .fs-card, .fin-card, .tl-wrap, .tl-box) {
   box-shadow:
     var(--shadow), var(--inner-glow),
     inset 0 1px 0 color-mix(in srgb, var(--accent) calc(var(--mode-inner) * 1.6), transparent),
@@ -150,7 +150,7 @@ html[data-theme] {
 :root[data-theme="brutal"] .cell { border-radius: 4px; border-width: 2px; }
 /* Цвет режима — плашками: панели отбрасывают жёсткую тень цвета режима
    в чёрной обводке, заголовок недели на цветном ярлыке */
-:root[data-theme="brutal"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .fin-hero, .fs-card, .fin-card, .tl-wrap, .tl-box) {
+:root[data-theme="brutal"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .qpick, .fin-hero, .fs-card, .fin-card, .tl-wrap, .tl-box) {
   box-shadow: 5px 5px 0 0 var(--accent), 5px 5px 0 2.5px #111;
 }
 :root[data-theme="brutal"] .kb-board-title { color: #111; background: var(--accent); padding: 2px 10px; border: 2px solid #111; border-radius: 8px; box-shadow: 2px 2px 0 #111;
@@ -310,7 +310,7 @@ html[data-theme] {
   text-transform: uppercase; font-weight: 800; letter-spacing: .04em;
   background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #fff)); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-:root[data-theme="neon"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .fin-hero, .fs-card, .fin-card, .tl-box) {
+:root[data-theme="neon"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .qpick, .fin-hero, .fs-card, .fin-card, .tl-box) {
   box-shadow:
     0 0 18px -6px var(--accent),
     inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
@@ -446,7 +446,6 @@ html[data-theme] {
   color: var(--accent); background: none; filter: none;
   transition: border-color .2s, transform .15s, filter .2s;
 }
-.kb-col-handle { --h-r: max(4px, calc(var(--r-md) - var(--h-gap))); }
 .dock-handle path, .pane-move-handle svg { display: none; }
 .dock-handle:active, .pane-move-handle:active { transform: scale(.92); }
 .week2.swapped .pane-move-handle { left: var(--h-gap) !important; }
@@ -467,7 +466,6 @@ html[data-theme] {
   top: calc(var(--h-rin) - var(--h-ra) * 1.1) !important; left: calc(var(--h-rin) - var(--h-ra) * 1.1) !important;
   border: 0 !important; border-radius: 0 !important; -webkit-mask: none; mask: none; background: none;
 }
-:root:is([data-theme="brutal"], [data-theme="glass"]) .kb-col-handle { --h-rin: calc(var(--r-md) - var(--t-bw, 0px)); }
 :root:is([data-theme="brutal"], [data-theme="glass"]) .dock-handle path { display: inline; }
 :root:is([data-theme="brutal"], [data-theme="glass"]) .pane-move-handle svg { display: block; width: 100%; height: 100%; }
 :root:is([data-theme="brutal"], [data-theme="glass"]) :is(.dock-handle, .pane-move-handle) path {

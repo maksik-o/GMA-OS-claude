@@ -9,7 +9,9 @@
    dump    — «штурм и раскладка»: сначала пишем всё подряд (строка =
              задача), потом смахиваем карточки по дням.
 
-   Выбор хранится в этом браузере (как тема и раскладка виджетов).
+   Выбор по умолчанию хранится в этом браузере (как тема и раскладка
+   виджетов); на время одного открытия режим меняется в окне рядом с
+   панелью (sheet.js).
    ══════════════════════════════════════════════════════════════════ */
 import {
   state, today, addDays, WEEKDAYS, MODES, TYPE_LABEL, PRIORITY_LABEL,
@@ -94,7 +96,7 @@ function done() { if (ctx && ctx.rerender) ctx.rerender(); }
 /* Точка входа: нарисовать выбранный вариант в host */
 export function renderQuickAlt(host, opts) {
   ctx = { host, ...opts };
-  const st = quickStyle();
+  const st = opts && QUICK_STYLES.some(x => x.id === opts.style) ? opts.style : quickStyle();
   host.dataset.qs = st;
   if (st === 'smart') smartInit(host);
   else if (st === 'builder') builderInit(host);
