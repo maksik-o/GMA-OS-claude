@@ -5770,7 +5770,7 @@ body[data-surf="light"] .pp-arrow::after {
    компьютер — вправо (.qp-side), телефон — вверх над правым краем
    (.qp-top). Спрятанное положение (--qp-hide) считает sheet.js. Материал
    и рамку даёт тема (.glass). */
-.qpick-clip { position: fixed; z-index: 29; overflow: hidden; pointer-events: none; }
+.qpick-clip { position: fixed; z-index: 29; overflow: hidden; pointer-events: none; transition: bottom .3s ease; }
 .qpick {
   position: absolute; z-index: 1; width: 288px; box-sizing: border-box;
   padding: 12px; border-radius: var(--r-lg);

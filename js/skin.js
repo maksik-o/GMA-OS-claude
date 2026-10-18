@@ -103,8 +103,14 @@ export function skinPanel(panel, getBump) {
       if (!s.x && !s.y && !s.blur && s.spread > 0) { if (!lw) { line = s.color; lw = s.spread; lineOut = true; } continue; }
       outer.push(s);
     }
+    /* сенсорные устройства (iPhone): без размытых SVG-теней и внутреннего
+       свечения — они дорогие для Safari и тормозили анимации; рамка и
+       жёсткие тени остаются */
+    const light = matchMedia('(pointer: coarse)').matches;
     const next = {
-      bw, line, lw, lineOut, outer, inner, bg: cs.backgroundColor,
+      bw, line, lw, lineOut, bg: cs.backgroundColor,
+      outer: light ? outer.filter(s => !s.blur && !s.spread) : outer,
+      inner: light ? [] : inner,
       bgImg: cs.backgroundImage !== 'none' ? cs.backgroundImage : '',
       backdrop: cs.backdropFilter && cs.backdropFilter !== 'none' ? cs.backdropFilter : (cs.webkitBackdropFilter || 'none'),
       r: [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius].map(v => parseFloat(v) || 0),

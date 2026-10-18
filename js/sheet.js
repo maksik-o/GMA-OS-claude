@@ -257,13 +257,15 @@ const pickCloser = e => {
 function armClosers() {
   setTimeout(() => {
     if (!pickOpen) return;
-    ['pointerdown', 'wheel', 'touchmove', 'scroll'].forEach(t => document.addEventListener(t, pickCloser, { capture: true, passive: true }));
+    /* только жесты человека: «scroll» iOS шлёт и сам (клавиатура, подстройка
+       экрана) — из-за него окно закрывалось сразу после открытия */
+    ['pointerdown', 'wheel', 'touchmove'].forEach(t => document.addEventListener(t, pickCloser, { capture: true, passive: true }));
     document.addEventListener('keydown', pickCloser, true);
     document.addEventListener('input', pickCloser, true);
   }, 0);
 }
 function disarmClosers() {
-  ['pointerdown', 'wheel', 'touchmove', 'scroll'].forEach(t => document.removeEventListener(t, pickCloser, { capture: true }));
+  ['pointerdown', 'wheel', 'touchmove'].forEach(t => document.removeEventListener(t, pickCloser, { capture: true }));
   document.removeEventListener('keydown', pickCloser, true);
   document.removeEventListener('input', pickCloser, true);
 }
@@ -285,35 +287,36 @@ function openHelp(id) {
   setTimeout(() => {
     if (!helpFor) return;
     ['pointerdown', 'wheel', 'touchmove'].forEach(t => document.addEventListener(t, helpCloser, { capture: true, passive: true }));
-    document.addEventListener('scroll', helpCloser, { capture: true, passive: true });
     document.addEventListener('keydown', helpCloser, true);
   }, 0);
 }
 function closeHelp(silent) {
-  ['pointerdown', 'wheel', 'touchmove', 'scroll'].forEach(t => document.removeEventListener(t, helpCloser, { capture: true }));
+  ['pointerdown', 'wheel', 'touchmove'].forEach(t => document.removeEventListener(t, helpCloser, { capture: true }));
   document.removeEventListener('keydown', helpCloser, true);
   if (!helpFor) return;
   helpFor = '';
   if (!silent) renderPicker();
 }
-/* Смена режима: окно на месте, в панели плавно сменяется содержимое */
+/* Смена режима: окно режимов остаётся на месте, а панель ввода уезжает
+   вниз и снизу выезжает панель выбранного режима (новая высота панели
+   и её фигура пересчитываются, пока она за краем экрана) */
 let switching = false;
 async function switchQuick(st) {
   if (!sheet || switching || st === qStyle || !QUICK_STYLES.some(x => x.id === st)) return;
   qStyle = st;
   renderPicker();
-  const alt = $('qAlt');
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !alt || !alt.animate) { renderQuick(); return; }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !sheet.animate) { renderQuick(); return; }
   switching = true;
   try {
-    const out = alt.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(10px)' }],
-      { duration: 130, easing: 'ease-in', fill: 'forwards' });
+    const out = sheet.animate([{ transform: 'translate(-50%, 0)' }, { transform: 'translate(-50%, 110%)' }],
+      { duration: 240, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards' });
     await out.finished.catch(() => {});
     renderQuick();
-    const inn = alt.animate([{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'none' }],
-      { duration: 220, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' });
-    out.cancel();
     placePicker();
+    await new Promise(r => requestAnimationFrame(r));   // тяжёлый кадр — пока панель за экраном
+    const inn = sheet.animate([{ transform: 'translate(-50%, 110%)' }, { transform: 'translate(-50%, 0)' }],
+      { duration: 460, easing: 'cubic-bezier(.32, 1.15, .4, 1)', fill: 'backwards' });
+    out.cancel();
     await inn.finished.catch(() => {});
   } finally { switching = false; }
 }
