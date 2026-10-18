@@ -441,8 +441,12 @@ function updateModeBlob() {
     const btnRect = active.getBoundingClientRect();
     /* Пилюля позиционируется от внутреннего края переключателя: у тем
        с толстой рамкой («Брутал») без поправки она съезжала на ширину рамки */
-    const left = btnRect.left - elRect.left - el.clientLeft;
-    const width = btnRect.width;
+    /* Размер текста S/L — это zoom у body: экранные координаты масштабированы,
+       а left/width пилюли задаются в CSS-пикселях — делим на масштаб, иначе
+       при S пилюля не доезжала до кнопки */
+    const k = el.offsetWidth ? elRect.width / el.offsetWidth : 1;
+    const left = (btnRect.left - elRect.left) / k - el.clientLeft;
+    const width = btnRect.width / k;
     if (!_modeBlobInitialized) {
       blob.style.transition = 'none';
       blob.style.left = left + 'px';

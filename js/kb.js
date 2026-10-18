@@ -1251,13 +1251,16 @@ function trackTrash(x, y) {
   const r = t.getBoundingClientRect();
   const dx = Math.max(r.left - x, 0, x - r.right), dy = Math.max(r.top - y, 0, y - r.bottom);
   const hot = t.classList.contains('open') && dx === 0 && dy === 0;
-  t.classList.toggle('open', Math.hypot(dx, dy) < TRASH_NEAR);
+  const open = Math.hypot(dx, dy) < TRASH_NEAR;
+  t.classList.toggle('open', open);
   t.classList.toggle('hot', hot);
+  document.body.classList.toggle('kb-trash-open', open);   // нижнее меню сужается (style.css)
   return hot;
 }
 function resetTrash() {
   const t = _host && _host.querySelector('.kb-trash');
   if (t) t.classList.remove('open', 'hot');
+  document.body.classList.remove('kb-trash-open');
 }
 async function trashNote(id) {
   if (editing && editing.id === id) editing = null;
