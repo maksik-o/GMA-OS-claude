@@ -19,7 +19,6 @@ import { init as notesInit } from './notes.js';
 import { init as financeInit, renderFinanceView, financeSubscribe } from './finance.js';
 import { init as kbInit, renderKbView, kbSubscribe, newKbNote } from './kb.js';
 import { focusInit } from './focus.js';
-import { edgeInit } from './edge.js';
 import { widgetsInit, openWidgetsPanel } from './widgets.js';
 import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanban, currentBlock } from './kanban.js';
 
@@ -775,7 +774,6 @@ async function boot() {
   await financeInit();
   await kbInit();
   await focusInit();
-  edgeInit();
   widgetsInit();
   kanbanInit(); // троеточие видов + панель доски + жесты
   await loadModeColors();
