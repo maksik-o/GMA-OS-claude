@@ -57,7 +57,7 @@ function openQuick() {
   qStyle = quickStyle();
   renderQuick();
   if (sheet) sheet.classList.add('open');
-  showPicker();
+  resetPicker();
   refreshBackdrop();
 }
 let qStyle = 'builder';
@@ -67,14 +67,18 @@ function renderQuick() {
 }
 
 /* ══════════ Окно режимов панели ввода ══════════
-   На компьютере — справа от панели, на телефоне (и когда справа нет
-   места) — над ней. Выбор режима меняет панель на этот раз: она уезжает
-   вниз, и снизу выезжает панель выбранного режима. У выбранной строки в
-   углу — «По умолчанию»: отмеченный режим открывается по «＋» всегда.
-   «?» у режима показывает справку прямо в окне; любой клик, прокрутка
-   или ✕ закрывают её. */
-let picker = null, pickerRO = null, switching = false, helpFor = '';
-const GAP_SIDE = 28;   // отступ окна от панели на компьютере
+   На краю панели — «пупырка» со стрелкой (компьютер: справа по центру,
+   телефон: сверху в правом углу). Нажали — пупырка разглаживается, а из-
+   под панели выезжает окно режимов; на его краю, обращённом к панели,
+   появляется такая же пупырка — закрыть. Выбор режима меняет только
+   содержимое панели, окно остаётся. У выбранной строки — «По умолчанию»:
+   этот режим открывается по «＋» всегда. «?» показывает справку в окне.
+   Окно закрывается, если начать печатать, прокрутить или кликнуть мимо. */
+let picker = null, pickerRO = null, helpFor = '', pickOpen = false, tab = null;
+const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+const GAP_SIDE = 26;   // зазор окна и панели на компьютере
+const GAP_TOP = 22;    // на телефоне — над панелью
+const isSide = () => innerWidth > 720;
 function ensurePicker() {
   if (picker) return picker;
   picker = document.createElement('aside');
@@ -86,6 +90,15 @@ function ensurePicker() {
     const o = e.target.closest('.qp-opt');
     if (o && (e.key === 'Enter' || e.key === ' ') && e.target === o) { e.preventDefault(); switchQuick(o.dataset.qs); }
   });
+  /* пупырка на панели ввода */
+  tab = document.createElement('button');
+  tab.type = 'button';
+  tab.className = 'qp-tab';
+  tab.title = 'Режим панели';
+  tab.setAttribute('aria-label', 'Выбрать режим панели');
+  tab.innerHTML = CHEV;
+  tab.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openPicker(); });
+  if (sheet) sheet.appendChild(tab);
   if (window.ResizeObserver && sheet) { pickerRO = new ResizeObserver(placePicker); pickerRO.observe(sheet); }
   addEventListener('resize', placePicker);
   return picker;
@@ -94,7 +107,8 @@ function renderPicker() {
   const p = ensurePicker();
   const def = quickStyle();
   const help = QUICK_STYLES.find(x => x.id === helpFor);
-  p.innerHTML = `<div class="qp-head">Режим панели</div>
+  p.innerHTML = `<button type="button" class="qp-close" title="Скрыть" aria-label="Скрыть режимы">${CHEV}</button>
+    <div class="qp-head">Режим панели</div>
     <div class="qp-list"${help ? ' hidden' : ''}>${QUICK_STYLES.map(x => `
       <div class="qp-opt${x.id === qStyle ? ' on' : ''}" data-qs="${x.id}" role="button" tabindex="0" aria-pressed="${x.id === qStyle}">
         <span class="qp-ico">${x.icon}</span><span class="qp-name">${esc(x.label)}</span>
@@ -106,40 +120,84 @@ function renderPicker() {
       <p>${esc(help.desc)}</p><ul>${help.how.map(h => `<li>${esc(h)}</li>`).join('')}</ul></div>` : ''}`;
   placePicker();
 }
+/* Окно стоит у панели: справа по центру её высоты (компьютер) или над
+   её правым краем (телефон). Геометрия панели — без её transform. */
 function placePicker() {
-  if (!picker || !picker.classList.contains('open') || !sheet) return;
-  /* геометрия панели без учёта её transform (она может ещё выезжать) */
+  if (!picker || !sheet) return;
   const sw = sheet.offsetWidth, sh = sheet.offsetHeight;
   const sl = (innerWidth - sw) / 2;
-  const pw = picker.offsetWidth;
-  const side = innerWidth > 720 && sl + sw + GAP_SIDE + pw <= innerWidth - 12;
+  const side = isSide();
   picker.classList.toggle('qp-side', side);
   picker.classList.toggle('qp-top', !side);
+  if (tab) tab.classList.toggle('qp-tab-top', !side);
   if (side) {
-    /* справа от панели с отступом, по центру её высоты */
-    picker.style.left = (sl + sw + GAP_SIDE) + 'px';
     picker.style.width = '';
+    picker.style.left = (sl + sw + GAP_SIDE) + 'px';
+    picker.style.right = 'auto';
     picker.style.bottom = Math.max(12, (sh - picker.offsetHeight) / 2) + 'px';
+    picker.style.setProperty('--qp-hide', `translateX(${-(picker.offsetWidth + GAP_SIDE + 10)}px)`);
   } else {
-    picker.style.width = Math.min(sw - 16, 560) + 'px';
-    picker.style.left = (innerWidth - picker.offsetWidth) / 2 + 'px';
-    picker.style.bottom = (sh + 14) + 'px';
-    /* сколько места над панелью — справке: до верха экрана с запасом на
-       статус-бар/Dynamic Island и отступы окна */
-    picker.style.setProperty('--qp-avail', Math.max(120, innerHeight - sh - 10 - 24 - 64) + 'px');
+    picker.style.width = Math.min(sw - 24, 320) + 'px';
+    picker.style.left = 'auto';
+    picker.style.right = (innerWidth - sl - sw + 12) + 'px';
+    picker.style.bottom = (sh + GAP_TOP) + 'px';
+    picker.style.setProperty('--qp-hide', `translateY(${picker.offsetHeight + GAP_TOP + 10}px)`);
+    picker.style.setProperty('--qp-avail', Math.max(140, innerHeight - sh - GAP_TOP - 90) + 'px');
   }
 }
-function showPicker() {
+/* Новое открытие панели: окно спрятано, видна пупырка */
+function resetPicker() {
   helpFor = '';
-  const p = ensurePicker();
-  p.classList.add('open');
+  ensurePicker();
+  setPickOpen(false, true);
   renderPicker();
+}
+function setPickOpen(on, instant) {
+  pickOpen = on;
+  if (!picker) return;
+  if (instant) { picker.classList.add('qp-instant'); requestAnimationFrame(() => picker && picker.classList.remove('qp-instant')); }
+  picker.classList.toggle('open', on);
+  if (tab) tab.classList.toggle('flat', on);
+  if (on) armClosers(); else disarmClosers();
+}
+function openPicker() {
+  if (!sheet || !sheet.classList.contains('open')) return;
+  renderPicker();
+  setPickOpen(true);
+}
+function closePicker() {
+  closeHelp(true);
+  setPickOpen(false);
 }
 function hidePicker() {
   closeHelp(true);
-  if (picker) picker.classList.remove('open');
+  if (picker) setPickOpen(false, true);
+}
+/* Закрыть окно: начали печатать, прокрутили или кликнули мимо него */
+const outsidePick = e => e.target && picker && !picker.contains(e.target) && !(tab && tab.contains(e.target));
+const pickCloser = e => {
+  if (!pickOpen) return;
+  if (e.type === 'keydown') {
+    if (picker.contains(e.target) && (e.key === 'Enter' || e.key === ' ' || e.key === 'Tab')) return;
+    closePicker(); return;
+  }
+  if (outsidePick(e)) closePicker();
+};
+function armClosers() {
+  setTimeout(() => {
+    if (!pickOpen) return;
+    ['pointerdown', 'wheel', 'touchmove', 'scroll'].forEach(t => document.addEventListener(t, pickCloser, { capture: true, passive: true }));
+    document.addEventListener('keydown', pickCloser, true);
+    document.addEventListener('input', pickCloser, true);
+  }, 0);
+}
+function disarmClosers() {
+  ['pointerdown', 'wheel', 'touchmove', 'scroll'].forEach(t => document.removeEventListener(t, pickCloser, { capture: true }));
+  document.removeEventListener('keydown', pickCloser, true);
+  document.removeEventListener('input', pickCloser, true);
 }
 function onPickerClick(e) {
+  if (e.target.closest('.qp-close')) { closePicker(); return; }
   const h = e.target.closest('.qp-help');
   if (h) { e.stopPropagation(); openHelp(h.dataset.help); return; }
   const d = e.target.closest('.qp-def');
@@ -147,7 +205,8 @@ function onPickerClick(e) {
   const o = e.target.closest('.qp-opt');
   if (o) switchQuick(o.dataset.qs);
 }
-/* Справка: любой клик (в том числе по ней), прокрутка или Esc — закрыть */
+/* Справка: любой клик (в том числе по ней), прокрутка или Esc — закрыть
+   справку (окно режимов при этом остаётся, если клик был в нём) */
 const helpCloser = e => { if (e.type !== 'keydown' || e.key === 'Escape') closeHelp(); };
 function openHelp(id) {
   helpFor = id;
@@ -166,20 +225,22 @@ function closeHelp(silent) {
   helpFor = '';
   if (!silent) renderPicker();
 }
-/* Смена режима: панель уезжает вниз, выбранная выезжает снизу */
+/* Смена режима: окно на месте, в панели плавно сменяется содержимое */
+let switching = false;
 async function switchQuick(st) {
   if (!sheet || switching || st === qStyle || !QUICK_STYLES.some(x => x.id === st)) return;
   qStyle = st;
   renderPicker();
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !sheet.animate) { renderQuick(); return; }
+  const alt = $('qAlt');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !alt || !alt.animate) { renderQuick(); return; }
   switching = true;
   try {
-    const out = sheet.animate([{ transform: 'translate(-50%, 0)' }, { transform: 'translate(-50%, 110%)' }],
-      { duration: 240, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards' });
+    const out = alt.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(10px)' }],
+      { duration: 130, easing: 'ease-in', fill: 'forwards' });
     await out.finished.catch(() => {});
     renderQuick();
-    const inn = sheet.animate([{ transform: 'translate(-50%, 110%)' }, { transform: 'translate(-50%, 0)' }],
-      { duration: 460, easing: 'cubic-bezier(.32, 1.15, .4, 1)', fill: 'backwards' });
+    const inn = alt.animate([{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 220, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' });
     out.cancel();
     placePicker();
     await inn.finished.catch(() => {});
