@@ -668,20 +668,25 @@ function bindDnD() {
   });
 }
 
-/* ── Перетаскивание СТОЛБИКОВ за ручку-дугу ── */
-function flipCols(colsEl, mutate) {
-  const first = new Map([...colsEl.children].map(k => [k, k.getBoundingClientRect().left]));
-  mutate();
+/* ── Перетаскивание СТОЛБИКОВ за ручку ──
+   Как у виджетов и групп «Структуры»: колонка «поднимается» над доской
+   (без прозрачности, с тенью), остальные смыкаются; место вставки
+   показывают соседи — колонки справа от него расступаются. Отпустили —
+   колонка «падает» на место, все встают по местам (FLIP). */
+const COL_SHIFT = 26;
+const KB_EASE = 'cubic-bezier(.32,.72,.28,1)';
+function flipCols(colsEl, first, ms) {
   [...colsEl.children].forEach(k => {
     const f = first.get(k);
-    if (f == null) return;
-    const d = f - k.getBoundingClientRect().left;
-    if (Math.abs(d) > 1) {
-      k.animate([{ transform: 'translateX(' + d + 'px)' }, { transform: 'translateX(0)' }],
-        { duration: 200, easing: 'cubic-bezier(.32,.72,.28,1)' });
+    if (!f) return;
+    const r = k.getBoundingClientRect();
+    const dx = f.left - r.left, dy = f.top - r.top;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      k.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: ms || 380, easing: KB_EASE });
     }
   });
 }
+const colRects = colsEl => new Map([...colsEl.children].map(k => [k, k.getBoundingClientRect()]));
 function bindColDnD() {
   document.addEventListener('pointerdown', e => {
     const handle = e.target.closest('.kb-col-handle');
@@ -691,47 +696,81 @@ function bindColDnD() {
     if (!col || !colsEl || !colsEl.classList.contains('kb-cols')) return;
     e.preventDefault();
     const sx = e.clientX, sy = e.clientY;
-    let started = false;
+    let started = false, gx = 0, gy = 0, ox = 0, oy = 0, idx = -1;
+    const others = () => [...colsEl.children].filter(k => k !== col);
+    const showSlot = i => others().forEach((k, j) => {
+      const sh = i < 0 ? 0 : j >= i ? COL_SHIFT : j === i - 1 ? -6 : 0;
+      if ((k._sh || 0) !== sh) { k._sh = sh; k.style.transform = sh ? `translateX(${sh}px)` : ''; }
+    });
+    const slotAt = x => {
+      const ks = others();
+      for (let i = 0; i < ks.length; i++) {
+        const r = ks[i].getBoundingClientRect();
+        if (x < r.left - (ks[i]._sh || 0) + r.width / 2) return i;
+      }
+      return ks.length;
+    };
+    const lift = () => {
+      const r = col.getBoundingClientRect();
+      gx = sx - r.left; gy = sy - r.top;
+      const first = colRects(colsEl);
+      col.style.width = r.width + 'px';
+      col.style.height = r.height + 'px';
+      col.style.left = r.left + 'px';
+      col.style.top = r.top + 'px';
+      col.classList.add('kb-col-lifted');
+      /* у панели канбана есть backdrop-filter — для fixed она становится
+         системой координат: поправка на её сдвиг относительно экрана */
+      col.style.transform = 'none';
+      const r2 = col.getBoundingClientRect();
+      ox = r2.left - r.left; oy = r2.top - r.top;
+      col.style.transform = '';
+      colsEl.classList.add('kb-cols-dragging');
+      document.body.classList.add('kb-drag');
+      flipCols(colsEl, first, 240);   // остальные смыкаются на месте поднятой
+      hapticLight();
+    };
     const move = ev => {
       const x = ev.clientX, y = ev.clientY;
       if (!started) {
-        if (Math.hypot(x - sx, y - sy) > 8) {
-          started = true;
-          col.classList.add('kb-coldragging');
-          document.body.classList.add('kb-drag');
-          hapticLight();
-        } else return;
+        if (Math.hypot(x - sx, y - sy) <= 8) return;
+        started = true;
+        lift();
       }
+      col.style.left = (x - gx - ox) + 'px';
+      col.style.top = (y - gy - oy) + 'px';
       const r = colsEl.getBoundingClientRect();
       if (x < r.left + 44) colsEl.scrollLeft -= 14;
       else if (x > r.right - 44) colsEl.scrollLeft += 14;
-      const kids = [...colsEl.children].filter(k => k !== col);
-      let idx = kids.length;
-      for (let i = 0; i < kids.length; i++) {
-        const kr = kids[i].getBoundingClientRect();
-        if (x < kr.left + kr.width / 2) { idx = i; break; }
-      }
-      const ref = idx < kids.length ? kids[idx] : null;
-      const same = ref ? col.nextSibling === ref : colsEl.lastElementChild === col;
-      if (!same) {
-        flipCols(colsEl, () => { if (ref) colsEl.insertBefore(col, ref); else colsEl.appendChild(col); });
-      }
+      idx = slotAt(x);
+      showSlot(idx);
     };
-    const up = () => {
+    const drop = commit => {
       cleanup();
-      if (started) {
-        col.classList.remove('kb-coldragging');
-        document.body.classList.remove('kb-drag');
+      if (!started) return;
+      const from = col.getBoundingClientRect();
+      const first = colRects(colsEl);
+      first.set(col, from);
+      colsEl.classList.add('kb-cols-settling');
+      showSlot(-1);
+      col.classList.remove('kb-col-lifted');
+      col.style.width = col.style.height = col.style.left = col.style.top = '';
+      if (commit && idx >= 0) {
+        const ks = others();
+        const ref = idx < ks.length ? ks[idx] : null;
+        if (ref) colsEl.insertBefore(col, ref); else colsEl.appendChild(col);
+      }
+      flipCols(colsEl, first);
+      requestAnimationFrame(() => colsEl.classList.remove('kb-cols-settling', 'kb-cols-dragging'));
+      document.body.classList.remove('kb-drag');
+      if (commit) {
         kb.colOrder = kb.colOrder || {};
         kb.colOrder[kb.view] = [...colsEl.children].map(c => c.dataset.value);
         saveKb();
       }
     };
-    const cancel = () => {
-      cleanup();
-      col.classList.remove('kb-coldragging');
-      document.body.classList.remove('kb-drag');
-    };
+    const up = () => drop(true);
+    const cancel = () => drop(false);
     const cleanup = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);

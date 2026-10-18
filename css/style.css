@@ -2253,10 +2253,20 @@ body.kb-drag { user-select: none; -webkit-user-select: none; }
 .kb-col { flex: 1 1 0; min-width: 200px; max-width: none; }
 @media (max-width: 720px) { .kb-col { flex: 0 0 82%; min-width: 0; } }
 /* ── Канбан: ручки столбиков, перетаскивание колонок, статусы ── */
-.kb-col { position: relative; }
+/* Ручка колонки — та же, что у панелей и виджетов во всех темах: колонка
+   скруглена как панель (--r-lg), размеры и форму ручке задаёт themes.css */
+.kb-col { position: relative; border-radius: var(--r-lg); }
 .kb-col .kb-col-head { padding: 8px 10px 8px 30px; }
-.kb-col-handle { width: 26px; height: 26px; z-index: 4; }
-.kb-coldragging { opacity: .5; outline: 2px dashed var(--accent); outline-offset: -2px; }
+.kb-col-handle { z-index: 4; }
+/* перенос колонки (kanban.js: bindColDnD): поднятая — над доской, без
+   прозрачности; соседи расступаются плавно */
+.kb-cols.kb-cols-dragging > .kb-col { transition: transform .22s cubic-bezier(.32,.72,.28,1); }
+.kb-cols.kb-cols-settling > .kb-col { transition: none; }
+.kb-cols > .kb-col.kb-col-lifted {
+  position: fixed; z-index: 60; margin: 0; pointer-events: none; transition: none;
+  transform: rotate(1.5deg); box-shadow: 0 22px 44px -10px rgba(0, 0, 0, .38), var(--shadow);
+  background: var(--panel-solid, var(--card));
+}
 /* ── Канбан: поиск сдвинут влево, надпись диапазона отпущена ── */
 .r-search #searchBtn { margin-right: -2px; }
 .kb-rangelabel { padding: 9px 4px; }
@@ -5457,21 +5467,6 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .qx-done { text-align: center; padding: 34px 10px; font-size: 18px; font-weight: 800; }
 .qx-done small { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--dim); }
 
-/* Настройки → Ввод новой задачи */
-.qs-opts { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 12px; }
-.qs-opt { padding: 12px; border-radius: var(--r-md, 14px); cursor: pointer; background: var(--card);
-  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); transition: border-color .2s, background .2s; }
-.qs-opt:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
-.qs-opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--card)); }
-.qs-top { display: flex; align-items: center; gap: 10px; }
-.qs-top b { flex: 1; font-size: 14.5px; }
-.qs-ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 16px; flex: none;
-  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
-.qs-desc { margin: 8px 0 0; font-size: 13px; line-height: 1.45; }
-.qs-how { display: none; margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: var(--dim); }
-.qs-how li { margin: 3px 0; }
-.qs-opt.on .qs-how { display: block; }
-
 /* ══════════════ Timeline: шапка — отдельный бокс ══════════════
    Сама секция больше не панель, а прозрачная обёртка: внутри два бокса —
    шапка (выглядит как шапка приложения) и сетка. Лоток «Без времени»
@@ -5767,3 +5762,77 @@ body[data-surf="light"] .pp-arrow::after {
 @media (display-mode: standalone) {
   html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); }
 }
+
+/* ══════════ Окно режимов панели ввода (sheet.js) ══════════
+   Компьютер: справа от панели (.qp-side). Телефон и узкое окно — над
+   панелью (.qp-top), режимы в ряд. Материал и рамку даёт тема (.glass). */
+.qpick {
+  position: fixed; z-index: 31; width: 288px; box-sizing: border-box;
+  padding: 12px; border-radius: var(--r-lg);
+  display: flex; flex-direction: column; gap: 8px;
+  background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
+  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: var(--shadow), var(--inner-glow);
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(14px) scale(.97);
+  transition: opacity .22s ease, transform .4s var(--ease-bounce, cubic-bezier(.32,1.2,.4,1)), bottom .3s ease, visibility 0s linear .22s;
+}
+.qpick.open { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition: opacity .22s ease .12s, transform .45s var(--ease-bounce, cubic-bezier(.32,1.2,.4,1)) .12s, bottom .3s ease, visibility 0s; }
+.qp-head { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); padding: 0 2px; }
+.qp-list { display: flex; flex-direction: column; gap: 6px; }
+.qp-list[hidden] { display: none; }
+.qp-opt {
+  position: relative; display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 9px 10px;
+  border-radius: var(--r-md); cursor: pointer; color: var(--text);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent);
+  transition: background .18s, box-shadow .18s, transform .12s;
+}
+.qp-opt:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.qp-opt:active { transform: scale(.98); }
+.qp-opt.on { background: color-mix(in srgb, var(--accent) 15%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.qp-opt.on { padding-top: 20px; }
+.qp-ico { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.qp-ico svg { width: 18px; height: 18px; }
+.qp-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qp-help {
+  flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  font: 800 12px/1 var(--font-ui); color: var(--dim);
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+.qp-help:hover { color: var(--on-accent, #fff); background: var(--accent); }
+/* «По умолчанию» — в правом верхнем углу выбранной строки */
+.qp-def {
+  position: absolute; top: 4px; right: 6px; display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 6px 1px 3px; border: 0; border-radius: 999px; cursor: pointer;
+  font: 700 10px/16px var(--font-ui); color: var(--dim); background: transparent;
+}
+.qp-def i { width: 12px; height: 12px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px currentColor; position: relative; }
+.qp-def.on { color: var(--accent); }
+.qp-def.on i { background: var(--accent); box-shadow: none; }
+.qp-def.on i::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 3px; height: 6px; border: solid var(--on-accent, #fff); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
+.qp-def:not(.on):hover { color: var(--text); }
+/* справка внутри окна */
+.qp-helpbox { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 2px 26px 2px 2px; animation: qpHelpIn .22s ease; }
+.qp-helpbox b { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.qp-helpbox p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text); }
+.qp-helpbox ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 1.45; color: var(--dim); }
+.qp-x { position: absolute; top: -2px; right: -2px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  color: var(--dim); background: color-mix(in srgb, var(--text) 8%, transparent); font-size: 12px; }
+.qp-x:hover { color: var(--text); }
+@keyframes qpHelpIn { from { opacity: 0; transform: translateY(6px); } }
+/* над панелью — режимы в ряд, компактно */
+.qpick.qp-top { padding: 10px; gap: 6px; }
+.qpick.qp-top .qp-head { display: none; }
+.qpick.qp-top .qp-list { flex-direction: row; }
+.qpick.qp-top .qp-opt { flex: 1 1 0; min-width: 0; align-items: flex-end; gap: 3px; padding: 22px 5px 8px 8px; }
+.qpick.qp-top .qp-opt .qp-name { font-size: 12px; letter-spacing: -.01em; white-space: normal; line-height: 1.2; text-overflow: clip; }
+.qpick.qp-top .qp-help { width: 18px; height: 18px; font-size: 10.5px; }
+.qpick.qp-top .qp-ico { display: none; }
+.qpick.qp-top .qp-helpbox .qp-ico { display: grid; width: 26px; height: 26px; }
+.qpick.qp-top .qp-def { left: 5px; right: auto; font-size: 9.5px; padding-right: 4px; }
+/* справка над панелью растёт вверх, до верха экрана; не влезла — край тает */
+.qpick.qp-top .qp-helpbox { max-height: var(--qp-avail, 60dvh); overflow: hidden;
+  -webkit-mask: linear-gradient(#000 calc(100% - 22px), transparent); mask: linear-gradient(#000 calc(100% - 22px), transparent); }
+.qpick.qp-top .qp-helpbox p { font-size: 12.5px; }
+.qpick.qp-top .qp-helpbox ul { font-size: 11.5px; gap: 3px; }

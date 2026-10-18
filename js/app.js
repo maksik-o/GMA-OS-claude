@@ -8,7 +8,6 @@ import {
 } from './store.js';
 import { renderAll, shiftWeek, goToday, dayOpen, openDay, closeDay, closeCellMenu, refreshRunning, blockSwap } from './week.js';
 import { openSheet, closeSheet, sheetOpen, refreshBackdrop } from './sheet.js';
-import { renderQuickSettings } from './quick.js';
 import { syncInit, syncNow, renderSyncPanel } from './vault.js';
 import { searchInit, openSearch, closeSearch, searchOpen } from './search.js';
 import { dbGetKV, dbSetKV } from './db.js';
@@ -542,9 +541,6 @@ function showDrawerView(v) {
   const dt = $('drawerTheme');
   const dg = $('drawerTags');
   const dk = $('drawerKeys');
-  const dq = $('drawerQuick');
-  if (dq) dq.hidden = v !== 'quick';
-  if (v === 'quick') renderQuickSettings($('quickRows'), () => { closeDrawer(); openSheet(); });
   if (dm) dm.hidden = v !== 'main';
   if (ds) ds.hidden = v !== 'sync';
   if (dt) dt.hidden = v !== 'theme';
@@ -882,10 +878,6 @@ function bindNav() {
   if (sts) sts.onclick = () => showDrawerView('sync');
   const stk = $('setKeys');
   if (stk) stk.onclick = () => showDrawerView('keys');
-  const stq = $('setQuick');
-  if (stq) stq.onclick = () => showDrawerView('quick');
-  const qbk = $('quickBack');
-  if (qbk) qbk.onclick = () => showDrawerView('main');
   const sbk = $('syncBack');
   if (sbk) sbk.onclick = () => showDrawerView('main');
   const tbk = $('themeBack');
