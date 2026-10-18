@@ -5786,6 +5786,8 @@ body[data-surf="light"] .pp-arrow::after {
   transition: transform .5s cubic-bezier(.32, 1.12, .4, 1) .08s, bottom .3s ease, max-height .3s ease, visibility 0s;
 }
 .qpick.qp-instant, .qpick.qp-instant .qp-close, .sheet .qp-tab.qp-instant { transition: none !important; }
+.qp-in { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; }
+.qpick.qp-compact .qp-in { gap: 5px; }
 .qp-head { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); padding: 0 2px; }
 .qp-list { display: flex; flex-direction: column; gap: 6px; }
 .qp-list[hidden] { display: none; }
@@ -5821,17 +5823,15 @@ body[data-surf="light"] .pp-arrow::after {
 .qp-def.on i::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 3px; height: 6px; border: solid var(--on-accent, #fff); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
 .qp-def:not(.on):hover { color: var(--text); }
 /* справка внутри окна */
-.qp-helpbox { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 2px 26px 2px 2px; animation: qpHelpIn .22s ease;
-  flex: 1 1 auto; min-height: 0; overflow: hidden;
-  -webkit-mask: linear-gradient(#000 calc(100% - 20px), transparent); mask: linear-gradient(#000 calc(100% - 20px), transparent); }
+.qp-helpbox { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 4px 32px 4px 2px; animation: qpHelpIn .22s ease; }
 .qp-helpbox b { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .qp-helpbox p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text); }
 .qp-helpbox ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 1.45; color: var(--dim); }
-.qp-x { position: absolute; top: 0; right: 0; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+.qp-x { position: absolute; top: 2px; right: 2px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
   color: var(--dim); background: color-mix(in srgb, var(--text) 8%, transparent); font-size: 12px; }
 .qp-x:hover { color: var(--text); }
 @keyframes qpHelpIn { from { opacity: 0; transform: translateY(6px); } }
-.qpick.qp-top .qp-helpbox { max-height: var(--qp-avail, 60dvh); }
+
 /* компактно — когда панель ввода низкая («Умная строка») */
 .qpick.qp-compact { padding: 8px; gap: 5px; }
 .qpick.qp-compact .qp-head { display: none; }
@@ -5841,52 +5841,37 @@ body[data-surf="light"] .pp-arrow::after {
 .qpick.qp-compact .qp-ico { width: 26px; height: 26px; }
 .qpick.qp-compact .qp-def { top: 2px; }
 
-/* ── «Пупырки» со стрелкой ──
-   .qp-tab — утолщение края панели ввода (компьютер: справа по центру,
-   телефон: сверху у правого угла); при открытии окна разглаживается.
-   .qp-close — такое же на окне, на краю к панели. Форма — SVG (sheet.js:
-   BUMP); заливку, линию края и тень sheet.js берёт из стиля самой панели
-   (--qpb-*), поэтому в каждой теме пупырка — продолжение панели. */
+/* ── Панель с пупыркой (skin.js) ──
+   Фон, рамку и тени панели рисует фигура .pskin под содержимым, у самой
+   панели они выключены (.pskinned). .pskin-read — на миг чтения стиля
+   темы, без переходов. */
+.pskin { position: absolute; z-index: -1; pointer-events: none; }
+.pskin > svg, .pskin-glass, .pskin-img { position: absolute; inset: 0; overflow: visible; }
+.pskin-img { background-repeat: no-repeat; }
+.pskinned { background: transparent !important; background-image: none !important; border-color: transparent !important;
+  box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.pskin-read, .pskin-read * { transition: none !important; }
+
+/* ── Кнопки-стрелки поверх пупырок ──
+   .qp-tab — на пупырке панели ввода (компьютер: справа по центру, телефон:
+   сверху у правого угла); пока окно открыто, пупырка разглажена, стрелка
+   скрыта. .qp-close — на пупырке окна, на краю к панели. */
 .sheet .qp-tab, .qp-close {
   position: absolute; z-index: 2; padding: 0; border: 0; cursor: pointer; background: transparent;
-  color: var(--accent); width: 24px; height: 76px;
+  color: var(--accent); width: 22px; height: 76px; display: grid; place-items: center;
+  transition: opacity .2s ease;
 }
-.qp-bump, .qp-bump-strip { position: absolute; inset: 0; display: block; overflow: visible; }
-.qp-bump-fill { fill: var(--qpb-fill, var(--glass)); }
-.qp-bump-line { fill: none; stroke: var(--qpb-line, transparent); stroke-width: var(--qpb-lw, 0); }
-.qp-bump { filter: var(--qpb-shadow, none); }
-.qp-chev { position: absolute; width: 15px; height: 15px; transition: transform .2s; }
-/* компьютер: справа по центру панели; стык — по средней линии её рамки,
-   тень выпуклости обрезана по стыку (на панель не ложится) */
-.sheet .qp-tab {
-  top: 50%; right: calc(-20px - var(--qpb-bw, 0px) / 2); margin-top: -38px;
-  transform-origin: 4px 50%; transition: transform .32s cubic-bezier(.4, 0, .2, 1);
-}
-.sheet .qp-tab .qp-bump { clip-path: inset(-40px -40px -40px 4px); }
-.sheet .qp-tab .qp-chev { left: 7px; top: 30px; }
+.qp-chev { width: 15px; height: 15px; transition: transform .2s; }
+.sheet .qp-tab { top: 50%; right: calc(-20px - var(--pbw, 0px)); margin-top: -38px; }
 .sheet .qp-tab:hover .qp-chev { transform: translateX(2px); }
-.sheet .qp-tab.flat { transform: scaleX(0); pointer-events: none; }
-.qp-close {
-  top: 50%; left: calc(-20px - var(--qpb-bw, 0px) / 2); margin-top: -38px;
-  transform-origin: 20px 50%; transform: scaleX(0); transition: transform .28s cubic-bezier(.4, 0, .2, 1);
-}
-.qp-close .qp-bump { clip-path: inset(-40px 4px -40px -40px); }
-.qp-close .qp-chev { left: 2px; top: 30px; transform: rotate(180deg); }
+.sheet .qp-tab.flat { opacity: 0; pointer-events: none; transition-duration: .12s; }
+.qp-close { top: 50%; left: calc(-20px - var(--pbw, 0px)); margin-top: -38px; opacity: 0; pointer-events: none; }
+.qp-close .qp-chev { transform: rotate(180deg); }
 .qp-close:hover .qp-chev { transform: rotate(180deg) translateX(2px); }
-.qpick.open .qp-close { transform: none; transition: transform .36s cubic-bezier(.32, 1.2, .4, 1) .42s; }
-/* телефон: сверху у правого угла панели; у окна — снизу */
-.sheet .qp-tab.qp-tab-top {
-  top: calc(-20px - var(--qpb-bw, 0px) / 2); right: 26px; margin-top: 0; width: 76px; height: 24px; transform-origin: 50% 20px;
-}
-.sheet .qp-tab.qp-tab-top .qp-bump { clip-path: inset(-40px -40px 4px -40px); }
-.sheet .qp-tab.qp-tab-top .qp-chev { left: 30px; top: 3px; transform: rotate(-90deg); }
+.qpick.open .qp-close { opacity: 1; pointer-events: auto; transition: opacity .25s ease .55s; }
+.sheet .qp-tab.qp-tab-top { top: calc(-20px - var(--pbw, 0px)); right: var(--pinset, 24px); margin-top: 0; width: 76px; height: 22px; }
+.sheet .qp-tab.qp-tab-top .qp-chev { transform: rotate(-90deg); }
 .sheet .qp-tab.qp-tab-top:hover .qp-chev { transform: rotate(-90deg) translateX(2px); }
-.sheet .qp-tab.qp-tab-top.flat { transform: scaleY(0); }
-.qpick.qp-top .qp-close {
-  top: auto; bottom: calc(-20px - var(--qpb-bw, 0px) / 2); left: auto; right: 14px; margin-top: 0; width: 76px; height: 24px;
-  transform-origin: 50% 4px; transform: scaleY(0);
-}
-.qpick.qp-top .qp-close .qp-bump { clip-path: inset(4px -40px -40px -40px); }
-.qpick.qp-top.open .qp-close { transform: none; }
-.qpick.qp-top .qp-close .qp-chev { left: 30px; top: 6px; transform: rotate(90deg); }
+.qpick.qp-top .qp-close { top: auto; bottom: calc(-20px - var(--pbw, 0px)); left: auto; right: var(--pinset, 24px); margin-top: 0; width: 76px; height: 22px; }
+.qpick.qp-top .qp-close .qp-chev { transform: rotate(90deg); }
 .qpick.qp-top .qp-close:hover .qp-chev { transform: rotate(90deg) translateX(2px); }

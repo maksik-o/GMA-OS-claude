@@ -7,6 +7,7 @@ import {
 import { attachFile, openTaskFile, removeTaskFile, fmtSize } from './files.js';
 import { limitNote } from './attach.js';
 import { quickStyle, setQuickStyle, renderQuickAlt, QUICK_STYLES } from './quick.js';
+import { skinPanel, BUMP_DEPTH, BUMP_LEN } from './skin.js';
 import { renderAll } from './week.js';
 import { createCalDrum, calTitle } from './cal.js';
 import * as tm from './timer.js';
@@ -74,72 +75,8 @@ function renderQuick() {
    содержимое панели, окно остаётся. У выбранной строки — «По умолчанию»:
    этот режим открывается по «＋» всегда. «?» показывает справку в окне.
    Окно закрывается, если начать печатать, прокрутить или кликнуть мимо. */
-let picker = null, pickerRO = null, helpFor = '', pickOpen = false, tab = null;
+let picker = null, pickerRO = null, helpFor = '', pickOpen = false, tab = null, sheetSkin = null, pickSkin = null;
 const CHEV = '<svg class="qp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
-/* «Пупырка» — продолжение края панели: от края плавная S-образная
-   кривая выходит наружу и так же плавно возвращается. Два слоя:
-   — .qp-bump-strip: полоска 4px заливкой панели поверх её рамки на стыке,
-     чтобы рамка «расступилась» без шва;
-   — .qp-bump: сама выпуклость с линией края и тенью панели; тень обрезана
-     по стыку, чтобы не ложилась на панель (выпуклость с ней в одной
-     плоскости). Стык — по средней линии рамки панели.
-   Размер 24×76 (или 76×24), выступ — 20px. side: куда смотрит выпуклость. */
-const BUMP = {   // [выпуклость, линия края, полоска на стыке, w, h]
-  right: ['M4 0C4 12 24 8 24 22V54C24 68 4 64 4 76Z', 'M4 0C4 12 24 8 24 22V54C24 68 4 64 4 76', 'M0 0H4V76H0Z', 24, 76],
-  left: ['M20 0C20 12 0 8 0 22V54C0 68 20 64 20 76Z', 'M20 0C20 12 0 8 0 22V54C0 68 20 64 20 76', 'M20 0H24V76H20Z', 24, 76],
-  up: ['M0 20C12 20 8 0 22 0H54C68 0 64 20 76 20Z', 'M0 20C12 20 8 0 22 0H54C68 0 64 20 76 20', 'M0 20H76V24H0Z', 76, 24],
-  down: ['M0 4C12 4 8 24 22 24H54C68 24 64 4 76 4Z', 'M0 4C12 4 8 24 22 24H54C68 24 64 4 76 4', 'M0 0H76V4H0Z', 76, 24],
-};
-function bumpHTML(side) {
-  const [shape, line, strip, w, h] = BUMP[side];
-  const svg = (cls, inner) => `<svg class="${cls}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${inner}</svg>`;
-  return svg('qp-bump-strip', `<path class="qp-bump-fill" d="${strip}"/>`)
-    + svg('qp-bump', `<path class="qp-bump-fill" d="${shape}"/><path class="qp-bump-line" d="${line}"/>`) + CHEV;
-}
-function setBump(el, side) {
-  if (!el || el.dataset.side === side) return;
-  el.dataset.side = side;
-  el.innerHTML = bumpHTML(side);
-}
-/* Оформление пупырки = оформление её панели (по вычисленному стилю):
-   заливка — фон панели; линия — её рамка, а если рамки нет — кольцо из
-   box-shadow (так обведена панель в «Коралле»); тень — внешние тени
-   панели (жёсткая тень «Лего», мягкие у «Стекла», свечение «Неона»). */
-function splitShadows(v) {
-  const out = [];
-  let depth = 0, cur = '';
-  for (const ch of v || '') {
-    if (ch === '(') depth++;
-    if (ch === ')') depth--;
-    if (ch === ',' && !depth) { out.push(cur.trim()); cur = ''; } else cur += ch;
-  }
-  if (cur.trim()) out.push(cur.trim());
-  return out;
-}
-function parseShadow(sh) {
-  const color = (sh.match(/(rgba?\([^)]*\)|color\([^)]*\)|#[0-9a-f]{3,8})/i) || [])[0] || '';
-  const [x, y, blur, spread] = (sh.replace(color, '').match(/-?[\d.]+px/g) || []).map(parseFloat).concat([0, 0, 0, 0]);
-  const clear = !color || /rgba\([^)]*,\s*0\)|\/\s*0\)/.test(color);
-  return { inset: /\binset\b/.test(sh), x, y, blur, spread, color, clear };
-}
-function skinBump(el, panel) {
-  if (!el || !panel) return;
-  const cs = getComputedStyle(panel);
-  const bw = parseFloat(cs.borderRightWidth) || 0;
-  let line = 'transparent', lw = 0;
-  if (bw > 0 && cs.borderRightStyle !== 'none') { line = cs.borderRightColor; lw = bw; }
-  const drops = [];
-  for (const sh of splitShadows(cs.boxShadow === 'none' ? '' : cs.boxShadow).map(parseShadow)) {
-    if (sh.inset || sh.clear) continue;
-    if (!sh.x && !sh.y && !sh.blur && sh.spread > 0) { if (!lw) { line = sh.color; lw = sh.spread; } continue; }
-    drops.push(`drop-shadow(${sh.x}px ${sh.y}px ${sh.blur / 2}px ${sh.color})`);
-  }
-  el.style.setProperty('--qpb-fill', cs.backgroundColor);
-  el.style.setProperty('--qpb-line', line);
-  el.style.setProperty('--qpb-lw', lw + 'px');
-  el.style.setProperty('--qpb-bw', bw + 'px');   // стык — по средней линии рамки
-  el.style.setProperty('--qpb-shadow', drops.join(' ') || 'none');
-}
 const GAP_SIDE = 26;   // зазор окна и панели на компьютере
 const GAP_TOP = 22;    // на телефоне — над панелью
 const isSide = () => innerWidth > 720;
@@ -151,6 +88,7 @@ function ensurePicker() {
   /* в тот же контейнер, что и панель: иначе её z-index живёт в другом
      слое (#app) и окно оказывалось поверх панели, а не под ней */
   (sheet && sheet.parentNode ? sheet.parentNode : document.body).insertBefore(picker, sheet || null);
+  picker.innerHTML = `<button type="button" class="qp-close" title="Скрыть" aria-label="Скрыть режимы">${CHEV}</button><div class="qp-in"></div>`;
   picker.addEventListener('click', onPickerClick);
   picker.addEventListener('keydown', e => {
     const o = e.target.closest('.qp-opt');
@@ -162,9 +100,18 @@ function ensurePicker() {
   tab.className = 'qp-tab';
   tab.title = 'Режим панели';
   tab.setAttribute('aria-label', 'Выбрать режим панели');
+  tab.innerHTML = CHEV;
   tab.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openPicker(); });
   if (sheet) sheet.appendChild(tab);
-  if (window.ResizeObserver && sheet) { pickerRO = new ResizeObserver(placePicker); pickerRO.observe(sheet); }
+  /* панель и окно рисуются фигурой с пупыркой (skin.js): выпуклость —
+     часть края, а не накладка. Пупырка панели — справа по центру
+     (компьютер) или сверху у правого угла (телефон); у окна — на краю,
+     обращённом к панели. */
+  if (sheet) sheetSkin = skinPanel(sheet, (W, H) => (isSide() ? { side: 'right', at: H / 2 } : { side: 'top', at: W - topInset() - BUMP_LEN / 2 }));
+  pickSkin = skinPanel(picker, (W, H) => (isSide() ? { side: 'left', at: H / 2 } : { side: 'bottom', at: W - topInset() - BUMP_LEN / 2 }));
+  new MutationObserver(() => { if (sheet && sheet.classList.contains('open')) refreshSkins(); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
+  if (window.ResizeObserver && sheet) { pickerRO = new ResizeObserver(placePicker); pickerRO.observe(sheet); pickerRO.observe(picker); }
   addEventListener('resize', placePicker);
   return picker;
 }
@@ -172,8 +119,7 @@ function renderPicker() {
   const p = ensurePicker();
   const def = quickStyle();
   const help = QUICK_STYLES.find(x => x.id === helpFor);
-  p.innerHTML = `<button type="button" class="qp-close" title="Скрыть" aria-label="Скрыть режимы"></button>
-    <div class="qp-head">Режим панели</div>
+  p.querySelector('.qp-in').innerHTML = `<div class="qp-head">Режим панели</div>
     <div class="qp-list"${help ? ' hidden' : ''}>${QUICK_STYLES.map(x => `
       <div class="qp-opt${x.id === qStyle ? ' on' : ''}" data-qs="${x.id}" role="button" tabindex="0" aria-pressed="${x.id === qStyle}">
         <span class="qp-ico">${x.icon}</span><span class="qp-name">${esc(x.label)}</span>
@@ -194,9 +140,7 @@ function placePicker() {
   const side = isSide();
   picker.classList.toggle('qp-side', side);
   picker.classList.toggle('qp-top', !side);
-  if (tab) { tab.classList.toggle('qp-tab-top', !side); setBump(tab, side ? 'right' : 'up'); skinBump(tab, sheet); }
-  const close = picker.querySelector('.qp-close');
-  if (close) { close.dataset.side = ''; setBump(close, side ? 'left' : 'down'); skinBump(close, picker); }
+  if (tab) tab.classList.toggle('qp-tab-top', !side);
   if (side) {
     /* окно не выше панели: выезжает из-под неё целиком (у «Умной строки»
        панель низкая — окно ограничено её высотой, длинная справка тает) */
@@ -205,9 +149,10 @@ function placePicker() {
     picker.style.maxHeight = '';
     picker.classList.remove('qp-compact');
     /* не влезает в высоту панели — компактные строки без заголовка */
-    if (!helpFor && picker.scrollHeight > maxH) picker.classList.add('qp-compact');
+    const pad = parseFloat(getComputedStyle(picker).paddingTop) * 2;
+    if (!helpFor && picker.querySelector('.qp-in').offsetHeight + pad > maxH) picker.classList.add('qp-compact');
     /* справке даём больше места: она временная, окно может подрасти */
-    picker.style.maxHeight = (helpFor ? Math.max(maxH, 360) : maxH) + 'px';
+    picker.style.maxHeight = helpFor ? '' : maxH + 'px';   // справка — целиком
     picker.style.left = (sl + sw + GAP_SIDE) + 'px';
     picker.style.right = 'auto';
     picker.style.bottom = Math.max(8, (sh - picker.offsetHeight) / 2) + 'px';
@@ -215,13 +160,45 @@ function placePicker() {
   } else {
     picker.style.maxHeight = '';
     picker.classList.remove('qp-compact');
-    picker.style.width = Math.min(sw - 24, 320) + 'px';
-    picker.style.left = 'auto';
-    picker.style.right = (innerWidth - sl - sw + 12) + 'px';
+    /* над высокой панелью места мало: окно не должно заезжать под
+       статус-бар — тогда компактные строки */
+    const avail = innerHeight - sh - GAP_TOP - 64;
+    const padM = parseFloat(getComputedStyle(picker).paddingTop) * 2;
+    if (!helpFor && picker.querySelector('.qp-in').offsetHeight + padM > avail) picker.classList.add('qp-compact');
+    /* на телефоне окно — во всю ширину, как сама панель */
+    picker.style.width = sw + 'px';
+    picker.style.left = sl + 'px';
+    picker.style.right = 'auto';
     picker.style.bottom = (sh + GAP_TOP) + 'px';
     picker.style.setProperty('--qp-hide', `translateY(${picker.offsetHeight + GAP_TOP + 24}px)`);
-    picker.style.setProperty('--qp-avail', Math.max(140, innerHeight - sh - GAP_TOP - 90) + 'px');
   }
+  if (sheetSkin) { sheetSkin.draw(); if (tab) { tab.style.setProperty('--pbw', sheetSkin.bw + 'px'); tab.style.setProperty('--pinset', topInset() + 'px'); } }
+  if (pickSkin) { pickSkin.draw(); picker.style.setProperty('--pbw', pickSkin.bw + 'px'); picker.style.setProperty('--pinset', topInset() + 'px'); }
+}
+/* на телефоне пупырки — у самого правого скругления: панель и окно одной
+   ширины, поэтому пупырки друг над другом */
+const topInset = () => Math.max(sheetSkin ? sheetSkin.r[1] : 24, pickSkin ? pickSkin.r[2] : 0, 12);
+function refreshSkins() {
+  if (sheetSkin) sheetSkin.refresh();
+  if (pickSkin) pickSkin.refresh();
+  placePicker();
+}
+/* Пока окно выезжает или уезжает, часть, оказавшаяся под панелью, не
+   видна — даже если панель полупрозрачная: окно обрезается по её краю. */
+let clipRaf = 0;
+function trackPickerClip(ms) {
+  cancelAnimationFrame(clipRaf);
+  const end = performance.now() + ms;
+  const step = now => {
+    if (!picker || !sheet) return;
+    const pr = picker.getBoundingClientRect(), sr = sheet.getBoundingClientRect();
+    const hidden = isSide() ? sr.right - pr.left : pr.bottom - sr.top;
+    picker.style.clipPath = hidden > 0
+      ? (isSide() ? `inset(-80px -80px -80px ${hidden}px)` : `inset(-80px -80px ${hidden}px -80px)`)
+      : '';
+    if (now < end) clipRaf = requestAnimationFrame(step);
+  };
+  clipRaf = requestAnimationFrame(step);
 }
 /* Новое открытие панели: окно спрятано, видна пупырка */
 function resetPicker() {
@@ -229,6 +206,7 @@ function resetPicker() {
   ensurePicker();
   setPickOpen(false, true);
   renderPicker();
+  refreshSkins();
 }
 function setPickOpen(on, instant) {
   pickOpen = on;
@@ -236,6 +214,17 @@ function setPickOpen(on, instant) {
   if (instant) { picker.classList.add('qp-instant'); requestAnimationFrame(() => picker && picker.classList.remove('qp-instant')); }
   picker.classList.toggle('open', on);
   if (tab) tab.classList.toggle('flat', on);
+  /* пупырка панели разглаживается, у окна — вырастает после выезда;
+     при закрытии наоборот */
+  if (instant) {
+    if (sheetSkin) sheetSkin.setDepth(on ? 0 : BUMP_DEPTH);
+    if (pickSkin) pickSkin.setDepth(on ? BUMP_DEPTH : 0);
+    picker.style.clipPath = on ? '' : 'inset(0 0 0 100%)';
+  } else {
+    if (sheetSkin) sheetSkin.setDepth(on ? 0 : BUMP_DEPTH, on ? 260 : 380, on ? 0 : 300);
+    if (pickSkin) pickSkin.setDepth(on ? BUMP_DEPTH : 0, on ? 380 : 180, on ? 420 : 0);
+    trackPickerClip(on ? 700 : 520);
+  }
   if (on) armClosers(); else disarmClosers();
 }
 function openPicker() {
