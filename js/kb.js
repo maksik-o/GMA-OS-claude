@@ -461,7 +461,7 @@ function renderSide() {
     const open = openGroups.has(g.id);
     return `<div class="kb-gwrap${open ? ' open' : ''}" data-drop="${g.id}" style="--depth:${depth}">
       <button type="button" class="kb-g${curGroup === g.id ? ' on' : ''}" data-g="${g.id}" style="--gc:${g.color || '#94a3b8'}">
-        <span class="kb-g-caret${kids.length ? '' : ' none'}">${kids.length ? (open ? '▾' : '▸') : ''}</span>
+        <span class="kb-g-caret${kids.length ? (open ? ' open' : '') : ' none'}" title="${open ? 'Свернуть подгруппы' : 'Показать подгруппы'}"></span>
         <span class="kb-g-dot"></span><span class="kb-g-name">${esc(g.name || 'Без названия')}</span>
         <span class="kb-g-n">${countIn(g.id)}</span>
         <span class="kb-g-edit" title="Изменить или добавить подгруппу">✎</span></button>

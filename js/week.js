@@ -258,6 +258,8 @@ const MID_SEL = [
   '#contactsView .cgroup', '#contactsView .cgroup-new',
   '#financeView .fin-head', '#financeView .fin-body',
   '#kbView .kb-side', '#kbView .kb-notes', '#kbView .kb-main',
+  /* «Структура» базы знаний: шапка, группы и заметки доски, корзина */
+  '#kbView .kb-board-head', '#kbView .kb-mcol > [data-bid]', '#kbView .kb-trash',
 ].join(',');
 function collectMidBlocks() {
   return [...document.querySelectorAll(MID_SEL)].filter(el => el.offsetWidth > 0);
