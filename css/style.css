@@ -5748,3 +5748,13 @@ body[data-surf="light"] .pp-arrow::after {
   transition: none !important;
 }
 .kb-view.kb-structure > .kb-board { min-height: calc(100dvh - 150px); }
+
+/* ТЕСТ (js/edge.js): закреплённая полоса под статус-баром iPhone —
+   проверяем, отключает ли она блюр iOS 26, оставаясь (почти) невидимой */
+#edgeGuard { display: none; position: fixed; left: 0; right: 0; top: 0; height: max(env(safe-area-inset-top), 12px); z-index: 2147483000; pointer-events: none; }
+:root[data-edge] #edgeGuard { display: block; }
+:root[data-edge="clear"] #edgeGuard { background: transparent; }
+:root[data-edge="a1"] #edgeGuard { background: color-mix(in srgb, var(--bg, #000) 1%, transparent); }
+:root[data-edge="a5"] #edgeGuard { background: color-mix(in srgb, var(--bg, #000) 5%, transparent); }
+:root[data-edge="kid"] #edgeGuard::before { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--bg, #000) 1%, transparent); }
+.edge-row { flex-wrap: wrap; }
