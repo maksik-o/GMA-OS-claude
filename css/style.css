@@ -5770,8 +5770,9 @@ body[data-surf="light"] .pp-arrow::after {
    компьютер — вправо (.qp-side), телефон — вверх над правым краем
    (.qp-top). Спрятанное положение (--qp-hide) считает sheet.js. Материал
    и рамку даёт тема (.glass). */
+.qpick-clip { position: fixed; z-index: 29; overflow: hidden; pointer-events: none; }
 .qpick {
-  position: fixed; z-index: 29; width: 288px; box-sizing: border-box;
+  position: absolute; z-index: 1; width: 288px; box-sizing: border-box;
   padding: 12px; border-radius: var(--r-lg);
   display: flex; flex-direction: column; gap: 8px;
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
@@ -5843,14 +5844,14 @@ body[data-surf="light"] .pp-arrow::after {
 
 /* ── Панель с пупыркой (skin.js) ──
    Фон, рамку и тени панели рисует фигура .pskin под содержимым, у самой
-   панели они выключены (.pskinned). .pskin-read — на миг чтения стиля
-   темы, без переходов. */
-.pskin { position: absolute; z-index: -1; pointer-events: none; }
+   панели они выключены (.pskinned; её размытие фона остаётся). Два
+   готовых варианта — с пупыркой и без — сменяются прозрачностью. */
+.pskin { position: absolute; z-index: -1; pointer-events: none; opacity: 0; transition-property: opacity; transition-timing-function: ease; will-change: opacity; }
+.pskin.pskin-shown { opacity: 1; }
 .pskin > svg, .pskin-glass, .pskin-img { position: absolute; inset: 0; overflow: visible; }
 .pskin-img { background-repeat: no-repeat; }
-.pskinned { background: transparent !important; background-image: none !important; border-color: transparent !important;
-  box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-.pskin-read, .pskin-read * { transition: none !important; }
+.pskinned { background: transparent !important; background-image: none !important; border-color: transparent !important; box-shadow: none !important; }
+.pskin-read { transition: none !important; }
 
 /* ── Кнопки-стрелки поверх пупырок ──
    .qp-tab — на пупырке панели ввода (компьютер: справа по центру, телефон:
