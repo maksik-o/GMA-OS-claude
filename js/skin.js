@@ -210,14 +210,27 @@ export function skinPanel(panel, getBump) {
       root.querySelector('.pskin-line').setAttribute('d', st.lw ? shapePath(x0 + k, y0 + k, x1 - k, y1 - k, st.r.map(r => Math.max(0, r - k)), bump) : '');
     }
   }
-  function show(v, ms, delay) {
+  /* Смена «с пупыркой» ⇄ «без»: нижний слой («без») остаётся непрозрачным,
+     плавно появляется или исчезает только верхний («с»). Если бы оба
+     были полупрозрачны одновременно, панель на миг светлела — мерцание. */
+  let hideT = 0;
+  function show(v, ms = 0, delay = 0) {
     drawVariant(v);   // вдруг ещё не дорисован
     shown = v;
-    for (const k of ['on', 'off']) {
-      const root = layers[k];
-      root.style.transitionDuration = (ms || 0) + 'ms';
-      root.style.transitionDelay = (delay || 0) + 'ms';
-      root.classList.toggle('pskin-shown', k === v);
+    const on = layers.on, off = layers.off;
+    clearTimeout(hideT);
+    on.style.transitionDuration = ms + 'ms';
+    on.style.transitionDelay = delay + 'ms';
+    off.style.transitionDuration = '0ms';
+    off.style.transitionDelay = '0ms';
+    if (v === 'on') {
+      drawVariant('off');
+      off.classList.add('pskin-shown');
+      on.classList.add('pskin-shown');
+      hideT = setTimeout(() => off.classList.remove('pskin-shown'), delay + ms + 30);
+    } else {
+      off.classList.add('pskin-shown');
+      on.classList.remove('pskin-shown');
     }
   }
   show('on');
