@@ -77,25 +77,68 @@ function renderQuick() {
 let picker = null, pickerRO = null, helpFor = '', pickOpen = false, tab = null;
 const CHEV = '<svg class="qp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 /* «Пупырка» — продолжение края панели: от края плавная S-образная
-   кривая выходит наружу и так же плавно возвращается. Заливка заходит
-   на 4px внутрь, перекрывая рамку панели на стыке, — шва не видно; линия
-   рамки (stroke) идёт только по выпуклости. Размер 24×76 (или 76×24),
-   выступ — 20px. side: куда смотрит выпуклость. */
-const BUMP = {
-  right: ['M0 0H4C4 12 24 8 24 22V54C24 68 4 64 4 76H0Z', 'M4 0C4 12 24 8 24 22V54C24 68 4 64 4 76', 24, 76],
-  left: ['M24 0H20C20 12 0 8 0 22V54C0 68 20 64 20 76H24Z', 'M20 0C20 12 0 8 0 22V54C0 68 20 64 20 76', 24, 76],
-  up: ['M0 24V20C12 20 8 0 22 0H54C68 0 64 20 76 20V24Z', 'M0 20C12 20 8 0 22 0H54C68 0 64 20 76 20', 76, 24],
-  down: ['M0 0V4C12 4 8 24 22 24H54C68 24 64 4 76 4V0Z', 'M0 4C12 4 8 24 22 24H54C68 24 64 4 76 4', 76, 24],
+   кривая выходит наружу и так же плавно возвращается. Два слоя:
+   — .qp-bump-strip: полоска 4px заливкой панели поверх её рамки на стыке,
+     чтобы рамка «расступилась» без шва;
+   — .qp-bump: сама выпуклость с линией края и тенью панели; тень обрезана
+     по стыку, чтобы не ложилась на панель (выпуклость с ней в одной
+     плоскости). Стык — по средней линии рамки панели.
+   Размер 24×76 (или 76×24), выступ — 20px. side: куда смотрит выпуклость. */
+const BUMP = {   // [выпуклость, линия края, полоска на стыке, w, h]
+  right: ['M4 0C4 12 24 8 24 22V54C24 68 4 64 4 76Z', 'M4 0C4 12 24 8 24 22V54C24 68 4 64 4 76', 'M0 0H4V76H0Z', 24, 76],
+  left: ['M20 0C20 12 0 8 0 22V54C0 68 20 64 20 76Z', 'M20 0C20 12 0 8 0 22V54C0 68 20 64 20 76', 'M20 0H24V76H20Z', 24, 76],
+  up: ['M0 20C12 20 8 0 22 0H54C68 0 64 20 76 20Z', 'M0 20C12 20 8 0 22 0H54C68 0 64 20 76 20', 'M0 20H76V24H0Z', 76, 24],
+  down: ['M0 4C12 4 8 24 22 24H54C68 24 64 4 76 4Z', 'M0 4C12 4 8 24 22 24H54C68 24 64 4 76 4', 'M0 0H76V4H0Z', 76, 24],
 };
 function bumpHTML(side) {
-  const [fill, line, w, h] = BUMP[side];
-  return `<svg class="qp-bump" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path class="qp-bump-fill" d="${fill}"/><path class="qp-bump-line" d="${line}"/></svg>${CHEV}`;
+  const [shape, line, strip, w, h] = BUMP[side];
+  const svg = (cls, inner) => `<svg class="${cls}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${inner}</svg>`;
+  return svg('qp-bump-strip', `<path class="qp-bump-fill" d="${strip}"/>`)
+    + svg('qp-bump', `<path class="qp-bump-fill" d="${shape}"/><path class="qp-bump-line" d="${line}"/>`) + CHEV;
 }
 function setBump(el, side) {
   if (!el || el.dataset.side === side) return;
   el.dataset.side = side;
   el.innerHTML = bumpHTML(side);
-  el.style.clipPath = `path('${BUMP[side][0]}')`;   // размытие фона — только внутри формы
+}
+/* Оформление пупырки = оформление её панели (по вычисленному стилю):
+   заливка — фон панели; линия — её рамка, а если рамки нет — кольцо из
+   box-shadow (так обведена панель в «Коралле»); тень — внешние тени
+   панели (жёсткая тень «Лего», мягкие у «Стекла», свечение «Неона»). */
+function splitShadows(v) {
+  const out = [];
+  let depth = 0, cur = '';
+  for (const ch of v || '') {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (ch === ',' && !depth) { out.push(cur.trim()); cur = ''; } else cur += ch;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+function parseShadow(sh) {
+  const color = (sh.match(/(rgba?\([^)]*\)|color\([^)]*\)|#[0-9a-f]{3,8})/i) || [])[0] || '';
+  const [x, y, blur, spread] = (sh.replace(color, '').match(/-?[\d.]+px/g) || []).map(parseFloat).concat([0, 0, 0, 0]);
+  const clear = !color || /rgba\([^)]*,\s*0\)|\/\s*0\)/.test(color);
+  return { inset: /\binset\b/.test(sh), x, y, blur, spread, color, clear };
+}
+function skinBump(el, panel) {
+  if (!el || !panel) return;
+  const cs = getComputedStyle(panel);
+  const bw = parseFloat(cs.borderRightWidth) || 0;
+  let line = 'transparent', lw = 0;
+  if (bw > 0 && cs.borderRightStyle !== 'none') { line = cs.borderRightColor; lw = bw; }
+  const drops = [];
+  for (const sh of splitShadows(cs.boxShadow === 'none' ? '' : cs.boxShadow).map(parseShadow)) {
+    if (sh.inset || sh.clear) continue;
+    if (!sh.x && !sh.y && !sh.blur && sh.spread > 0) { if (!lw) { line = sh.color; lw = sh.spread; } continue; }
+    drops.push(`drop-shadow(${sh.x}px ${sh.y}px ${sh.blur / 2}px ${sh.color})`);
+  }
+  el.style.setProperty('--qpb-fill', cs.backgroundColor);
+  el.style.setProperty('--qpb-line', line);
+  el.style.setProperty('--qpb-lw', lw + 'px');
+  el.style.setProperty('--qpb-bw', bw + 'px');   // стык — по средней линии рамки
+  el.style.setProperty('--qpb-shadow', drops.join(' ') || 'none');
 }
 const GAP_SIDE = 26;   // зазор окна и панели на компьютере
 const GAP_TOP = 22;    // на телефоне — над панелью
@@ -105,7 +148,9 @@ function ensurePicker() {
   picker = document.createElement('aside');
   picker.className = 'qpick glass';
   picker.setAttribute('aria-label', 'Режим панели ввода');
-  document.body.appendChild(picker);
+  /* в тот же контейнер, что и панель: иначе её z-index живёт в другом
+     слое (#app) и окно оказывалось поверх панели, а не под ней */
+  (sheet && sheet.parentNode ? sheet.parentNode : document.body).insertBefore(picker, sheet || null);
   picker.addEventListener('click', onPickerClick);
   picker.addEventListener('keydown', e => {
     const o = e.target.closest('.qp-opt');
@@ -149,9 +194,9 @@ function placePicker() {
   const side = isSide();
   picker.classList.toggle('qp-side', side);
   picker.classList.toggle('qp-top', !side);
-  if (tab) { tab.classList.toggle('qp-tab-top', !side); setBump(tab, side ? 'right' : 'up'); }
+  if (tab) { tab.classList.toggle('qp-tab-top', !side); setBump(tab, side ? 'right' : 'up'); skinBump(tab, sheet); }
   const close = picker.querySelector('.qp-close');
-  if (close) { close.dataset.side = ''; setBump(close, side ? 'left' : 'down'); }
+  if (close) { close.dataset.side = ''; setBump(close, side ? 'left' : 'down'); skinBump(close, picker); }
   if (side) {
     /* окно не выше панели: выезжает из-под неё целиком (у «Умной строки»
        панель низкая — окно ограничено её высотой, длинная справка тает) */
