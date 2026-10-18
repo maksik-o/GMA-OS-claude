@@ -456,11 +456,13 @@ export function importBackup(onDone) {
 function optionHTML(s, current) {
   const off = isSoon(s) || (s.available && !s.available());
   const badge = isSoon(s) ? '<span class="vo-badge">скоро</span>'
-    : s.id === current ? '<span class="vo-badge on">выбрано</span>'
-    : (s.available && !s.available()) ? `<span class="vo-badge">${esc(s.note || 'недоступно')}</span>` : '';
+    : s.id === current ? '<span class="vo-badge on">выбрано</span>' : '';
+  /* длинная пометка («Chrome и Edge на компьютере») — строкой под описанием,
+     а не плашкой справа: иначе на телефоне она сжимает текст в столбик */
+  const note = !badge && s.available && !s.available() ? `<em class="vo-badge vo-note">${esc(s.note || 'недоступно')}</em>` : '';
   return `<button type="button" class="vault-opt${s.id === current ? ' on' : ''}" data-st="${s.id}"${off ? ' disabled' : ''}>
     ${BRAND[s.id] ? `<span class="vo-ico brand">${BRAND[s.id]}</span>` : `<span class="vo-ico">${ICONS[s.icon]}</span>`}
-    <span class="vo-body"><b>${esc(s.label)}</b><span>${esc(s.desc)}</span></span>${badge}</button>`;
+    <span class="vo-body"><b>${esc(s.label)}</b><span>${esc(s.desc)}</span>${note}</span>${badge}</button>`;
 }
 const visibleStorages = forChooser => STORAGES.filter(s => !s.legacy || (!forChooser && legacy.configured()));
 

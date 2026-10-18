@@ -6,6 +6,14 @@ const $ = id => document.getElementById(id);
 
 let lastQuery = '';
 
+/* Высота окна поиска — по видимой части экрана: на iPhone клавиатура
+   перекрывает низ, и список, выходящий под неё, нельзя было прокрутить */
+function fitSearch() {
+  const vv = window.visualViewport;
+  document.documentElement.style.setProperty('--search-vh', Math.round(vv ? vv.height : innerHeight) + 'px');
+}
+if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (searchOpen()) fitSearch(); });
+
 export function searchOpen() {
   const panel = $('searchPanel');
   return panel && panel.classList.contains('open');
@@ -15,6 +23,8 @@ export function openSearch() {
   const panel = $('searchPanel');
   if (!panel) return;
   panel.classList.add('open');
+  document.body.classList.add('search-open');
+  fitSearch();
   const backdrop = $('backdrop');
   if (backdrop) backdrop.classList.add('open');
   const input = $('searchInput');
@@ -29,6 +39,7 @@ export function openSearch() {
 export function closeSearch() {
   const panel = $('searchPanel');
   if (panel) panel.classList.remove('open');
+  document.body.classList.remove('search-open');
   const backdrop = $('backdrop');
   if (backdrop && !document.querySelector('.sheet.open') && !document.querySelector('.drawer.open') && !document.querySelector('.editor.open') && !document.querySelector('.daypanel.open')) {
     backdrop.classList.remove('open');

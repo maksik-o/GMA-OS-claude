@@ -225,7 +225,28 @@ function unplaceZoneRect() {
   const b = $('widgetsBtn');
   if (!b) return null;
   const r = b.getBoundingClientRect();
-  return { left: r.left - 186, top: r.top - 10, right: r.right + 8, bottom: r.bottom + 10 };
+  return { left: r.left - (zoneW || 172) - 14, top: r.top - 10, right: r.right + 8, bottom: r.bottom + 10 };
+}
+/* Ширина пилюли «＋ Панель виджетов» слева от кнопки. На телефоне слева
+   от кнопок — название раздела (::before шапки): пилюля занимает только
+   промежуток до него, а в узком промежутке пишет короче. */
+let zoneW = 0;
+function fitUnplaceZone() {
+  const b = $('widgetsBtn');
+  const bar = b && b.closest('.topbar');
+  zoneW = 0;
+  if (!b || !bar) return;
+  b.classList.remove('wz-short');
+  b.style.removeProperty('--wz-w');
+  if (innerWidth > 720) return;
+  const pb = getComputedStyle(bar, '::before');
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `${pb.fontWeight} ${pb.fontSize} ${pb.fontFamily}`;
+  const title = (pb.content || '').replace(/^["']|["']$/g, '');
+  const titleEnd = bar.getBoundingClientRect().left + parseFloat(getComputedStyle(bar).paddingLeft) + ctx.measureText(title).width;
+  zoneW = Math.max(70, Math.min(172, Math.floor(b.getBoundingClientRect().left - 6 - titleEnd - 10)));
+  b.style.setProperty('--wz-w', zoneW + 'px');
+  b.classList.toggle('wz-short', zoneW < 150);
 }
 function ensureMini() {
   if (_mini) return _mini;
@@ -338,6 +359,7 @@ function updateDrag(ctx) {
     const thr = ctx.mode === 'menu' ? 20 : 12; // из меню пилюля → блок через 20px
     if (Math.hypot(dx, dy) > thr) {
       ctx.started = true;
+      fitUnplaceZone();
       document.body.classList.add('dock-drag');
       ctx.panel.classList.add('dock-dragging');
       if (ctx.mode === 'menu') {

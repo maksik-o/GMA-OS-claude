@@ -498,7 +498,16 @@ body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head {
 .search-input:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
 .search-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .search-tags:empty { margin: 0; }
-.search-list { display: flex; flex-direction: column; gap: 6px; max-height: 52dvh; overflow-y: auto; }
+.search-list { display: flex; flex-direction: column; gap: 6px; max-height: 52dvh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.searchpanel { overscroll-behavior: contain; }
+/* пока открыт поиск, приложение под ним не прокручивается */
+body.search-open #app { overflow: hidden; touch-action: none; }
+@media (max-width: 720px) {
+  /* окно — от верха экрана, список занимает видимую над клавиатурой часть */
+  .searchpanel { top: calc(12px + env(safe-area-inset-top)); transform: translate(-50%, 0) scale(.92); max-height: calc(var(--search-vh, 100dvh) - 24px - env(safe-area-inset-top)); }
+  .searchpanel.open { transform: translate(-50%, 0) scale(1); }
+  .search-list { flex: 1 1 auto; min-height: 0; max-height: none; }
+}
 .s-row {
   display: flex;
   align-items: center;
@@ -3890,18 +3899,12 @@ body.cc-dragging, body.cc-dragging #app { touch-action: none; }
   .contact-card { padding: 10px 10px 10px 24px; }
   .cc-acts { opacity: 1; }
   .cc-grip { width: 16px; left: 2px; font-size: 15px; }
-  /* ── 8. Пунктирная пилюля «＋ Панель виджетов» уходит под кнопку,
-     а не влево: слева на телефоне ей не хватает места и её срезало ── */
-  #widgetsBtn::after {
-    top: calc(100% + 6px);
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    height: 30px;
-    max-width: calc(100vw - 24px);
-    font-size: 11.5px;
-  }
-  body.dock-drag #widgetsBtn::after { width: 164px; padding: 0 12px; }
+  /* ── 8. Пунктирная пилюля «＋ Панель виджетов» — слева от кнопки, в
+     промежутке между названием раздела и кнопками: ширину --wz-w считает
+     widgets.js при начале переноса; в узком промежутке текст короче ── */
+  #widgetsBtn::after { height: 32px; font-size: 11.5px; right: calc(100% + 6px); }
+  body.dock-drag #widgetsBtn::after { width: var(--wz-w, 150px); padding: 0 10px; }
+  #widgetsBtn.wz-short::after { content: '＋ В панель'; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -5151,6 +5154,13 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   .bottomnav {
     height: 56px; padding: 5px;
     left: calc((100% - 84px - env(safe-area-inset-right)) / 2);
+    width: min(300px, calc(100% - 84px - 28px - env(safe-area-inset-right)));
+  }
+  .bottomnav button { flex: 1 1 0; min-width: 0; }
+  /* В «Структуре» слева — корзина: меню по центру между ней и «+» */
+  body[data-view="kb"]:has(.kb-view.kb-structure) .bottomnav {
+    left: 50%;
+    width: min(300px, calc(100% - 2 * (max(16px, env(safe-area-inset-left), env(safe-area-inset-right)) + 56px + 10px)));
   }
   .fin-fab { right: max(14px, env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); width: 56px; height: 56px; }
   .bottomnav button { height: 46px; padding: 0 20px; }
@@ -5322,6 +5332,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .vo-badge { flex: none; align-self: center; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
   padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--dim); white-space: nowrap; }
 .vo-badge.on { background: var(--accent); color: #fff; }
+.vo-badge.vo-note { align-self: flex-start; margin-top: 5px; font-style: normal; white-space: normal; }
 .vault-filepick { margin-top: 10px; padding: 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .vault-filepick p { margin: 0 0 4px; font-size: 13px; line-height: 1.5; }
 .vault-state { margin: 0 0 10px; }
@@ -5607,8 +5618,27 @@ body[data-surf="light"] .pp-arrow::after {
 }
 .kb-notes-back:hover { color: var(--accent); }
 @media (max-width: 720px) {
+  /* на телефоне — одна колонка во всю ширину: группы/заметки над окном заметки */
+  .kb-view { grid-template-columns: minmax(0, 1fr); }
   .kb-view > .kb-main { grid-row: 2; grid-column: 1; }
 }
+/* Стрелка подгрупп: заметная кнопка-шеврон, поворачивается при раскрытии.
+   Цвета и скругление — из токенов темы, отдельные темы уточняют в themes.css */
+.kb-g-caret {
+  position: relative; width: 22px; height: 22px; flex: none; border-radius: 7px; cursor: pointer;
+  background: color-mix(in srgb, var(--gc, var(--accent)) 16%, transparent); color: var(--text);
+  transition: background .15s, transform .15s;
+}
+.kb-g-caret::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;
+  border: solid currentColor; border-width: 0 2.2px 2.2px 0; border-radius: 1px;
+  transform: translate(-65%, -50%) rotate(-45deg); transition: transform .22s var(--ease-spring, ease);
+}
+.kb-g-caret.open::before { transform: translate(-50%, -70%) rotate(45deg); }
+.kb-g-caret:hover { background: color-mix(in srgb, var(--gc, var(--accent)) 28%, transparent); }
+.kb-g-caret:active { transform: scale(.9); }
+.kb-g-caret.none { visibility: hidden; }
+@media (max-width: 720px) { .kb-g-caret { width: 26px; height: 26px; } .kb-g-caret::before { width: 7px; height: 7px; } }
 
 /* Кнопки «Граф» и «Структура» — как остальные кнопки темы */
 .kb-tools .btn.kb-tool { flex: 1; justify-content: center; font-size: 12.5px; padding: 7px 10px; }
@@ -5632,6 +5662,7 @@ body[data-surf="light"] .pp-arrow::after {
   -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
 }
 .kb-board-head b { font: 800 16px/1.2 var(--font-head); color: var(--accent); }
+.kb-board-close { margin-left: auto; }
 .kb-board-hint { flex: 1; min-width: 0; font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Колонки-группы переносятся рядами и все видны на экране */
 .kb-board-cols { display: flex; gap: 12px; align-items: flex-start; padding: 2px 2px 12px; }
