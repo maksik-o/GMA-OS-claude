@@ -5410,6 +5410,8 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 
 /* конструктор */
 .qx-title { font-size: 19px; font-weight: 700; }
+/* в темах, где у полей ввода свой фон (Коралл и др.), текст прилипал к краю */
+.qx-builder .qx-title { box-sizing: border-box; padding: 10px 12px; border-radius: var(--r-md); }
 .qx-tools { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
 .qx-tools::-webkit-scrollbar { display: none; }
 .qx-tool { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 190px; padding: 8px 11px; border-radius: 12px; cursor: pointer;
@@ -5775,12 +5777,13 @@ body[data-surf="light"] .pp-arrow::after {
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
   -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
-  opacity: 0; visibility: hidden; pointer-events: none; transform: var(--qp-hide, translateX(-300px));
-  transition: transform .34s cubic-bezier(.4, 0, .2, 1), opacity .2s ease .1s, bottom .3s ease, visibility 0s linear .34s;
+  visibility: hidden; pointer-events: none; transform: var(--qp-hide, translateX(-320px));
+  /* не тает, а целиком уезжает под панель и только потом прячется */
+  transition: transform .36s cubic-bezier(.4, 0, .2, 1), bottom .3s ease, max-height .3s ease, visibility 0s linear .36s;
 }
 .qpick.open {
-  opacity: 1; visibility: visible; pointer-events: auto; transform: none;
-  transition: transform .5s cubic-bezier(.32, 1.15, .4, 1) .06s, opacity .16s ease .06s, bottom .3s ease, visibility 0s;
+  visibility: visible; pointer-events: auto; transform: none;
+  transition: transform .5s cubic-bezier(.32, 1.12, .4, 1) .08s, bottom .3s ease, max-height .3s ease, visibility 0s;
 }
 .qpick.qp-instant, .qpick.qp-instant .qp-close, .sheet .qp-tab.qp-instant { transition: none !important; }
 .qp-head { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); padding: 0 2px; }
@@ -5818,7 +5821,9 @@ body[data-surf="light"] .pp-arrow::after {
 .qp-def.on i::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 3px; height: 6px; border: solid var(--on-accent, #fff); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
 .qp-def:not(.on):hover { color: var(--text); }
 /* справка внутри окна */
-.qp-helpbox { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 2px 26px 2px 2px; animation: qpHelpIn .22s ease; }
+.qp-helpbox { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 2px 26px 2px 2px; animation: qpHelpIn .22s ease;
+  flex: 1 1 auto; min-height: 0; overflow: hidden;
+  -webkit-mask: linear-gradient(#000 calc(100% - 20px), transparent); mask: linear-gradient(#000 calc(100% - 20px), transparent); }
 .qp-helpbox b { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .qp-helpbox p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text); }
 .qp-helpbox ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 1.45; color: var(--dim); }
@@ -5826,53 +5831,56 @@ body[data-surf="light"] .pp-arrow::after {
   color: var(--dim); background: color-mix(in srgb, var(--text) 8%, transparent); font-size: 12px; }
 .qp-x:hover { color: var(--text); }
 @keyframes qpHelpIn { from { opacity: 0; transform: translateY(6px); } }
-.qpick.qp-top .qp-helpbox { max-height: var(--qp-avail, 60dvh); overflow: hidden;
-  -webkit-mask: linear-gradient(#000 calc(100% - 22px), transparent); mask: linear-gradient(#000 calc(100% - 22px), transparent); }
+.qpick.qp-top .qp-helpbox { max-height: var(--qp-avail, 60dvh); }
+/* компактно — когда панель ввода низкая («Умная строка») */
+.qpick.qp-compact { padding: 8px; gap: 5px; }
+.qpick.qp-compact .qp-head { display: none; }
+.qpick.qp-compact .qp-list { gap: 5px; }
+.qpick.qp-compact .qp-opt { min-height: 38px; padding: 6px 8px; }
+.qpick.qp-compact .qp-opt.on { padding-top: 17px; }
+.qpick.qp-compact .qp-ico { width: 26px; height: 26px; }
+.qpick.qp-compact .qp-def { top: 2px; }
 
 /* ── «Пупырки» со стрелкой ──
-   .qp-tab — на панели ввода (компьютер: справа по центру, телефон:
-   сверху у правого угла); открытие окна её разглаживает. .qp-close — на
-   окне, на краю, обращённом к панели; появляется, когда окно выехало. */
+   .qp-tab — продолжение края панели ввода (компьютер: справа по центру,
+   телефон: сверху у правого угла); при открытии окна разглаживается.
+   .qp-close — такая же на окне, на краю к панели. Форма — SVG (sheet.js:
+   BUMP): заливка материалом панели, линия — рамкой темы. */
 .sheet .qp-tab, .qp-close {
-  position: absolute; z-index: 2; display: grid; place-items: center; padding: 0; cursor: pointer;
-  color: var(--accent);
-  /* материал панели с лёгким тоном цвета режима и рамкой темы, без
-     стороны, которой пупырка прирастает к панели */
-  border: max(1px, var(--t-bw, 0px)) solid color-mix(in srgb, var(--brd, var(--text)) 70%, color-mix(in srgb, var(--text) 14%, transparent));
-  background: color-mix(in srgb, var(--accent) 12%, color-mix(in srgb, var(--tint, transparent) 5%, var(--glass)));
+  position: absolute; z-index: 2; padding: 0; border: 0; cursor: pointer; background: transparent;
+  color: var(--accent); width: 24px; height: 76px;
   -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
 }
-.sheet .qp-tab svg, .qp-close svg { width: 15px; height: 15px; transition: transform .2s; }
-.sheet .qp-tab:hover svg { transform: translateX(2px); }
-/* компьютер: на правом краю панели, по центру */
+.qp-bump { position: absolute; inset: 0; display: block; overflow: visible; }
+.qp-bump-fill { fill: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass)); }
+.qp-bump-line { fill: none; stroke: var(--brd); stroke-width: var(--t-bw, 0); }
+.qp-chev { position: absolute; width: 15px; height: 15px; transition: transform .2s; }
+/* компьютер: справа по центру панели; стык — по внешнему краю рамки */
 .sheet .qp-tab {
-  top: 50%; right: -17px; width: 18px; height: 58px; margin-top: -29px;
-  border-left: 0; border-radius: 0 14px 14px 0; box-shadow: 4px 0 10px -6px rgba(0, 0, 0, .35);
-  transform-origin: left center; transition: transform .3s cubic-bezier(.4, 0, .2, 1), opacity .2s;
+  top: 50%; right: calc(-20px - var(--t-bw, 0px)); margin-top: -38px;
+  transform-origin: 4px 50%; transition: transform .32s cubic-bezier(.4, 0, .2, 1);
 }
-.sheet .qp-tab.flat { transform: scaleX(0); opacity: 0; pointer-events: none; }
+.sheet .qp-tab .qp-chev { left: 7px; top: 30px; }
+.sheet .qp-tab:hover .qp-chev { transform: translateX(2px); }
+.sheet .qp-tab.flat { transform: scaleX(0); pointer-events: none; }
 .qp-close {
-  top: 50%; left: -17px; width: 18px; height: 58px; margin-top: -29px;
-  border-right: 0; border-radius: 14px 0 0 14px; box-shadow: -4px 0 10px -6px rgba(0, 0, 0, .35);
-  transform-origin: right center; transform: scaleX(0); opacity: 0;
-  transition: transform .3s cubic-bezier(.4, 0, .2, 1), opacity .2s;
+  top: 50%; left: calc(-20px - var(--t-bw, 0px)); margin-top: -38px;
+  transform-origin: 20px 50%; transform: scaleX(0); transition: transform .28s cubic-bezier(.4, 0, .2, 1);
 }
-.qp-close svg { transform: rotate(180deg); }
-.qpick.open .qp-close { transform: none; opacity: 1; transition: transform .35s cubic-bezier(.32, 1.2, .4, 1) .38s, opacity .2s ease .38s; }
-.qp-close:hover svg { transform: rotate(180deg) translateX(2px); }
-/* телефон: пупырка сверху у правого угла панели, у окна — снизу */
+.qp-close .qp-chev { left: 2px; top: 30px; transform: rotate(180deg); }
+.qp-close:hover .qp-chev { transform: rotate(180deg) translateX(2px); }
+.qpick.open .qp-close { transform: none; transition: transform .36s cubic-bezier(.32, 1.2, .4, 1) .42s; }
+/* телефон: сверху у правого угла панели; у окна — снизу */
 .sheet .qp-tab.qp-tab-top {
-  top: -17px; right: 26px; width: 58px; height: 18px; margin-top: 0;
-  border: max(1px, var(--t-bw, 0px)) solid color-mix(in srgb, var(--brd, var(--text)) 70%, color-mix(in srgb, var(--text) 14%, transparent));
-  border-bottom: 0; border-radius: 14px 14px 0 0; box-shadow: 0 -4px 10px -6px rgba(0, 0, 0, .35); transform-origin: center bottom;
+  top: calc(-20px - var(--t-bw, 0px)); right: 26px; margin-top: 0; width: 76px; height: 24px; transform-origin: 50% 20px;
 }
-.sheet .qp-tab.qp-tab-top svg { transform: rotate(-90deg); }
-.sheet .qp-tab.qp-tab-top:hover svg { transform: rotate(-90deg) translateX(2px); }
+.sheet .qp-tab.qp-tab-top .qp-chev { left: 30px; top: 3px; transform: rotate(-90deg); }
+.sheet .qp-tab.qp-tab-top:hover .qp-chev { transform: rotate(-90deg) translateX(2px); }
 .sheet .qp-tab.qp-tab-top.flat { transform: scaleY(0); }
 .qpick.qp-top .qp-close {
-  top: auto; bottom: -17px; left: auto; right: 14px; width: 58px; height: 18px; margin-top: 0;
-  border: max(1px, var(--t-bw, 0px)) solid color-mix(in srgb, var(--brd, var(--text)) 70%, color-mix(in srgb, var(--text) 14%, transparent));
-  border-top: 0; border-radius: 0 0 14px 14px; box-shadow: 0 4px 10px -6px rgba(0, 0, 0, .35); transform-origin: center top; transform: scaleY(0);
+  top: auto; bottom: calc(-20px - var(--t-bw, 0px)); left: auto; right: 14px; margin-top: 0; width: 76px; height: 24px;
+  transform-origin: 50% 4px; transform: scaleY(0);
 }
 .qpick.qp-top.open .qp-close { transform: none; }
-.qpick.qp-top .qp-close svg { transform: rotate(90deg); }
+.qpick.qp-top .qp-close .qp-chev { left: 30px; top: 6px; transform: rotate(90deg); }
+.qpick.qp-top .qp-close:hover .qp-chev { transform: rotate(90deg) translateX(2px); }

@@ -75,7 +75,28 @@ function renderQuick() {
    этот режим открывается по «＋» всегда. «?» показывает справку в окне.
    Окно закрывается, если начать печатать, прокрутить или кликнуть мимо. */
 let picker = null, pickerRO = null, helpFor = '', pickOpen = false, tab = null;
-const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+const CHEV = '<svg class="qp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+/* «Пупырка» — продолжение края панели: от края плавная S-образная
+   кривая выходит наружу и так же плавно возвращается. Заливка заходит
+   на 4px внутрь, перекрывая рамку панели на стыке, — шва не видно; линия
+   рамки (stroke) идёт только по выпуклости. Размер 24×76 (или 76×24),
+   выступ — 20px. side: куда смотрит выпуклость. */
+const BUMP = {
+  right: ['M0 0H4C4 12 24 8 24 22V54C24 68 4 64 4 76H0Z', 'M4 0C4 12 24 8 24 22V54C24 68 4 64 4 76', 24, 76],
+  left: ['M24 0H20C20 12 0 8 0 22V54C0 68 20 64 20 76H24Z', 'M20 0C20 12 0 8 0 22V54C0 68 20 64 20 76', 24, 76],
+  up: ['M0 24V20C12 20 8 0 22 0H54C68 0 64 20 76 20V24Z', 'M0 20C12 20 8 0 22 0H54C68 0 64 20 76 20', 76, 24],
+  down: ['M0 0V4C12 4 8 24 22 24H54C68 24 64 4 76 4V0Z', 'M0 4C12 4 8 24 22 24H54C68 24 64 4 76 4', 76, 24],
+};
+function bumpHTML(side) {
+  const [fill, line, w, h] = BUMP[side];
+  return `<svg class="qp-bump" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path class="qp-bump-fill" d="${fill}"/><path class="qp-bump-line" d="${line}"/></svg>${CHEV}`;
+}
+function setBump(el, side) {
+  if (!el || el.dataset.side === side) return;
+  el.dataset.side = side;
+  el.innerHTML = bumpHTML(side);
+  el.style.clipPath = `path('${BUMP[side][0]}')`;   // размытие фона — только внутри формы
+}
 const GAP_SIDE = 26;   // зазор окна и панели на компьютере
 const GAP_TOP = 22;    // на телефоне — над панелью
 const isSide = () => innerWidth > 720;
@@ -96,7 +117,6 @@ function ensurePicker() {
   tab.className = 'qp-tab';
   tab.title = 'Режим панели';
   tab.setAttribute('aria-label', 'Выбрать режим панели');
-  tab.innerHTML = CHEV;
   tab.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openPicker(); });
   if (sheet) sheet.appendChild(tab);
   if (window.ResizeObserver && sheet) { pickerRO = new ResizeObserver(placePicker); pickerRO.observe(sheet); }
@@ -107,7 +127,7 @@ function renderPicker() {
   const p = ensurePicker();
   const def = quickStyle();
   const help = QUICK_STYLES.find(x => x.id === helpFor);
-  p.innerHTML = `<button type="button" class="qp-close" title="Скрыть" aria-label="Скрыть режимы">${CHEV}</button>
+  p.innerHTML = `<button type="button" class="qp-close" title="Скрыть" aria-label="Скрыть режимы"></button>
     <div class="qp-head">Режим панели</div>
     <div class="qp-list"${help ? ' hidden' : ''}>${QUICK_STYLES.map(x => `
       <div class="qp-opt${x.id === qStyle ? ' on' : ''}" data-qs="${x.id}" role="button" tabindex="0" aria-pressed="${x.id === qStyle}">
@@ -129,19 +149,32 @@ function placePicker() {
   const side = isSide();
   picker.classList.toggle('qp-side', side);
   picker.classList.toggle('qp-top', !side);
-  if (tab) tab.classList.toggle('qp-tab-top', !side);
+  if (tab) { tab.classList.toggle('qp-tab-top', !side); setBump(tab, side ? 'right' : 'up'); }
+  const close = picker.querySelector('.qp-close');
+  if (close) { close.dataset.side = ''; setBump(close, side ? 'left' : 'down'); }
   if (side) {
+    /* окно не выше панели: выезжает из-под неё целиком (у «Умной строки»
+       панель низкая — окно ограничено её высотой, длинная справка тает) */
     picker.style.width = '';
+    const maxH = Math.max(150, sh - 16);
+    picker.style.maxHeight = '';
+    picker.classList.remove('qp-compact');
+    /* не влезает в высоту панели — компактные строки без заголовка */
+    if (!helpFor && picker.scrollHeight > maxH) picker.classList.add('qp-compact');
+    /* справке даём больше места: она временная, окно может подрасти */
+    picker.style.maxHeight = (helpFor ? Math.max(maxH, 360) : maxH) + 'px';
     picker.style.left = (sl + sw + GAP_SIDE) + 'px';
     picker.style.right = 'auto';
-    picker.style.bottom = Math.max(12, (sh - picker.offsetHeight) / 2) + 'px';
-    picker.style.setProperty('--qp-hide', `translateX(${-(picker.offsetWidth + GAP_SIDE + 10)}px)`);
+    picker.style.bottom = Math.max(8, (sh - picker.offsetHeight) / 2) + 'px';
+    picker.style.setProperty('--qp-hide', `translateX(${-(picker.offsetWidth + GAP_SIDE + 24)}px)`);
   } else {
+    picker.style.maxHeight = '';
+    picker.classList.remove('qp-compact');
     picker.style.width = Math.min(sw - 24, 320) + 'px';
     picker.style.left = 'auto';
     picker.style.right = (innerWidth - sl - sw + 12) + 'px';
     picker.style.bottom = (sh + GAP_TOP) + 'px';
-    picker.style.setProperty('--qp-hide', `translateY(${picker.offsetHeight + GAP_TOP + 10}px)`);
+    picker.style.setProperty('--qp-hide', `translateY(${picker.offsetHeight + GAP_TOP + 24}px)`);
     picker.style.setProperty('--qp-avail', Math.max(140, innerHeight - sh - GAP_TOP - 90) + 'px');
   }
 }
@@ -181,7 +214,8 @@ const pickCloser = e => {
     if (picker.contains(e.target) && (e.key === 'Enter' || e.key === ' ' || e.key === 'Tab')) return;
     closePicker(); return;
   }
-  if (outsidePick(e)) closePicker();
+  /* прокрутка закрывает в любом месте, клик — только мимо окна */
+  if (e.type !== 'pointerdown' || outsidePick(e)) closePicker();
 };
 function armClosers() {
   setTimeout(() => {
