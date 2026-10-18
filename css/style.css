@@ -5862,11 +5862,13 @@ body[data-surf="light"] .pp-arrow::after {
   color: var(--accent); width: 22px; height: 76px; display: grid; place-items: center;
   transition: opacity .2s ease;
 }
+/* стрелка на панели возвращается вместе с пупыркой, а не раньше неё */
+.sheet .qp-tab { transition: opacity .24s ease .34s; }
 .qp-chev { width: 15px; height: 15px; transition: transform .2s; }
 .sheet .qp-tab { top: 50%; right: calc(-20px - var(--pbw, 0px)); margin-top: -38px; }
 .sheet .qp-tab:hover .qp-chev { transform: translateX(2px); }
-.sheet .qp-tab.flat { opacity: 0; pointer-events: none; transition-duration: .12s; }
-.qp-close { top: 50%; left: calc(-20px - var(--pbw, 0px)); margin-top: -38px; opacity: 0; pointer-events: none; }
+.sheet .qp-tab.flat { opacity: 0; pointer-events: none; transition: opacity .12s ease 0s; }
+.qp-close { top: var(--pat, 50%); left: calc(-20px - var(--pbw, 0px)); margin-top: -38px; opacity: 0; pointer-events: none; }
 .qp-close .qp-chev { transform: rotate(180deg); }
 .qp-close:hover .qp-chev { transform: rotate(180deg) translateX(2px); }
 .qpick.open .qp-close { opacity: 1; pointer-events: auto; transition: opacity .25s ease .55s; }

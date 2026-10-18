@@ -75,6 +75,7 @@ function renderQuick() {
    содержимое панели, окно остаётся. У выбранной строки — «По умолчанию»:
    этот режим открывается по «＋» всегда. «?» показывает справку в окне.
    Окно закрывается, если начать печатать, прокрутить или кликнуть мимо. */
+let pickAt = 0;   // где на окне пупырка (компьютер): середина панели ввода
 let picker = null, pickClip = null, pickerRO = null, helpFor = '', pickOpen = false, tab = null, sheetSkin = null, pickSkin = null;
 const CHEV = '<svg class="qp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 const GAP_SIDE = 26;   // зазор окна и панели на компьютере
@@ -116,7 +117,7 @@ function ensurePicker() {
      (компьютер) или сверху у правого угла (телефон); у окна — на краю,
      обращённом к панели. */
   if (sheet) sheetSkin = skinPanel(sheet, (W, H) => (isSide() ? { side: 'right', at: H / 2 } : { side: 'top', at: W - topInset() - BUMP_LEN / 2 }));
-  pickSkin = skinPanel(picker, (W, H) => (isSide() ? { side: 'left', at: H / 2 } : { side: 'bottom', at: W - topInset() - BUMP_LEN / 2 }));
+  pickSkin = skinPanel(picker, (W, H) => (isSide() ? { side: 'left', at: pickAt || H / 2 } : { side: 'bottom', at: W - topInset() - BUMP_LEN / 2 }));
   /* сменили тему или прозрачность при открытой панели — перечитать стиль
      (не чаще раза в 200 мс; если ничего не поменялось, перерисовки нет) */
   let refT = 0;
@@ -171,9 +172,16 @@ function placePicker() {
     Object.assign(pickClip.style, { left: (sl + sw) + 'px', top: '0px', right: '0px', bottom: '0px' });
     picker.style.left = GAP_SIDE + 'px';
     picker.style.right = 'auto';
-    picker.style.bottom = Math.max(8, (sh - picker.offsetHeight) / 2) + 'px';
+    const ph = picker.offsetHeight, pb = Math.max(8, (sh - ph) / 2);
+    picker.style.bottom = pb + 'px';
+    /* пупырка окна — на уровне середины панели ввода, даже если окно (со
+       справкой) выше панели и сдвинуто: считаем от верха окна */
+    const r = pickSkin ? pickSkin.r : [16, 16, 16, 16];
+    pickAt = Math.max(r[0] + BUMP_LEN / 2, Math.min(ph - r[3] - BUMP_LEN / 2, ph + pb - sh / 2));
+    picker.style.setProperty('--pat', pickAt + 'px');
     picker.style.setProperty('--qp-hide', `translateX(${-(picker.offsetWidth + GAP_SIDE + 24)}px)`);
   } else {
+    pickAt = 0;
     picker.style.maxHeight = '';
     picker.classList.remove('qp-compact');
     /* над высокой панелью места мало: окно не должно заезжать под

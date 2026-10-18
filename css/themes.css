@@ -57,7 +57,7 @@ html[data-theme] {
     radial-gradient(900px 600px at 50% 100%, var(--time-atmosphere), transparent 70%),
     var(--bg);
 }
-:root[data-theme] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .qpick, .fin-hero, .fs-card, .fin-card, .tl-wrap, .tl-box) {
+:root[data-theme] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .fin-hero, .fs-card, .fin-card, .tl-wrap, .tl-box) {
   box-shadow:
     var(--shadow), var(--inner-glow),
     inset 0 1px 0 color-mix(in srgb, var(--accent) calc(var(--mode-inner) * 1.6), transparent),
@@ -121,7 +121,9 @@ html[data-theme] {
     radial-gradient(circle at 56% 60%, rgba(150, 100, 0, .22) 0 8px, transparent 9.6px) 0 0 / 26px 26px;
   --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
   --text: #111; --dim: #3b3b3b; --c-todo: #111;
-  --glass: color-mix(in srgb, #ffffff calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, #ffffff calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #111; --panel-solid: #ffffff;
+  /* панели — не белые, а чуть желтоватые (как белый на 60% поверх фона) */
+  --lego-panel: color-mix(in srgb, #ffffff 60%, #ffd43b);
+  --glass: color-mix(in srgb, var(--lego-panel) calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, var(--lego-panel) calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #111; --panel-solid: var(--lego-panel);
   --shadow: 4px 4px 0 #111; --inner-glow: 0 0 0 transparent;
   --t-bw: 2.5px; --r-lg: 14px; --r-md: 10px;
   --font-ui: "Manrope", -apple-system, sans-serif;
@@ -150,7 +152,7 @@ html[data-theme] {
 :root[data-theme="brutal"] .cell { border-radius: 4px; border-width: 2px; }
 /* Цвет режима — плашками: панели отбрасывают жёсткую тень цвета режима
    в чёрной обводке, заголовок недели на цветном ярлыке */
-:root[data-theme="brutal"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .qpick, .fin-hero, .fs-card, .fin-card, .tl-wrap, .tl-box) {
+:root[data-theme="brutal"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .fin-hero, .fs-card, .fin-card, .tl-wrap, .tl-box) {
   box-shadow: 5px 5px 0 0 var(--accent), 5px 5px 0 2.5px #111;
 }
 :root[data-theme="brutal"] .kb-board-title { color: #111; background: var(--accent); padding: 2px 10px; border: 2px solid #111; border-radius: 8px; box-shadow: 2px 2px 0 #111;
@@ -310,7 +312,7 @@ html[data-theme] {
   text-transform: uppercase; font-weight: 800; letter-spacing: .04em;
   background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #fff)); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-:root[data-theme="neon"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .qpick, .fin-hero, .fs-card, .fin-card, .tl-box) {
+:root[data-theme="neon"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .fin-hero, .fs-card, .fin-card, .tl-box) {
   box-shadow:
     0 0 18px -6px var(--accent),
     inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
@@ -482,7 +484,7 @@ html[data-theme] {
    --stud — диаметр шипа. */
 :root[data-theme="brutal"] :is(.dock-handle, .pane-move-handle) {
   --stud: 16px;
-  --stud-tile: color-mix(in srgb, #fff calc(var(--panel-a, 1) * 100%), var(--bg));
+  --stud-tile: color-mix(in srgb, var(--lego-panel, #fff) calc(var(--panel-a, 1) * 100%), var(--bg));
   --stud-top: color-mix(in srgb, var(--stud-tile) 91%, #000);
   --stud-rim: color-mix(in srgb, var(--stud-tile) 80%, #000);
   /* затемняем по светлоте, сохраняя оттенок: жёлтый не уходит в олив */
