@@ -260,6 +260,9 @@ const MID_SEL = [
   '#kbView .kb-side', '#kbView .kb-notes', '#kbView .kb-main',
   /* «Структура» базы знаний: шапка, группы и заметки доски, корзина */
   '#kbView .kb-board-head', '#kbView .kb-mcol > [data-bid]', '#kbView .kb-trash',
+  /* Главная: меню, карточки колонки, таймлайн, плитки, график, строка ввода */
+  '#homeView .hm-side', '#homeView .hm-left > *', '#homeView .hm-hero', '#homeView .hm-tile',
+  '#homeView .hm-chart', '#homeView .hm-quick',
 ].join(',');
 function collectMidBlocks() {
   return [...document.querySelectorAll(MID_SEL)].filter(el => el.offsetWidth > 0);

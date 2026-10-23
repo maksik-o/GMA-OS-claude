@@ -55,6 +55,9 @@
       <button id="searchBtn" class="icon-btn" type="button" title="Поиск">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
+      <button id="homeBtn" class="icon-btn" type="button" title="Главная">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      </button>
       <button id="tasksBtn" class="icon-btn on" type="button" title="Задачи">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L6.8 5"/><path d="m3.5 12 1.2 1.2 2.1-2.2"/><path d="m3.5 18 1.2 1.2 2.1-2.2"/></svg>
       </button>
@@ -81,6 +84,7 @@
   
   <div id="dockTop" class="dock"></div>
   <div id="grid" class="week2"></div>
+  <section id="homeView" class="home-view" hidden></section>
   <section id="contactsView" class="contacts-view glass" hidden></section>
   <section id="financeView" class="finance-view" hidden></section>
   <section id="kbView" class="kb-view" hidden></section>
@@ -89,6 +93,9 @@
   <section id="focusPanel" class="focus-panel dock-panel glass"></section>
 </div>
 <nav id="bottomNav" class="bottomnav">
+  <button data-view="home" type="button" title="Главная">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+  </button>
   <button data-view="week" class="on" type="button">
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
   </button>

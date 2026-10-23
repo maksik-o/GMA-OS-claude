@@ -3531,7 +3531,7 @@ body[data-surf="dark"] {
 }
 /* Панели: одна прозрачность, один блюр, одна тень. Стекло стало
    чуть плотнее — на фото-подложках текст читался тяжело. */
-.pane, .dock-panel, .cgroup, .fin-card, .fs-card, .fin-hero, .ftx-day,
+.pane, .dock-panel, .cgroup, .fin-card, .fs-card, .hm-card, .fin-hero, .ftx-day,
 .kanban-panel, .contact-card, .kb-side, .kb-main {
   box-shadow: var(--elev-1), var(--inner-glow);
   border-radius: var(--r-lg);
@@ -4808,7 +4808,10 @@ body:not([data-view="week"]) #viewBtn { display: none !important; }
 @media (min-width: 721px) {
   .topbar.finance-active .wn-right > #tasksBtn,
   .topbar.kb-active .wn-right > #tasksBtn,
-  .topbar.contacts-active .wn-right > #tasksBtn { display: inline-flex !important; }
+  .topbar.contacts-active .wn-right > #tasksBtn,
+  .topbar.finance-active .wn-right > #homeBtn,
+  .topbar.kb-active .wn-right > #homeBtn,
+  .topbar.contacts-active .wn-right > #homeBtn { display: inline-flex !important; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -5878,3 +5881,171 @@ body[data-surf="light"] .pp-arrow::after {
 .qpick.qp-top .qp-close { top: auto; bottom: calc(-20px - var(--pbw, 0px)); left: auto; right: var(--pinset, 24px); margin-top: 0; width: 76px; height: 22px; }
 .qpick.qp-top .qp-close .qp-chev { transform: rotate(90deg); }
 .qpick.qp-top .qp-close:hover .qp-chev { transform: rotate(90deg) translateX(2px); }
+
+/* ══════════════ ГЛАВНАЯ ══════════════
+   Меню с подписями и счётчиками, колонка «неделя / фокус / ближайшее»,
+   таймлайн дня, плитки, фокус за неделю и строка быстрого добавления.
+   Материал карточек — от темы (.glass + .hm-card), цвет — акцент режима. */
+.home-view {
+  --hm-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --hm-glow: color-mix(in srgb, var(--accent) 42%, transparent);
+  display: grid; grid-template-columns: 232px 290px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
+  gap: 14px; min-height: calc(100dvh - 110px); color: var(--text);
+}
+.home-view :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.home-view [role="button"] { cursor: pointer; }
+.hm-card { border-radius: var(--r-lg); padding: 16px; min-width: 0; }
+.hm-flex { flex: 1; }
+.hm-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.home-view h2 { margin: 0; font: 800 14px/1.2 var(--font-head); letter-spacing: .01em; }
+.home-view small { color: var(--dim); font-size: 12px; font-weight: 600; }
+.hm-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.hm-empty { margin: 6px 0; color: var(--dim); font-size: 13px; }
+.hm-btn { display: flex; align-items: center; justify-content: center; height: 38px; padding: 0 16px; border-radius: 12px; background: var(--accent) !important; color: #fff !important; font-weight: 800 !important; font-size: 13px; box-shadow: 0 6px 20px var(--hm-glow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-link { color: var(--accent) !important; font-weight: 700 !important; font-size: 12px; }
+
+/* Меню */
+.hm-side { grid-column: 1; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; align-self: stretch; }
+.hm-brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 14px; }
+.hm-brand b { display: block; font: 800 16px var(--font-head); }
+.hm-brand small { font-size: 11px; }
+.hm-logo { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 800; box-shadow: 0 6px 22px var(--hm-glow); }
+.hm-nav { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px !important; border-radius: 12px; font-size: 13.5px; font-weight: 700; color: var(--dim) !important; transition: background-color .2s, color .2s; }
+.hm-nav:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--text) !important; }
+.hm-nav.on { background: var(--accent); color: #fff !important; box-shadow: 0 6px 22px var(--hm-glow); }
+.hm-nav.sel { color: var(--text) !important; background: color-mix(in srgb, var(--text) 6%, transparent); }
+.hm-nav span:not(.hm-n) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-n { margin-left: auto; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center; font-size: 11px; font-weight: 800; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); }
+.hm-nav.on .hm-n { background: rgba(255, 255, 255, .25); color: #fff; }
+.hm-grp { padding: 14px 12px 6px; font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.hm-sync { display: flex; align-items: center; gap: 10px; padding: 10px 12px !important; margin-bottom: 6px; border-radius: 12px; background: color-mix(in srgb, var(--text) 5%, transparent) !important; }
+.hm-sync i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--c-done); box-shadow: 0 0 10px color-mix(in srgb, var(--c-done) 60%, transparent); }
+.hm-sync i.bad { background: var(--c-started); box-shadow: none; }
+.hm-sync b { display: block; font-size: 12px; }
+.hm-sync small { font-size: 11px; }
+
+/* Левая колонка */
+.hm-left { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.hm-hello { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.hm-hello b { font: 800 17px/1.25 var(--font-head); }
+.hm-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.hm-day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0 4px !important; border-radius: 11px; text-align: center !important; }
+.hm-day small { font-size: 10.5px; }
+.hm-day b { font-size: 14px; font-weight: 800; }
+.hm-day i { height: 8px; font-style: normal; font-size: 10px; line-height: 6px; letter-spacing: 1px; color: var(--accent); }
+.hm-day.past b { color: var(--dim); }
+.hm-day:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.hm-day.today { background: var(--accent); color: #fff; box-shadow: 0 4px 16px var(--hm-glow); }
+.hm-day.today small, .hm-day.today i { color: rgba(255, 255, 255, .85); }
+.hm-gauge { display: block; width: 100%; height: 118px; }
+.hm-g-bg, .hm-g-val { fill: none; stroke-width: 14; stroke-linecap: round; }
+.hm-g-bg { stroke: color-mix(in srgb, var(--text) 9%, transparent); }
+.hm-g-val { stroke: var(--accent); filter: drop-shadow(0 0 6px var(--hm-glow)); transition: stroke-dashoffset .6s var(--ease-spring); }
+.hm-g-big { fill: var(--text); font: 800 26px var(--font-head); text-anchor: middle; }
+.hm-g-sm { fill: var(--dim); font: 600 11px var(--font-ui); text-anchor: middle; }
+.hm-focus .hm-btn { width: 100%; margin-top: 8px; }
+.hm-soon { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.hm-soon-row { display: flex; align-items: center; gap: 10px; padding: 6px !important; margin: 0 -6px; border-radius: 12px; }
+.hm-soon-row:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.hm-time { width: 48px; height: 36px; flex: none; border-radius: 11px; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--text) 7%, transparent); }
+.hm-time.on { background: var(--hm-soft); color: var(--accent); }
+.hm-soon-txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hm-soon-txt b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-soon-txt small { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+
+/* Главная карточка */
+.hm-main { grid-column: 3; grid-row: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.hm-hero { flex: 1; min-height: 400px; display: flex; flex-direction: column; padding: 16px 18px; }
+.hm-hero-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.hm-hero-head h2 { font-size: 18px; }
+.hm-seg { display: flex; gap: 3px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--text) 7%, transparent); }
+.hm-seg button { height: 30px; padding: 0 12px !important; border-radius: 9px; font-size: 12px; font-weight: 700; color: var(--dim) !important; white-space: nowrap; }
+.hm-seg button[aria-pressed="true"] { background: var(--accent); color: #fff !important; box-shadow: 0 4px 14px var(--hm-glow); }
+.hm-prog { width: 90px; height: 6px; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--text) 9%, transparent); }
+.hm-prog u { display: block; height: 100%; background: var(--accent); box-shadow: 0 0 10px var(--hm-glow); transition: width .5s var(--ease-spring); }
+.hm-tl { flex: 1; min-height: 300px; display: flex; gap: 14px; }
+.hm-tl-hours { position: relative; width: 42px; flex: none; }
+.hm-tl-hours span { position: absolute; left: 0; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: var(--dim); }
+.hm-tl-area { position: relative; flex: 1; }
+.hm-hl { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--text) 8%, transparent); pointer-events: none; }
+.hm-ev { position: absolute; min-height: 34px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; padding: 6px 10px !important; border-radius: 10px; border-left: 3px solid var(--mc) !important; background: color-mix(in srgb, var(--mc) 14%, transparent) !important; font-size: 12.5px; font-weight: 700; transition: transform .2s var(--ease-spring); }
+.hm-ev:hover { transform: translateX(2px); }
+.hm-ev b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-ev small { font-size: 11px; }
+.hm-ev.short { min-height: 24px; justify-content: flex-start; flex-direction: row; align-items: center; gap: 10px; padding-top: 0 !important; padding-bottom: 0 !important; }
+.hm-ev.short small { flex: none; }
+.hm-ev.live { box-shadow: 0 0 0 1px color-mix(in srgb, var(--mc) 40%, transparent), 0 8px 22px color-mix(in srgb, var(--mc) 20%, transparent); }
+.hm-ev.done { opacity: .55; }
+.hm-ev.done b { text-decoration: line-through; }
+.hm-now { position: absolute; left: -6px; right: 0; height: 2px; background: var(--accent); box-shadow: 0 0 10px var(--hm-glow); pointer-events: none; }
+.hm-now::before { content: ''; position: absolute; left: 0; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.hm-tl-empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; }
+.hm-loose { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.hm-chip { padding: 5px 10px !important; border-radius: 999px; font-size: 12px; font-weight: 700; background: color-mix(in srgb, var(--mc) 14%, transparent) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mc) 30%, transparent); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-chip.done { opacity: .5; text-decoration: line-through; }
+.hm-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+.hm-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: color-mix(in srgb, var(--text) 4%, transparent); border-left: 3px solid var(--mc); }
+.hm-check { width: 22px; height: 22px; flex: none; border-radius: 7px; display: grid; place-items: center; box-shadow: inset 0 0 0 2px var(--c-todo); font-size: 13px; font-weight: 900; text-align: center !important; }
+.hm-row.done .hm-check { background: var(--c-done) !important; box-shadow: none; color: #fff !important; }
+.hm-row-t { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-row.done .hm-row-t { text-decoration: line-through; color: var(--dim) !important; }
+
+/* Нижний ряд */
+.hm-bottom { display: flex; gap: 14px; min-height: 172px; }
+.hm-tiles { flex: 1.6; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; min-width: 0; }
+.hm-tile { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 14px !important; text-align: left; transition: transform .2s var(--ease-spring); }
+.hm-tile:hover { transform: translateY(-2px); }
+.hm-tile b { display: block; font: 800 18px/1.15 var(--font-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-tile small { font-size: 11px; }
+.hm-ico { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--text) 7%, transparent); }
+.hm-ico.on { background: var(--hm-soft); color: var(--accent); }
+.hm-tgl { position: absolute; top: 20px; right: 14px; width: 38px; height: 22px; border-radius: 11px; background: color-mix(in srgb, var(--text) 14%, transparent); transition: background-color .25s; }
+.hm-tgl::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .25s var(--ease-spring); }
+.hm-tgl.on { background: var(--accent); box-shadow: 0 0 14px var(--hm-glow); }
+.hm-tgl.on::after { transform: translateX(16px); }
+.hm-chart { flex: 1; display: flex; flex-direction: column; }
+.hm-chart .hm-head b { font: 800 17px var(--font-head); }
+.hm-bars { flex: 1; display: flex; align-items: stretch; gap: 10px; min-height: 90px; }
+.hm-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; }
+.hm-bar i { width: 100%; border-radius: 7px; background: color-mix(in srgb, var(--text) 12%, transparent); transition: height .5s var(--ease-spring); }
+.hm-bar.today i { background: var(--accent); box-shadow: 0 0 16px var(--hm-glow); }
+.hm-bar.today small { color: var(--accent); font-weight: 800; }
+.hm-bar.future i { background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent); }
+.hm-bar small { font-size: 11px; }
+
+/* Строка быстрого добавления */
+.hm-quick { grid-column: 2 / span 2; grid-row: 2; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 18px !important; border-radius: 16px; }
+.hm-quick-plus { color: var(--accent); display: grid; }
+.hm-quick-ph { color: var(--dim); font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-quick-note { white-space: nowrap; }
+
+/* Шапка на главной: режимы переехали в карточку «Сегодня», неделя не нужна */
+.topbar.home-active .modes, .topbar.home-active .wn-center { display: none; }
+.topbar.home-active::before { content: 'Главная'; grid-column: 1; justify-self: start; font-weight: 800; font-size: 15px; padding: 7px 12px; font-family: var(--font-head); }
+@media (min-width: 1100px) {
+  /* Разделы и настройки — в меню слева, «+» — в строке внизу */
+  .topbar.home-active .wn-right > :is(#homeBtn, #tasksBtn, #kbBtn, #finBtn, #ctBtn, #settingsBtn, #widgetsBtn) { display: none !important; }
+  body[data-view="home"] #addBtn { display: none !important; }
+}
+@media (max-width: 1099px) {
+  .home-view { grid-template-columns: 280px minmax(0, 1fr); grid-template-rows: auto; min-height: 0; }
+  .hm-side, .hm-quick { display: none; }
+  .hm-left { grid-column: 1; }
+  .hm-main { grid-column: 2; }
+  .hm-bottom { flex-direction: column; }
+  .hm-tiles { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px) {
+  /* «Главная» есть в нижней пилюле; виджеты живут только в неделе */
+  #homeBtn, .topbar.home-active .wn-right > #widgetsBtn { display: none !important; }
+  .home-view { display: flex; flex-direction: column; gap: 12px; padding-bottom: 96px; }
+  .hm-left, .hm-main, .hm-bottom { display: contents; }
+  .hm-week { order: 1; } .hm-hero { order: 2; } .hm-tiles { order: 3; } .hm-focus { order: 4; } .hm-soon { order: 5; } .hm-chart { order: 6; min-height: 170px; }
+  .hm-gauge { height: 104px; }
+  body[data-view="home"] .topbar::before { content: 'Главная'; }
+  .hm-hero { min-height: 0; padding: 14px; }
+  .hm-hero-head { gap: 8px; }
+  .hm-hero-head .hm-flex { display: none; }
+  .hm-tl { min-height: 380px; }
+  .hm-card { padding: 14px; }
+}
