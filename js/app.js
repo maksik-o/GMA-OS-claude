@@ -20,6 +20,7 @@ import { init as kbInit, renderKbView, kbSubscribe, newKbNote } from './kb.js';
 import { focusInit } from './focus.js';
 import { widgetsInit, openWidgetsPanel } from './widgets.js';
 import { renderHomeView, homeInit } from './home.js';
+import { sidebarInit, renderSidebar } from './sidebar.js';
 import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanban, currentBlock } from './kanban.js';
 
 const $ = id => document.getElementById(id);
@@ -678,8 +679,10 @@ function applyView(v) {
   else if (v === 'home' && hv) renderHomeView(hv);
   else renderAll();
   placeWeekNav();
+  renderSidebar();
 }
 function renderCurrent() {
+  renderSidebar();
   if (state.view === 'week') {
     renderAll();
     // Показываем панели в режиме недели
@@ -830,6 +833,7 @@ async function boot() {
     }
   });
   bindNav();
+  sidebarInit();   // после bindNav: кнопки шапки уже с подписями
   bindNavHide();
   searchAnchor = $('searchBtn') ? $('searchBtn').nextSibling : null;
   document.addEventListener('grid-rendered', placeWeekNav);
