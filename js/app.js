@@ -19,6 +19,7 @@ import { init as financeInit, renderFinanceView, financeSubscribe } from './fina
 import { init as kbInit, renderKbView, kbSubscribe, newKbNote } from './kb.js';
 import { focusInit } from './focus.js';
 import { widgetsInit, openWidgetsPanel } from './widgets.js';
+import { renderHomeView, homeInit } from './home.js';
 import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanban, currentBlock } from './kanban.js';
 
 const $ = id => document.getElementById(id);
@@ -611,7 +612,7 @@ function closeDrawer() {
   d.addEventListener('pointerup', end);
   d.addEventListener('pointercancel', end);
 })();
-const VIEW_ORDER = ['week', 'contacts', 'finance', 'kb'];
+const VIEW_ORDER = ['home', 'week', 'contacts', 'finance', 'kb'];
 function setView(v) {
   if (v === state.view) { applyView(v); return; }
   const dir = VIEW_ORDER.indexOf(v) >= VIEW_ORDER.indexOf(state.view) ? 1 : -1;
@@ -627,6 +628,7 @@ function applyView(v) {
   const cv = $('contactsView');
   const fv = $('financeView');
   const kv = $('kbView');
+  const hv = $('homeView');
   const notesPanel = $('notesPanel');
   const focusPanel = $('focusPanel');
   const topbar = document.querySelector('.topbar');
@@ -638,6 +640,7 @@ function applyView(v) {
   if (cv) cv.hidden = v !== 'contacts';
   if (fv) fv.hidden = v !== 'finance';
   if (kv) kv.hidden = v !== 'kb';
+  if (hv) hv.hidden = v !== 'home';
   // Панели-виджеты живут только в режиме недели — включая календарь и финансы
   if (notesPanel) notesPanel.hidden = !week;
   if (focusPanel) focusPanel.hidden = !week;
@@ -647,6 +650,7 @@ function applyView(v) {
     topbar.classList.toggle('contacts-active', v === 'contacts');
     topbar.classList.toggle('finance-active', v === 'finance');
     topbar.classList.toggle('kb-active', v === 'kb');
+    topbar.classList.toggle('home-active', v === 'home');
   }
   const ab = $('addBtn');
   if (ab) ab.hidden = v === 'finance';
@@ -659,6 +663,8 @@ function applyView(v) {
   if (kbb) kbb.classList.toggle('on', v === 'kb');
   const tkb = $('tasksBtn');
   if (tkb) tkb.classList.toggle('on', v === 'week');
+  const hb = $('homeBtn');
+  if (hb) hb.classList.toggle('on', v === 'home');
   /* Режимы (Работа/Дом/Учёба) к финансам отношения не имеют —
      прячем их настройку, пока пользователь в этом режиме. */
   document.body.classList.toggle('view-finance', v === 'finance');
@@ -669,6 +675,7 @@ function applyView(v) {
   if (v === 'contacts' && cv) renderContactsView(cv, state.mode);
   else if (v === 'finance' && fv) renderFinanceView(fv);
   else if (v === 'kb' && kv) renderKbView(kv);
+  else if (v === 'home' && hv) renderHomeView(hv);
   else renderAll();
   placeWeekNav();
 }
@@ -698,6 +705,8 @@ function renderCurrent() {
     } else if (state.view === 'kb') {
       const kv = $('kbView');
       if (kv) renderKbView(kv);
+    } else if (state.view === 'home') {
+      renderHomeView($('homeView'));
     }
   }
 }
@@ -771,6 +780,7 @@ async function boot() {
   await kbInit();
   await focusInit();
   widgetsInit();
+  homeInit();
   kanbanInit(); // троеточие видов + панель доски + жесты
   await loadModeColors();
   await hk.loadKeys();
@@ -862,6 +872,8 @@ function bindNav() {
   if (kbb) kbb.onclick = () => setView('kb');
   const tkb = $('tasksBtn');
   if (tkb) tkb.onclick = () => setView('week');
+  const hb = $('homeBtn');
+  if (hb) hb.onclick = () => setView('home');
   const wb = $('widgetsBtn');
   if (wb) {
     wb.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
@@ -1067,10 +1079,10 @@ function bindSync() {
    лежит в кнопке, чтобы не сломать точку статуса у облака и прочие
    вложенные элементы. */
 const TB_LABELS = {
-  widgetsBtn: 'Виджеты', searchBtn: 'Поиск', tasksBtn: 'Задачи', kbBtn: 'База знаний',
+  widgetsBtn: 'Виджеты', searchBtn: 'Поиск', homeBtn: 'Главная', tasksBtn: 'Задачи', kbBtn: 'База знаний',
   finBtn: 'Финансы', ctBtn: 'Контакты', settingsBtn: 'Настройки', syncBtn: 'Синхронизация',
 };
-const TB_VIEWS = ['tasksBtn', 'kbBtn', 'finBtn', 'ctBtn'];
+const TB_VIEWS = ['homeBtn', 'tasksBtn', 'kbBtn', 'finBtn', 'ctBtn'];
 function enhanceToolbar() {
   document.querySelectorAll('.wn-right > button, #searchBtn').forEach(b => {
     if (b.dataset.tb) return;
