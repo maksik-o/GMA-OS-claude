@@ -202,6 +202,25 @@ export async function setHideDone(v) {
 
 export const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 export const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/* HTML заметок — перед вставкой в страницу. Он приходит и из файла
+   синхронизации: подменённый файл с <img onerror=…> выполнил бы чужой
+   код. Разбор в <template> инертен (ничего не грузится и не запускается);
+   убираем исполняемые теги, обработчики on* и javascript:-ссылки. */
+const UNSAFE_TAGS = 'script,iframe,frame,object,embed,link,meta,style,base,form,svg,math';
+const UNSAFE_URL = /^\s*(javascript|vbscript|data:(?!image\/(png|jpe?g|gif|webp|avif);))/i;
+export function safeHtml(html) {
+  if (!html) return '';
+  const t = document.createElement('template');
+  t.innerHTML = String(html);
+  t.content.querySelectorAll(UNSAFE_TAGS).forEach(el => el.remove());
+  t.content.querySelectorAll('*').forEach(el => {
+    for (const a of [...el.attributes]) {
+      const n = a.name.toLowerCase();
+      if (n.startsWith('on') || n === 'srcdoc' || (/^(href|src|xlink:href|action|formaction|poster)$/.test(n) && UNSAFE_URL.test(a.value))) el.removeAttribute(a.name);
+    }
+  });
+  return t.innerHTML;
+}
 export function isDone(t) {
   const vals = Object.values(t.days || {});
   if (!vals.length) return false;
@@ -509,6 +528,7 @@ export async function resetModeColors() {
   userChange();
 }
 function applyModeColorsToCSS() {
+  document.dispatchEvent(new CustomEvent('mode-colors-changed'));
   const r = document.documentElement;
   for (const m of MODE_IDS) {
     if (customModeColors[m]) r.style.setProperty('--mode-' + m, customModeColors[m]);

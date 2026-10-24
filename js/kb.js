@@ -11,7 +11,7 @@
    иначе один вложенный PDF раздул бы полезную нагрузку sync.
    ══════════════════════════════════════════════════════════════════ */
 import { dbAll, dbPut, dbBulk, dbGet, dbDel } from './db.js';
-import { uid, esc, MODES } from './store.js';
+import { uid, esc, MODES, safeHtml } from './store.js';
 import { getAllNotes, updateNoteById, deleteNote } from './notes.js';
 import { createGraph } from './kbgraph.js';
 import { fmtSize, saveAttachment, loadAttachment, deleteAttachment, downloadBlob, limitNote } from './attach.js';
@@ -561,7 +561,7 @@ function buildNote(main, n) {
     <div class="kb-extra"></div>`;
   const title = main.querySelector('.kb-title');
   const ed = main.querySelector('.kb-editor');
-  ed.innerHTML = n.html || '';
+  ed.innerHTML = safeHtml(n.html);
   refreshRefs(ed);
   editing = {
     id: n.id, title, ed,
@@ -583,7 +583,7 @@ function softUpdateNote(main, n) {
     e.lastTitle = e.title.value;
   }
   if (!dirty && document.activeElement !== e.ed && (n.html || '') !== e.srcHtml) {
-    e.ed.innerHTML = n.html || '';
+    e.ed.innerHTML = safeHtml(n.html);
     refreshRefs(e.ed);
     e.srcHtml = n.html || '';
     e.lastHtml = e.ed.innerHTML;

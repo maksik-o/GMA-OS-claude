@@ -127,7 +127,7 @@ function focusHTML(fmap) {
     <div class="hm-head"><h2>Фокус</h2><small>цель ${FOCUS_GOAL / 60} ч</small></div>
     <svg viewBox="0 0 200 112" class="hm-gauge" role="img" aria-label="Фокус сегодня: ${fmtMin(min)}">
       <path d="${arcPath()}" class="hm-g-bg"/>
-      <path d="${arcPath()}" class="hm-g-val" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${(100 - k * 100).toFixed(1)}"/>
+      <path d="${arcPath()}" class="hm-g-val"${k > 0 ? '' : ' style="opacity:0"'} pathLength="100" stroke-dasharray="100" stroke-dashoffset="${(100 - k * 100).toFixed(1)}"/>
       <text x="100" y="86" class="hm-g-big">${hm}</text>
       <text x="100" y="105" class="hm-g-sm">из ${FOCUS_GOAL / 60}:00</text>
     </svg>
@@ -312,7 +312,14 @@ export function homeInit() {
     e.preventDefault();
     startDrag(h.closest('[data-hm]'), e);
   });
+  /* Таймер шлёт событие каждую секунду — перерисовываем только при
+     старте, остановке и паузе, а не всю «Главную» ежесекундно */
+  let timerKey = '';
   document.addEventListener('timer-changed', () => {
+    const a = tm.getActive();
+    const key = a ? a.taskId + (a.paused ? ':p' : '') : '';
+    if (key === timerKey) return;
+    timerKey = key;
     if (_host && !_host.hidden && state.view === 'home') renderHomeView(_host);
   });
 }

@@ -25,66 +25,38 @@ import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanba
 
 const $ = id => document.getElementById(id);
 
-/* ── ТЕМЫ ──
-   Тема меняет весь вид приложения: шрифт, материал и форму панелей,
-   рамки, тени, кнопки, вкладки режимов, квадраты задач и палитру
-   режимов. Вся оформительская часть — в css/themes.css по
-   атрибуту data-theme; здесь только список и переключение.
-   «Авто» следует светлой/тёмной теме iPhone. */
-const THEMES = [
-  { id: 'auto',   label: 'Авто', auto: true },
-  { id: 'note',   label: 'Тетрадь', surf: 'light' },
-  { id: 'brutal', label: 'Лего', surf: 'light' },
-  { id: 'term',   label: 'Терминал', surf: 'dark' },
-  { id: 'glass',  label: 'Стекло', surf: 'dark' },
-  { id: 'swiss',  label: 'Швейцарский', surf: 'light' },
-  { id: 'neon',   label: 'Неон', surf: 'dark' },
-  { id: 'coral',  label: 'Коралл', surf: 'dark' },
-];
-/* Прежние темы → ближайшие новые */
-const THEME_MIGRATE = {
-  sky: 'swiss', winter: 'swiss', light: 'swiss', mist: 'swiss', mint: 'swiss', lavender: 'swiss',
-  mountains: 'note', amber: 'note', paper: 'note', dawn: 'note', sand: 'note',
-  waves: 'glass', ocean: 'glass', aurora: 'glass', forest: 'glass', midnight: 'glass', graphite: 'glass', dark: 'glass', nord: 'glass',
-  sunset: 'neon', lava: 'neon', plum: 'neon', cherry: 'neon', oled: 'term',
-};
-const mqDark = matchMedia('(prefers-color-scheme: dark)');
-const resolveTheme = id => {
-  const t = THEMES.find(x => x.id === id) || THEMES[0];
-  return t.auto ? THEMES.find(x => x.id === (mqDark.matches ? 'glass' : 'swiss')) : t;
-};
-/* Мини-экран темы для «Оформления»: рисуется переменными самой темы */
-const themeMini = t => t.auto
-  ? '<span class="tmini t-auto"><b>A</b></span>'
-  : `<span class="tmini t-${t.id}"><span class="tm-title">Задачи</span>
-      <span class="tm-card"><i class="tm-chip"></i><i class="tm-line"></i><i class="tm-line s"></i></span>
-      <span class="tm-card"><span class="tm-sqs"><i class="d"></i><i class="d"></i><i class="s"></i><i></i></span></span></span>`;
+/* ── ТЕМА ──
+   Тема одна — «Коралл» (css/themes.css). Здесь — только то, что
+   настраивается в «Оформлении»: свой фон, обои, прозрачность панелей,
+   размер текста и режимы. */
+const THEME = { id: 'coral', surf: 'dark' };
+/* Только тёмные подложки: текст и панели темы рассчитаны на тёмный фон */
 const BG_GRADIENT_PRESETS = [
-  { id: 'sunset-grad', c: 'linear-gradient(135deg,#ff6b6b,#feca57,#48dbfb)' },
-  { id: 'ocean-grad', c: 'linear-gradient(135deg,#667eea,#764ba2)' },
-  { id: 'forest-grad', c: 'linear-gradient(135deg,#134e5e,#71b280)' },
-  { id: 'aurora-grad', c: 'linear-gradient(135deg,#a8edea,#fed6e3)' },
-  { id: 'night-grad', c: 'linear-gradient(135deg,#0f2027,#203a43,#2c5364)' },
-  { id: 'candy-grad', c: 'linear-gradient(135deg,#ff9a9e,#fecfef,#fecfef)' },
+  'linear-gradient(160deg,#0f2027,#203a43,#2c5364)',
+  'linear-gradient(160deg,#141e30,#243b55)',
+  'linear-gradient(160deg,#0b0f1a,#2a0f1e)',
+  'linear-gradient(160deg,#071a14,#134e5e)',
+  'linear-gradient(160deg,#1a1022,#3a1c32)',
+  'linear-gradient(160deg,#050608,#1c1f26)',
 ];
-const BG_PRESETS = ['#eef2f7', '#f8e8d4', '#0b1220', '#04222e', '#221129', '#101c10'];
+const BG_PRESETS = ['#040506', '#0b1220', '#04222e', '#221129', '#101c10', '#1a1013'];
 const FONTS = [{ id: 's', label: 'S' }, { id: 'm', label: 'M' }, { id: 'l', label: 'L' }];
 const TAG_COLORS = ['#ef4444', '#f59e0b', '#10b981', '#2563eb', '#8b5cf6', '#ec4899'];
 
-let storedTheme = 'auto';
 let storedBg = '';
 let storedBgImage = '';
 let storedBgOpacity = 1;      // яркость слоя фона: узор темы или своя картинка
-/* Прозрачность панелей — своя у каждой темы: у «Стекла» панели
-   полупрозрачные, у матовых тем плотные. Одно общее значение делало
-   бы «Брутал» прозрачным после настройки «Стекла». */
-let panelAlphaByTheme = {};
-const PANEL_ALPHA_DEFAULT = { glass: 0.4, neon: 0.88 };
-const panelAlphaFor = id => panelAlphaByTheme[id] ?? PANEL_ALPHA_DEFAULT[id] ?? 1;
+let panelAlpha = 1;            // прозрачность панелей
+const isDarkHex = c => {
+  const m = /^#([0-9a-f]{6})$/i.exec(c || '');
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) < 90;
+};
 let storedFont = 'm';
 
 function applyPanelAlpha() {
-  const v = panelAlphaFor(resolveTheme(storedTheme).id);
+  const v = panelAlpha;
   const r = document.documentElement.style;
   r.setProperty('--panel-a', v);        // прозрачность панелей (css/themes.css)
   /* Блюр привязан к прозрачности, как было; у плотных панелей он не
@@ -96,18 +68,17 @@ function applyPanelAlpha() {
   if (l) l.textContent = Math.round(v * 100) + '%';
 }
 async function setPanelAlpha(v) {
-  panelAlphaByTheme[resolveTheme(storedTheme).id] = v;
+  panelAlpha = v;
   applyPanelAlpha();
-  await dbSetKV('panelAlphaByTheme', panelAlphaByTheme);
+  await dbSetKV('panelAlpha', v);
 }
 function applyTheme() {
-  const th = resolveTheme(storedTheme);
+  const th = THEME;
   const root = document.documentElement;
   root.dataset.theme = th.id;
   root.style.removeProperty('--tint');
   root.style.removeProperty('--bg-mesh');
-  /* Свой цвет фона заменяет только подложку; панели и текст остаются
-     от темы, поэтому surf (светлая/тёмная) всегда берём из темы. */
+  /* Свой цвет фона заменяет только подложку; панели и текст — от темы */
   if (storedBg) {
     root.style.setProperty('--bg', storedBg);
     root.style.setProperty('--bg-mesh', 'none');
@@ -238,26 +209,6 @@ function renderLookPanel() {
   if (_lookBusy) return;
   _lookBusy = true;
   try {
-    const row = $('themeRow');
-    if (row) {
-      row.innerHTML = '';
-      for (const t of THEMES) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'theme-dot' + (t.id === storedTheme && !storedBg ? ' on' : '');
-        b.title = t.label;
-        b.innerHTML = themeMini(t) + `<span class="theme-name">${t.label}</span>`;
-        b.onclick = async () => {
-          storedTheme = t.id;
-          storedBg = '';   // выбор темы снимает свой цвет фона
-          await dbSetKV('theme', t.id);
-          await dbSetKV('bg', '');
-          applyTheme();
-          renderLookPanel();
-        };
-        row.appendChild(b);
-      }
-    }
     const bgRow = $('bgRow');
     if (bgRow) {
       bgRow.innerHTML = '';
@@ -273,7 +224,7 @@ function renderLookPanel() {
     }
     const bc = $('bgColor');
     if (bc) {
-      bc.value = /^#[0-9a-f]{6}$/i.test(storedBg) ? storedBg : '#eef2f7';
+      bc.value = /^#[0-9a-f]{6}$/i.test(storedBg) ? storedBg : '#040506';
       bc.onchange = e => setBg(e.target.value);
     }
     const br = $('bgReset');
@@ -281,12 +232,12 @@ function renderLookPanel() {
     const bgPresets = $('bgPresets');
     if (bgPresets) {
       bgPresets.innerHTML = '';
-      for (const p of BG_GRADIENT_PRESETS) {
+      for (const c of BG_GRADIENT_PRESETS) {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'bg-preset' + (storedBg === p.c ? ' on' : '');
-        b.style.background = p.c;
-        b.onclick = () => setBg(p.c);
+        b.className = 'bg-preset' + (storedBg === c ? ' on' : '');
+        b.style.background = c;
+        b.onclick = () => setBg(c);
         bgPresets.appendChild(b);
       }
     }
@@ -787,16 +738,14 @@ async function boot() {
   kanbanInit(); // троеточие видов + панель доски + жесты
   await loadModeColors();
   await hk.loadKeys();
-  const t = await dbGetKV('theme');
-  const tm = THEME_MIGRATE[t] || t;
-  if (THEMES.some(x => x.id === tm)) storedTheme = tm;
-  mqDark.addEventListener('change', () => { if (storedTheme === 'auto') applyTheme(); });
   storedBg = (await dbGetKV('bg')) || '';
+  /* Светлая подложка от прежних тем под белым текстом не читается */
+  if (storedBg && !BG_PRESETS.includes(storedBg) && !BG_GRADIENT_PRESETS.includes(storedBg) && !isDarkHex(storedBg)) storedBg = '';
   storedBgImage = (await dbGetKV('bgImage')) || '';
   const bo = parseFloat(await dbGetKV('bgLayerOpacity'));
   storedBgOpacity = Number.isFinite(bo) ? bo : 1;
-  const pab = await dbGetKV('panelAlphaByTheme');
-  if (pab && typeof pab === 'object') panelAlphaByTheme = pab;
+  const pa = parseFloat(await dbGetKV('panelAlpha'));
+  if (Number.isFinite(pa)) panelAlpha = pa;
   const f = await dbGetKV('fontSize');
   if (FONTS.some(x => x.id === f)) storedFont = f;
   applyTheme();

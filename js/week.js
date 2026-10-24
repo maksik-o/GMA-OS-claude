@@ -50,8 +50,6 @@ export function setSquaresMode(m) {
   renderAll();
 }
 /* ── Иконки пункта «квадраты недели» ── */
-const ICON_GRID = '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="4" height="14" rx="1.5"/><rect x="10" y="5" width="4" height="14" rx="1.5"/><rect x="16" y="5" width="4" height="14" rx="1.5"/></svg>';
-const ICON_GRID_OFF = '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="4" height="14" rx="1.5"/><rect x="10" y="5" width="4" height="14" rx="1.5"/><rect x="16" y="5" width="4" height="14" rx="1.5"/><line x1="4" y1="20" x2="20" y2="4"/></svg>';
 
 let expandedSub = null;
 let expandedSq = null; // мобилка: чьи квадраты раскрыты из полосок
@@ -136,17 +134,22 @@ function syncRowHeights() {
   const lRows = grid.querySelectorAll('.p-left .l-row');
   const rRows = grid.querySelectorAll('.p-right .r-row');
   if (!lRows.length || !rRows.length) return;
+  /* Три прохода: сбросить все → прочитать все → записать все. Раньше
+     сброс и чтение чередовались в одном цикле, и браузер пересчитывал
+     раскладку на каждой строке (сотни мс при паре сотен задач). */
   const align = () => {
+    pending = 0;
     const len = Math.min(lRows.length, rRows.length);
-    for (let i = 0; i < len; i++) {
-      lRows[i].style.height = '';
-      const h = Math.max(rRows[i].offsetHeight, lRows[i].offsetHeight);
-      lRows[i].style.height = h + 'px';
-    }
+    for (let i = 0; i < len; i++) lRows[i].style.height = '';
+    const hs = new Array(len);
+    for (let i = 0; i < len; i++) hs[i] = Math.max(rRows[i].offsetHeight, lRows[i].offsetHeight);
+    for (let i = 0; i < len; i++) lRows[i].style.height = hs[i] + 'px';
   };
+  let pending = 0;
   align();
   if (typeof ResizeObserver !== 'undefined') {
-    _rowResizeObserver = new ResizeObserver(() => requestAnimationFrame(align));
+    /* наблюдатель срабатывает на каждую строку — выравниваем раз за кадр */
+    _rowResizeObserver = new ResizeObserver(() => { if (!pending) pending = requestAnimationFrame(align); });
     rRows.forEach(r => _rowResizeObserver.observe(r));
   } else {
     window.addEventListener('resize', align);
@@ -417,8 +420,8 @@ function renderModes() {
   el.querySelectorAll('button').forEach(b => b.remove());
   MODES.forEach(m => {
     const label = m.short
-      ? `<span class="m-full">${m.label}</span><span class="m-short">${m.short}</span>`
-      : m.label;
+      ? `<span class="m-full">${esc(m.label)}</span><span class="m-short">${esc(m.short)}</span>`
+      : esc(m.label);
     const b = document.createElement('button');
     b.type = 'button';
     b.dataset.m = m.id;

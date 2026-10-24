@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="coral">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
-  <meta name="theme-color" content="#0b1220">
+  <meta name="theme-color" content="#040506">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
@@ -16,24 +16,14 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/themes.css">
   <script>
-    /* Тема — до первой отрисовки, иначе при запуске мелькает фон по умолчанию */
+    /* Свой фон — до первой отрисовки, иначе при запуске мелькает фон темы */
     try {
       var bt = JSON.parse(localStorage.getItem('rl_boot_theme') || 'null');
-      if (bt) {
-        var r = document.documentElement;
-        r.dataset.theme = bt.id;
-        r.dataset.bootSurf = bt.surf;
-        if (bt.bg) { r.style.setProperty('--bg', bt.bg); r.style.setProperty('--bg-mesh', 'none'); }
-      } else {
-        var dk = matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.dataset.theme = dk ? 'glass' : 'swiss';
-        document.documentElement.dataset.bootSurf = dk ? 'dark' : 'light';
-      }
+      if (bt && bt.bg) { var r = document.documentElement; r.style.setProperty('--bg', bt.bg); r.style.setProperty('--bg-mesh', 'none'); }
     } catch (e) {}
   </script>
 </head>
-<body data-surf="light" data-font="m" data-view="week">
-<script>try { var bs = document.documentElement.dataset.bootSurf; if (bs) document.body.dataset.surf = bs; } catch (e) {}</script>
+<body data-surf="dark" data-font="m" data-view="week">
 
 <div id="pullIndicator" class="pull-ind"><span class="pull-spin"></span></div>
 
@@ -230,8 +220,6 @@
     <button id="themeBack" class="btn mini" type="button">←</button>
     <h3>Оформление</h3>
   </header>
-  <div class="set-sub">Тема</div>
-  <div class="theme-row" id="themeRow"></div>
   <div class="set-sub">Фон (цвет)</div>
   <div class="bg-row" id="bgRow"></div>
   <div class="bg-custom">
