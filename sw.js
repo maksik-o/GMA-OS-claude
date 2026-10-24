@@ -1,4 +1,4 @@
-const CACHE = 'rl-v298';
+const CACHE = 'rl-v299';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает
@@ -22,7 +22,9 @@ const SHELL = [
   './js/widgets.js', './js/cal.js', './js/contacts.js', './js/kanban.js',
   './js/finance.js', './js/finimport.js', './js/anim.js',
   './js/timeline.js', './js/kb.js', './js/snapshot.js', './js/vault.js', './js/kbgraph.js', './js/charts.js', './js/home.js', './js/sidebar.js',
-  './css/fonts.css', './css/themes.css'
+  './css/fonts.css', './css/themes.css',
+  './fonts/inter-cyrillic.woff2', './fonts/inter-latin.woff2',
+  './fonts/jetbrains-mono-cyrillic.woff2', './fonts/jetbrains-mono-latin.woff2'
 ];
 
 self.addEventListener('install', e => {
@@ -47,6 +49,7 @@ self.addEventListener('activate', e => {
    ссылке, и запрос уходил в архивное развёртывание (302 → echo 404).
    Такие файлы берём из сети, а кэш оставляем только как офлайн-резерв. */
 const NETWORK_FIRST = ['/js/config.js', '/index.html', '/'];
+const IMMUTABLE = /\.(woff2|mp4|webm|png|svg)$/;
 const isNetworkFirst = url =>
   NETWORK_FIRST.some(p => url.pathname === p || url.pathname.endsWith(p));
 
@@ -69,6 +72,10 @@ self.addEventListener('fetch', e => {
   }
   e.respondWith((async () => {
     const hit = await caches.match(e.request, { ignoreSearch: true });
+    /* Шрифты, картинки и ролик не меняются (при замене — новое имя
+       файла), поэтому из кэша без фоновой перепроверки: раньше каждый
+       запуск заново качал их по сети */
+    if (hit && IMMUTABLE.test(url.pathname)) return hit;
     if (navigator.onLine) {
       fetch(e.request).then(res => putSafe(e.request, res)).catch(() => {});
     }

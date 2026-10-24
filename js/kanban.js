@@ -415,8 +415,6 @@ function showMenu(m) {
 /* ── Пункты меню троеточия недели: скрытие выполненных + квадраты недели ── */
 const ICON_EYE = '<svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/></svg>';
 const ICON_EYE_OFF = '<svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><line x1="5" y1="19" x2="20" y2="5"/></svg>';
-const ICON_GRID = '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="4" height="14" rx="1.5"/><rect x="10" y="5" width="4" height="14" rx="1.5"/><rect x="16" y="5" width="4" height="14" rx="1.5"/></svg>';
-const ICON_GRID_OFF = '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="4" height="14" rx="1.5"/><rect x="10" y="5" width="4" height="14" rx="1.5"/><rect x="16" y="5" width="4" height="14" rx="1.5"/><line x1="4" y1="20" x2="20" y2="4"/></svg>';
 function hideItemHTML() {
   return state.hideDone
     ? '<button type="button" data-hide-done="0">' + ICON_EYE + '<span>Показать скрытые задачи</span></button>'

@@ -1,24 +1,10 @@
 /* ══════════════════════════════════════════════════════════════════
-   ТЕМЫ
+   ТЕМА «КОРАЛЛ»
 
-   Тема меняет не только фон, а весь вид: шрифт, материал и форму
-   панелей, рамки, тени, кнопки, вкладки режимов и квадраты задач.
-
-   Устройство:
-   1. Набор переменных. Пишется сразу на трёх селекторах:
-      :root[data-theme=…]       — фон страницы (html);
-      :root[data-theme=…] body  — всё остальное (body[data-surf]
-                                  тоже задаёт эти переменные, поэтому
-                                  нужен более сильный селектор);
-      .tmini.t-…                — мини-превью темы в «Оформлении».
-   2. Приёмы, которые переменными не выразить (рамки, жёсткие тени,
-      подчёркнутые вкладки, развёртка…) — отдельным блоком темы.
-
+   Единственная тема приложения. Атрибут data-theme="coral" стоит на
+   html всегда (ставится ещё до первой отрисовки в index.html).
    Свой цвет фона из «Оформления» ставится инлайн на html и
    перекрывает --bg темы; цвета режимов, заданные вручную, — тоже.
-   Ползунки «Оформления» работают в любой теме: «Панели» задаёт
-   --panel-a (прозрачность и размытие панелей), «Фон» — яркость слоя
-   с узором темы или своей картинкой (body::before).
    ══════════════════════════════════════════════════════════════════ */
 
 /* Поверхности, которые получают «материал» темы */
@@ -35,7 +21,7 @@
 :root[data-theme] textarea, :root[data-theme] select { font-family: var(--font-ui); }
 :root[data-theme] .topbar::before, :root[data-theme] .kb-board-title, :root[data-theme] .notes-day-label,
 :root[data-theme] .drawer h3, :root[data-theme] .notes-list-head h3, :root[data-theme] .kb-title,
-:root[data-theme] .ed-title, :root[data-theme] .fh-big, :root[data-theme] .fin-hero b,
+:root[data-theme] .ed-title, :root[data-theme] .fin-hero b,
 :root[data-theme] .cgroup-name, :root[data-theme] .kb-blank b {
   font-family: var(--font-head);
 }
@@ -57,13 +43,7 @@ html[data-theme] {
     radial-gradient(900px 600px at 50% 100%, var(--time-atmosphere), transparent 70%),
     var(--bg);
 }
-:root[data-theme] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .fin-hero, .fs-card, .fin-card, .hm-card, .tl-wrap, .tl-box) {
-  box-shadow:
-    var(--shadow), var(--inner-glow),
-    inset 0 1px 0 color-mix(in srgb, var(--accent) calc(var(--mode-inner) * 1.6), transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) calc(var(--mode-inner) * .6), transparent),
-    inset 0 34px 46px -30px color-mix(in srgb, var(--accent) var(--mode-inner), transparent);
-}
+
 /* Плавная смена свечения — без своего transition: он затирал анимации
    самих панелей (выезд колонки заметок, сдвиги блоков недели) */
 :root[data-theme] .topbar::before, :root[data-theme] :is(.kb-board-title, .kb-title, .ed-title) { color: var(--accent); transition: color var(--dur-mode) var(--ease-mode); }
@@ -71,266 +51,7 @@ html[data-theme] {
 :root[data-theme] ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
 :root[data-theme] :is(input, textarea, [contenteditable="true"]) { caret-color: var(--accent); accent-color: var(--accent); }
 :root[data-theme] .r-row:hover, :root[data-theme] .m-task:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-
-/* Сила отсвета фона и свечения панелей по темам */
-:root[data-theme="brutal"] { --mode-glow: 0%; }
-:root[data-theme="swiss"]  { --mode-glow: 9%;  --mode-inner: 18%; }
-:root[data-theme="note"]   { --mode-glow: 14%; --mode-inner: 30%; }
-:root[data-theme="term"]   { --mode-glow: 16%; --mode-inner: 58%; }
-:root[data-theme="glass"]  { --mode-glow: 34%; --mode-inner: 42%; }
-:root[data-theme="neon"]   { --mode-glow: 26%; --mode-inner: 48%; }
 :root[data-theme="coral"]  { --mode-glow: 18%; --mode-inner: 30%; }
-
-/* ══════════════ 1. ТЕТРАДЬ ══════════════ */
-:root[data-theme="note"], :root[data-theme="note"] body, .tmini.t-note {
-  --bg: #e2d9c6;
-  --bg-mesh: radial-gradient(#cfc3a8 1px, transparent 1.4px) 0 0 / 16px 16px;
-  --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
-  --text: #2a2620; --dim: #857b6a; --c-todo: rgba(42, 38, 32, .5);
-  --glass: color-mix(in srgb, #fffcf4 calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, #f4eddf calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #d6cbb4; --panel-solid: #fffcf4;
-  --shadow: 0 1px 0 #cfc2a6, 0 8px 20px rgba(90, 70, 30, .10);
-  --inner-glow: 0 0 0 transparent;
-  --t-bw: 1px; --r-lg: 8px; --r-md: 6px;
-  --font-ui: "Nunito", -apple-system, sans-serif;
-  --font-head: "PT Serif", Georgia, serif;
-  --c-done: #2f7d4f; --c-started: #c98a12; --c-skipped: #b3261e; --c-postponed: #23408e;
-  --accent-deep: var(--accent);
-}
-:root[data-theme="note"], .tmini.t-note { --panel-a: 1; --mode-work: #b3261e; --mode-home: #2f7d4f; --mode-study: #23408e; --mode-all: #c46200; }
-:root[data-theme="note"] .topbar::before, :root[data-theme="note"] .kb-board-title,
-:root[data-theme="note"] .notes-day-label { font-style: italic; font-weight: 700; }
-:root[data-theme="note"] .mode-blob { background: transparent !important; box-shadow: inset 0 -2.5px 0 var(--accent) !important; border-radius: 0; }
-:root[data-theme="note"] .modes { background: transparent; border-radius: 0; border-bottom: 1px solid var(--brd); }
-:root[data-theme="note"] .modes button { border-radius: 0; }
-:root[data-theme="note"] .modes button.on { color: var(--accent); text-shadow: none; }
-:root[data-theme="note"] .g-hd.today { background: linear-gradient(transparent 52%, color-mix(in srgb, var(--accent) 30%, transparent) 52%); border-radius: 2px; }
-:root[data-theme="note"] .g-hd.today b { color: var(--accent); }
-:root[data-theme="note"] .cell { border-radius: 999px; }
-:root[data-theme="note"] .icon-btn, :root[data-theme="note"] .sync, :root[data-theme="note"] .btn {
-  border: 1px solid var(--brd); box-shadow: 0 1px 0 #cfc2a6;
-}
-:root[data-theme="note"] .fab { box-shadow: 0 2px 0 color-mix(in srgb, var(--accent) 60%, #000), 0 8px 18px rgba(60, 40, 10, .25); }
-
-/* ══════════════ 2. БРУТАЛ ══════════════ */
-:root[data-theme="brutal"], :root[data-theme="brutal"] body, .tmini.t-brutal {
-  --bg: #ffd43b;
-  /* Пластина Лего: ряды «пупырышков» — светлая верхушка с бликом и
-     мягкая тень справа-снизу. Цвета близки к фону: заметно, но не пёстро. */
-  --bg-mesh:
-    radial-gradient(circle at 50% 50%, #ffdc5c 0 7px, #f3c425 7.2px 8px, transparent 8.6px) 0 0 / 26px 26px,
-    radial-gradient(circle at 56% 60%, rgba(150, 100, 0, .22) 0 8px, transparent 9.6px) 0 0 / 26px 26px;
-  --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
-  --text: #111; --dim: #3b3b3b; --c-todo: #111;
-  /* панели — не белые, а чуть желтоватые (как белый на 60% поверх фона) */
-  --lego-panel: color-mix(in srgb, #ffffff 60%, #ffd43b);
-  --glass: color-mix(in srgb, var(--lego-panel) calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, var(--lego-panel) calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #111; --panel-solid: var(--lego-panel);
-  --shadow: 4px 4px 0 #111; --inner-glow: 0 0 0 transparent;
-  --t-bw: 2.5px; --r-lg: 14px; --r-md: 10px;
-  --font-ui: "Manrope", -apple-system, sans-serif;
-  --font-head: "Unbounded", "Manrope", sans-serif;
-  --c-done: #18b26b; --c-started: #ff9f1c; --c-skipped: #ff3b3b; --c-postponed: #3b6cff;
-  --accent-deep: var(--accent);
-}
-:root[data-theme="brutal"], .tmini.t-brutal { --panel-a: 1; --mode-work: #ff5a36; --mode-home: #18b26b; --mode-study: #3b6cff; --mode-all: #ff8a00; }
-:root[data-theme="brutal"] .topbar::before, :root[data-theme="brutal"] .kb-board-title { font-weight: 800; letter-spacing: -.02em; }
-:root[data-theme="brutal"] .icon-btn, :root[data-theme="brutal"] .sync, :root[data-theme="brutal"] .btn,
-:root[data-theme="brutal"] .fab, :root[data-theme="brutal"] .chip, :root[data-theme="brutal"] .fin-fab {
-  border: 2px solid #111 !important; box-shadow: 3px 3px 0 #111 !important; color: #111;
-  transition: transform .12s ease, box-shadow .12s ease;
-}
-:root[data-theme="brutal"] .icon-btn:active, :root[data-theme="brutal"] .sync:active, :root[data-theme="brutal"] .btn:active,
-:root[data-theme="brutal"] .fab:active, :root[data-theme="brutal"] .chip:active, :root[data-theme="brutal"] .fin-fab:active {
-  transform: translate(3px, 3px) !important; box-shadow: 0 0 0 #111 !important;
-}
-:root[data-theme="brutal"] .btn.primary, :root[data-theme="brutal"] .fab, :root[data-theme="brutal"] .fin-fab { color: #111; }
-:root[data-theme="brutal"] .modes { background: #fff; border: 2.5px solid #111; }
-:root[data-theme="brutal"] .mode-blob { box-shadow: inset 0 0 0 2px #111 !important; }
-:root[data-theme="brutal"] .modes button.on { color: #111; text-shadow: none; font-weight: 800; }
-:root[data-theme="brutal"] .bottomnav button.on { color: #111; box-shadow: inset 0 0 0 2px #111; }
-:root[data-theme="brutal"] .g-hd.today { background: color-mix(in srgb, var(--accent) 55%, #fff); box-shadow: inset 0 0 0 2px #111; }
-:root[data-theme="brutal"] .g-hd.today b { color: #111; }
-:root[data-theme="brutal"] .cell { border-radius: 4px; border-width: 2px; }
-/* Цвет режима — плашками: панели отбрасывают жёсткую тень цвета режима
-   в чёрной обводке, заголовок недели на цветном ярлыке */
-:root[data-theme="brutal"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .fin-hero, .fs-card, .fin-card, .hm-card, .tl-wrap, .tl-box) {
-  box-shadow: 5px 5px 0 0 var(--accent), 5px 5px 0 2.5px #111;
-}
-:root[data-theme="brutal"] .kb-board-title { color: #111; background: var(--accent); padding: 2px 10px; border: 2px solid #111; border-radius: 8px; box-shadow: 2px 2px 0 #111;
-  /* жёсткая тень визуально тянет кнопку вниз — поднимаем на её половину */
-  transform: translate(-1px, -1px); transition: transform .12s ease, box-shadow .12s ease; }
-:root[data-theme="brutal"] .kb-board-title:active { transform: translate(1px, 1px); box-shadow: 0 0 0 #111; }
-:root[data-theme="brutal"] .topbar::before { color: #111; text-decoration: underline var(--accent) 5px; text-underline-offset: 4px; }
-:root[data-theme="brutal"] .cell.none { border: 2px solid #111; opacity: .25; }
-:root[data-theme="brutal"] .cell.c-done { background: var(--c-done); }
-:root[data-theme="brutal"] .sync-alert { border: 2.5px solid #111; box-shadow: 4px 4px 0 #111; }
-/* Внутренние поверхности не должны быть белыми на белой панели:
-   шапки досок, колонки канбана, шкала времени — с оттенком акцента и
-   чёрной линией, круглые стрелки — жёлтые «кнопки» в обводке. */
-:root[data-theme="brutal"] .kanban-panel:not(.timeline-panel) > .kb-head {
-  background: color-mix(in srgb, var(--accent) 16%, #fff); box-shadow: none;
-  border-bottom: 2.5px solid #111; border-radius: calc(var(--r-lg) - 3px) calc(var(--r-lg) - 3px) 0 0;
-  margin: -10px -10px 10px; padding: 10px 10px 8px;
-}
-:root[data-theme="brutal"] :is(.kb-arrow, .tl-tray-btn) {
-  background: #ffe066; color: #111; border: 2px solid #111; box-shadow: 2px 2px 0 #111;
-}
-:root[data-theme="brutal"] :is(.kb-arrow, .tl-tray-btn):active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111; }
-:root[data-theme="brutal"] .tl-tray-btn.on { background: var(--accent); color: #111; }
-:root[data-theme="brutal"] .tl-tray-btn.on i { background: #111; color: #fff; }
-:root[data-theme="brutal"] :is(.icon-btn, .sync) { background: #ffe066; }
-:root[data-theme="brutal"] .kb-col {
-  background: color-mix(in srgb, var(--accent) 9%, #fff); border: 2px solid #111; box-shadow: 3px 3px 0 #111;
-}
-:root[data-theme="brutal"] .kb-col-head { border-bottom: 2px solid #111; }
-:root[data-theme="brutal"] .kb-count { background: #111; color: #fff; }
-:root[data-theme="brutal"] #dayPanel .tl-gutterbox { background: color-mix(in srgb, var(--accent) 10%, #fff); }
-:root[data-theme="brutal"] #dayPanel :is(.tl-heads, .tl-gscroll) { border-color: #111; border-width: 2px; }
-:root[data-theme="brutal"] #dayPanel .tl-colhead { background: color-mix(in srgb, var(--accent) 12%, #fff); border: 2px solid #111 !important; box-shadow: 2px 2px 0 #111; }
-:root[data-theme="brutal"] #dayPanel .tl-colhead.today { background: color-mix(in srgb, var(--accent) 45%, #fff); box-shadow: 2px 2px 0 #111; }
-:root[data-theme="brutal"] #dayPanel .tl-chip { border: 2px solid #111; box-shadow: 2px 2px 0 #111; background: #fff; }
-/* у чипов дат жёсткая тень 2px: опускаем линию под ними, чтобы зазор
-   «чип → линия» равнялся зазору «край → чип» */
-:root[data-theme="brutal"] #dayPanel { --tl-heads-h: calc(var(--tl-head-h) + 2px); }
-:root[data-theme="brutal"] #dayPanel .tl-heads .tl-colhead { margin: 5px 4px 7px 3px; }
-
-/* ══════════════ 3. ТЕРМИНАЛ ══════════════ */
-:root[data-theme="term"], :root[data-theme="term"] body, .tmini.t-term {
-  --bg: #040804;
-  --bg-mesh: radial-gradient(120% 70% at 50% 0%, #0b2414 0%, transparent 70%);
-  --tint: #39ff88;
-  --text: #a8ffc4; --dim: #4f8a62; --c-todo: rgba(168, 255, 196, .45);
-  --glass: color-mix(in srgb, #06100a calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, #0a1a10 calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #1e5a32; --panel-solid: #06100a;
-  --shadow: none; --inner-glow: 0 0 0 transparent;
-  --t-bw: 1px; --r-lg: 0px; --r-md: 0px;
-  --font-ui: "JetBrains Mono", ui-monospace, Menlo, monospace;
-  --font-head: "JetBrains Mono", ui-monospace, Menlo, monospace;
-  --c-done: #39ff88; --c-started: #ffb000; --c-skipped: #ff5f56; --c-postponed: #4cc9ff;
-  --accent-deep: var(--accent);
-}
-:root[data-theme="term"], .tmini.t-term { --panel-a: 1; --mode-work: #39ff88; --mode-home: #ffb000; --mode-study: #4cc9ff; --mode-all: #ff8c1a; }
-:root[data-theme="term"] *, :root[data-theme="term"] *::before, :root[data-theme="term"] *::after { border-radius: 0 !important; }
-:root[data-theme="term"] body { font-size: 14px; }
-:root[data-theme="term"] #app::after {
-  content: ""; position: fixed; inset: 0; z-index: 200; pointer-events: none;
-  background: repeating-linear-gradient(rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, .22) 2px 3px);
-}
-:root[data-theme="term"] .topbar::before, :root[data-theme="term"] .kb-board-title,
-:root[data-theme="term"] .notes-day-label { text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); text-transform: lowercase; }
-:root[data-theme="term"] .mode-blob { background: transparent !important; box-shadow: inset 0 0 0 1px var(--accent) !important; }
-:root[data-theme="term"] .modes { background: transparent; border: 1px solid var(--brd); }
-:root[data-theme="term"] .modes button { text-transform: uppercase; font-size: 12px; letter-spacing: .04em; }
-:root[data-theme="term"] .modes button.on { color: var(--accent); text-shadow: 0 0 6px var(--accent); }
-:root[data-theme="term"] .icon-btn, :root[data-theme="term"] .sync, :root[data-theme="term"] .btn, :root[data-theme="term"] .chip {
-  background: transparent; border: 1px solid var(--brd); box-shadow: none;
-}
-:root[data-theme="term"] .btn.primary, :root[data-theme="term"] .fab, :root[data-theme="term"] .fin-fab,
-:root[data-theme="term"] .bottomnav button.on {
-  /* фон задаём явно: общее правило выше делает кнопки прозрачными, и у
-     залитых оставался тёмный текст на тёмном фоне */
-  background: var(--accent); border-color: var(--accent);
-  color: #031006; box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
-}
-:root[data-theme="term"] .g-hd.today { background: transparent; box-shadow: inset 0 -2px 0 var(--accent); }
-:root[data-theme="term"] .g-hd.today b { color: var(--accent); text-shadow: 0 0 6px var(--accent); }
-:root[data-theme="term"] .cell.c-done { box-shadow: 0 0 8px color-mix(in srgb, var(--c-done) 60%, transparent); }
-:root[data-theme="term"] ::selection { background: #39ff88; color: #031006; }
-
-/* ══════════════ 4. ЖИДКОЕ СТЕКЛО ══════════════ */
-:root[data-theme="glass"], :root[data-theme="glass"] body, .tmini.t-glass {
-  --bg: #1b1340;
-  --bg-mesh:
-    radial-gradient(70% 45% at 12% 8%, #ff7a59 0%, transparent 70%),
-    radial-gradient(60% 50% at 96% 30%, #8b5cf6 0%, transparent 70%),
-    radial-gradient(80% 55% at 40% 102%, #0ea5e9 0%, transparent 70%);
-  --tint: #a78bfa;
-  --text: #ffffff; --dim: rgba(255, 255, 255, .64); --c-todo: rgba(255, 255, 255, .55);
-  --glass: color-mix(in srgb, rgb(20 14 44) calc(var(--panel-a, 0.4) * 100%), transparent); --card: rgba(255, 255, 255, .13); --brd: rgba(255, 255, 255, .22);
-  --panel-solid: #261c54;
-  --shadow: 0 10px 30px rgba(0, 0, 0, .28); --inner-glow: inset 0 1px 0 rgba(255, 255, 255, .35);
-  --t-bw: 1px; --r-lg: 26px; --r-md: 16px;
-  --font-ui: "Manrope", -apple-system, sans-serif;
-  --font-head: "Manrope", -apple-system, sans-serif;
-  --c-done: #4ade80; --c-started: #fbbf24; --c-skipped: #ff7a7a; --c-postponed: #93c5fd;
-}
-:root[data-theme="glass"], .tmini.t-glass { --panel-a: 0.4; --mode-work: #ff7a7a; --mode-home: #4ade80; --mode-study: #60a5fa; --mode-all: #fb923c; }
-:root[data-theme="glass"] .topbar::before, :root[data-theme="glass"] .kb-board-title { font-weight: 800; letter-spacing: -.02em; }
-:root[data-theme="glass"] .icon-btn, :root[data-theme="glass"] .sync { border: 1px solid var(--brd); }
-
-/* ══════════════ 5. ШВЕЙЦАРСКИЙ ══════════════ */
-:root[data-theme="swiss"], :root[data-theme="swiss"] body, .tmini.t-swiss {
-  --bg: #e7e6e0;
-  --bg-mesh: repeating-linear-gradient(0deg, rgba(0, 0, 0, .055) 0 1px, transparent 1px 32px), repeating-linear-gradient(90deg, rgba(0, 0, 0, .055) 0 1px, transparent 1px 32px); --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
-  --text: #111111; --dim: #6f6d66; --c-todo: rgba(17, 17, 17, .5);
-  --glass: color-mix(in srgb, #ffffff calc(var(--panel-a, 1) * 100%), transparent); --card: color-mix(in srgb, #f3f2ee calc(min(1, var(--panel-a, 1) + .1) * 100%), transparent); --brd: #cfcdc5; --panel-solid: #ffffff;
-  --shadow: none; --inner-glow: 0 0 0 transparent;
-  --t-bw: 1px; --r-lg: 3px; --r-md: 2px;
-  --font-ui: "Golos Text", -apple-system, sans-serif;
-  --font-head: "Golos Text", -apple-system, sans-serif;
-  --c-done: #111111; --c-started: #f2a900; --c-skipped: #e4002b; --c-postponed: #0047bb;
-  --accent-deep: var(--accent);
-}
-:root[data-theme="swiss"], .tmini.t-swiss { --panel-a: 1; --mode-work: #e4002b; --mode-home: #00875a; --mode-study: #0047bb; --mode-all: #f06400; }
-:root[data-theme="swiss"] .topbar::before, :root[data-theme="swiss"] .kb-board-title { font-weight: 800; letter-spacing: -.04em; }
-:root[data-theme="swiss"] .icon-btn, :root[data-theme="swiss"] .sync, :root[data-theme="swiss"] .btn, :root[data-theme="swiss"] .chip {
-  border-radius: 2px; box-shadow: none; border: 1px solid var(--brd); background: #fff;
-}
-:root[data-theme="swiss"] .btn.primary, :root[data-theme="swiss"] .fab, :root[data-theme="swiss"] .fin-fab {
-  border-radius: 2px; box-shadow: none; border: 0; background: var(--accent);
-}
-:root[data-theme="swiss"] .modes { background: transparent; border-radius: 0; border-bottom: 1px solid var(--brd); gap: 14px; }
-:root[data-theme="swiss"] .modes button { border-radius: 0; padding-inline: 0; }
-:root[data-theme="swiss"] .mode-blob { background: transparent !important; box-shadow: inset 0 -2.5px 0 var(--accent) !important; border-radius: 0; }
-:root[data-theme="swiss"] .modes button.on { color: #111; text-shadow: none; font-weight: 700; }
-:root[data-theme="swiss"] .bottomnav button { border-radius: 0; }
-:root[data-theme="swiss"] .bottomnav button.on { background: transparent; color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
-:root[data-theme="swiss"] .g-hd.today { background: transparent; border-radius: 0; box-shadow: inset 0 2px 0 var(--accent); }
-:root[data-theme="swiss"] .g-hd b { font-weight: 800; }
-:root[data-theme="swiss"] .cell { border-radius: 1px; border-width: 1.5px; }
-:root[data-theme="swiss"] .cell.c-done { background: #111; }
-
-/* ══════════════ 6. НЕОН ══════════════ */
-:root[data-theme="neon"], :root[data-theme="neon"] body, .tmini.t-neon {
-  /* Фон ровный по всей высоте: раньше нижние 38% были отдельной
-     светлой полосой «горизонта», и экран делился пополам */
-  --bg: #140a2e;
-  --bg-mesh:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, .045) 0 1px, transparent 1px 42px),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 42px);
-  --tint: var(--accent);
-  --text: #f4eaff; --dim: #a58bd1; --c-todo: rgba(244, 234, 255, .5);
-  --glass: color-mix(in srgb, rgb(22 10 46) calc(var(--panel-a, 0.88) * 100%), transparent); --card: color-mix(in srgb, var(--accent) 8%, transparent); --brd: color-mix(in srgb, var(--accent) 70%, transparent);
-  --panel-solid: #1a0c36;
-  --shadow: 0 0 16px color-mix(in srgb, var(--accent) 32%, transparent); --inner-glow: inset 0 0 14px color-mix(in srgb, var(--accent) 8%, transparent);
-  --t-bw: 1px; --r-lg: 16px; --r-md: 10px;
-  --font-ui: "Exo 2", -apple-system, sans-serif;
-  --font-head: "Exo 2", -apple-system, sans-serif;
-  --c-done: #ff3ea5; --c-started: #ffd166; --c-skipped: #ff5c5c; --c-postponed: #2de2e6;
-  --accent-deep: var(--accent);
-}
-:root[data-theme="neon"], .tmini.t-neon { --panel-a: 0.88; --mode-work: #ff3ea5; --mode-home: #2de2e6; --mode-study: #ffd166; --mode-all: #ff9b3d; }
-:root[data-theme="neon"] .topbar::before, :root[data-theme="neon"] .kb-board-title {
-  text-transform: uppercase; font-weight: 800; letter-spacing: .04em;
-  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #fff)); -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-:root[data-theme="neon"] :is(.topbar, .pane, .dock-panel, .kb-side, .kb-notes-in, .kb-main, .kb-bcol, .kb-loose, .kb-board-head, .fin-hero, .fs-card, .fin-card, .hm-card, .tl-box) {
-  box-shadow:
-    0 0 18px -6px var(--accent),
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
-    inset 0 0 28px -8px color-mix(in srgb, var(--accent) var(--mode-inner), transparent);
-}
-:root[data-theme="neon"] .icon-btn, :root[data-theme="neon"] .sync, :root[data-theme="neon"] .chip {
-  background: transparent; border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent); color: var(--accent);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 22%, transparent);
-}
-:root[data-theme="neon"] .btn.primary, :root[data-theme="neon"] .fab, :root[data-theme="neon"] .fin-fab,
-:root[data-theme="neon"] .bottomnav button.on {
-  color: #12082a; box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 70%, transparent);
-}
-:root[data-theme="neon"] .mode-blob { box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 70%, transparent) !important; }
-:root[data-theme="neon"] .modes button.on { color: #12082a; text-shadow: none; }
-:root[data-theme="neon"] .g-hd.today { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent); }
-:root[data-theme="neon"] .g-hd.today b { color: var(--accent); }
-:root[data-theme="neon"] .cell.c-done { box-shadow: 0 0 9px color-mix(in srgb, var(--c-done) 70%, transparent); }
 
 /* ══════════════ 7. КОРАЛЛ ══════════════
    По мотивам DESIGN.md «Midnight command center, coral neon»:
@@ -340,7 +61,7 @@ html[data-theme] {
    метка: кнопки действий нейтральные светло-серые с тёмным текстом.
    Inter с чуть положительной разрядкой и не жирные заголовки,
    служебные подписи — моноширинным капсом. */
-:root[data-theme="coral"], :root[data-theme="coral"] body, .tmini.t-coral {
+:root[data-theme="coral"], :root[data-theme="coral"] body {
   --bg: #040506;
   --bg-mesh:
     radial-gradient(70% 38% at 50% -6%, rgba(4, 63, 150, .55) 0%, rgba(6, 18, 37, .2) 55%, transparent 75%),
@@ -360,7 +81,7 @@ html[data-theme] {
   /* Залитые кнопки — цвета текущего режима (тёмный текст на них) */
   --accent-deep: var(--accent);
 }
-:root[data-theme="coral"], .tmini.t-coral { --panel-a: 1; --mode-work: #ff6363; --mode-home: #59d499; --mode-study: #56c2ff; --mode-all: #ff9f43; }
+:root[data-theme="coral"] { --panel-a: 1; --mode-work: #ff6363; --mode-home: #59d499; --mode-study: #56c2ff; --mode-all: #ff9f43; }
 :root[data-theme="coral"] body { letter-spacing: .01em; font-feature-settings: "calt", "kern", "liga", "ss03"; }
 /* Заголовки шепчут: размер вместо жирности */
 :root[data-theme="coral"] .topbar::before, :root[data-theme="coral"] .kb-board-title,
@@ -406,35 +127,25 @@ html[data-theme] {
 :root[data-theme="coral"] .kb-q, :root[data-theme="coral"] .kb-editor, :root[data-theme="coral"] .ed-card {
   background-color: rgba(255, 255, 255, .05); border-radius: 8px;
 }
-/* Залитые кнопки цвета режима в ярких темах — с тёмным текстом:
-   белый на неоново-зелёном/жёлтом/бирюзовом не читается */
-:root[data-theme="term"]  { --on-accent: #031006; }
-:root[data-theme="neon"]  { --on-accent: #12082a; }
+/* Залитые кнопки цвета режима — с тёмным текстом */
 :root[data-theme="coral"] { --on-accent: #07080a; }
-:root:is([data-theme="term"], [data-theme="neon"], [data-theme="coral"]) :is(.btn.primary, .fab, .fin-fab, .bottomnav button.on,
+:root[data-theme="coral"] :is(.btn.primary, .fab, .fin-fab, .bottomnav button.on,
   .cal-day.tdy, .cal-weekbtn.on, .chip.on, .fin-tab.on, .fin-type.on, .font-btn.on,
   .fp-play, .ftb-count, .ftx-check.day, .ftx-row.picked .ftx-check, .icon-btn.on, .kb-seg button.on, .kb-tool.on,
   .notes-actions .icon-btn.on, .notes-list-tabs .tab.active, .timer-fab, .tl-tray-btn.on, .topbar .tb-btn.tb-view.on,
   .tr-day.on, .tl-band span, .vo-badge.on) {
   color: var(--on-accent) !important; text-shadow: none;
 }
-:root:is([data-theme="term"], [data-theme="neon"]) .sync-alert { color: var(--on-accent); }
-:root:is([data-theme="term"], [data-theme="neon"], [data-theme="coral"]) :is(.fp-play, .icon-btn.on, .topbar .tb-btn.tb-view.on, .timer-fab, .bottomnav button.on) svg {
+:root[data-theme="coral"] :is(.fp-play, .icon-btn.on, .topbar .tb-btn.tb-view.on, .timer-fab, .bottomnav button.on) svg {
   fill: currentColor; color: var(--on-accent); opacity: 1;
 }
 :root[data-theme="coral"] .cell { border-radius: 6px; }
 :root[data-theme="coral"] .sync-alert { background: #452324; color: #ffd6d6; box-shadow: rgba(255, 99, 99, .4) 0 0 0 1px inset; }
 :root[data-theme="coral"] ::selection { background: rgba(255, 99, 99, .35); }
-.tmini.t-coral .tm-card { box-shadow: rgba(255, 255, 255, .14) 0 0 0 1px; }
-.tmini.t-coral .tm-chip { background: var(--mode-work); }
-.tmini.t-coral .tm-title { font-weight: 500; }
 
 /* ══════════════ Ручки переноса виджетов ══════════════
-   База — короткий тонкий изгиб по скруглению угла, на 2–3px внутрь,
-   цвета режима, мягко обрывается к концам. Темы меняют подачу:
-   «Тетрадь» — загнутый уголок страницы, «Брутал» — жирная дуга с жёсткой
-   тенью, «Стекло» — светящаяся дуга-блик, «Неон» — неоновая трубка.
-   «Терминал» и «Швейцарский» — прямой уголок (углы у них острые). */
+   Короткий тонкий изгиб по скруглению угла, на 2–3px внутрь,
+   цвета режима, мягко обрывается к концам. */
 .dock-handle, .pane-move-handle {
   --h-gap: 3px; --h-w: 2px; --h-size: 15px;
   --h-r: max(4px, calc(var(--r-lg) - var(--t-bw, 0px) - var(--h-gap)));
@@ -452,113 +163,4 @@ html[data-theme] {
 .dock-handle:active, .pane-move-handle:active { transform: scale(.92); }
 .week2.swapped .pane-move-handle { left: var(--h-gap) !important; }
 
-/* Терминал, Швейцарский — прямой уголок */
-:root:is([data-theme="term"], [data-theme="swiss"]) :is(.dock-handle, .pane-move-handle) {
-  --h-w: 3px; --h-size: 13px; --h-gap: 2px; border-radius: 0 !important; -webkit-mask: none; mask: none;
-}
-
-/* Лего и Стекло — короткая дуга со скруглёнными концами (SVG-линия с
-   round cap), по скруглению угла: дуга радиуса --h-ra с центром в центре
-   скругления панели. Путь в SVG — дуга r=20 с центром (22,22) в поле 32,
-   отсюда множители 1.6 (размер) и 1.1 (сдвиг). */
-:root:is([data-theme="brutal"], [data-theme="glass"]) :is(.dock-handle, .pane-move-handle) {
-  --h-rin: calc(var(--r-lg) - var(--t-bw, 0px));
-  --h-ra: max(3px, calc(var(--h-rin) - var(--h-d)));
-  width: calc(var(--h-ra) * 1.6) !important; height: calc(var(--h-ra) * 1.6) !important;
-  top: calc(var(--h-rin) - var(--h-ra) * 1.1) !important; left: calc(var(--h-rin) - var(--h-ra) * 1.1) !important;
-  border: 0 !important; border-radius: 0 !important; -webkit-mask: none; mask: none; background: none;
-}
-:root:is([data-theme="brutal"], [data-theme="glass"]) .dock-handle path { display: inline; }
-:root:is([data-theme="brutal"], [data-theme="glass"]) .pane-move-handle svg { display: block; width: 100%; height: 100%; }
-:root:is([data-theme="brutal"], [data-theme="glass"]) :is(.dock-handle, .pane-move-handle) path {
-  vector-effect: non-scaling-stroke; stroke: var(--accent); stroke-width: var(--h-sw); stroke-linecap: round;
-  /* В SVG — четверть дуги (pathLength=100); видимая часть — отрезок по
-     центру длиной --h-len, так длину ручки задаёт тема, а не разметка */
-  stroke-dasharray: var(--h-len) 100; stroke-dashoffset: calc((100 - var(--h-len)) / -2);
-}
-/* Лего — ручка-«пупырышек»: та же форма и размер, что у шипов на фоне
-   (верхушка, ободок и мягкая тень справа-снизу). Цвет — плитки под ним,
-   чуть темнее, чтобы был виден: на белой панели — светло-серый, на
-   полупрозрачной (сквозь неё виден жёлтый фон) — жёлтый, как сама
-   панель. Цвет плитки = белый с непрозрачностью панели поверх фона.
-   --stud — диаметр шипа. */
-:root[data-theme="brutal"] :is(.dock-handle, .pane-move-handle) {
-  --stud: 16px;
-  --stud-tile: color-mix(in srgb, var(--lego-panel, #fff) calc(var(--panel-a, 1) * 100%), var(--bg));
-  --stud-top: color-mix(in srgb, var(--stud-tile) 91%, #000);
-  --stud-rim: color-mix(in srgb, var(--stud-tile) 80%, #000);
-  /* затемняем по светлоте, сохраняя оттенок: жёлтый не уходит в олив */
-  --stud-top: oklch(from var(--stud-tile) calc(l - .07) calc(c * 1.15) h);
-  --stud-rim: oklch(from var(--stud-tile) calc(l - .16) calc(c * 1.2) h);
-  width: calc(var(--stud) + 3px) !important; height: calc(var(--stud) + 3px) !important;
-  top: 3px !important; left: 3px !important;
-  border: 0 !important; border-radius: 0 !important; -webkit-mask: none; mask: none; filter: none;
-  background:
-    radial-gradient(circle at calc(var(--stud) / 2) calc(var(--stud) / 2), var(--stud-top) 0 calc(var(--stud) * .44), var(--stud-rim) calc(var(--stud) * .45) calc(var(--stud) * .5), transparent calc(var(--stud) * .5 + .6px)),
-    radial-gradient(circle at calc(var(--stud) / 2 + 1px) calc(var(--stud) / 2 + 1.7px), oklch(from var(--stud-tile) calc(l - .3) c h / .35) 0 calc(var(--stud) * .5), transparent calc(var(--stud) * .5 + 1.4px));
-  background-repeat: no-repeat;
-}
-:root[data-theme="brutal"] .dock-handle path, :root[data-theme="brutal"] .pane-move-handle svg { display: none !important; }
-/* Стекло — светящаяся дуга-блик большего радиуса (панели скруглены сильнее) */
-:root[data-theme="glass"] :is(.dock-handle, .pane-move-handle) {
-  --h-d: 4px; --h-sw: 3px; --h-len: 62;
-  filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent));
-}
-
-/* Неон — изгиб неоновой трубки с двойным свечением */
-:root[data-theme="neon"] :is(.dock-handle, .pane-move-handle) {
-  --h-w: 2.5px; --h-size: 22px; --h-gap: 3px;
-  filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 70%, transparent));
-  -webkit-mask: linear-gradient(135deg, #000 44%, transparent 62%); mask: linear-gradient(135deg, #000 44%, transparent 62%);
-}
-
-/* Тетрадь — загнутый уголок страницы: верхний треугольник «отрезан» под
-   цвет стола, нижний — оборот листа с тенью. Сидит прямо на углу панели. */
-:root[data-theme="note"] :is(.dock-handle, .pane-move-handle) {
-  --h-size: 18px;
-  top: calc(-1 * var(--t-bw, 0px)) !important; left: calc(-1 * var(--t-bw, 0px)) !important;
-  border: 0; border-radius: var(--r-lg) 0 0 0 !important; -webkit-mask: none; mask: none;
-  background:
-    linear-gradient(135deg, var(--bg) 0 50%, transparent 50.5%),
-    linear-gradient(135deg, transparent 49%, color-mix(in srgb, var(--accent) 45%, #8a6a3a) 50%, transparent 54%),
-    linear-gradient(315deg, #fff6e2 0%, color-mix(in srgb, var(--accent) 22%, #ead7ad) 60%, color-mix(in srgb, var(--accent) 35%, #c9ad7a) 100%);
-  filter: drop-shadow(1.5px 1.5px 1.5px rgba(80, 60, 30, .45));
-}
-:root[data-theme="note"] .week2.swapped .pane-move-handle { left: calc(-1 * var(--t-bw, 0px)) !important; }
-
-/* ══════════════ Мини-превью тем в «Оформлении» ══════════════
-   Маленький экран приложения на переменных своей темы. */
-.tmini {
-  display: flex; flex-direction: column; gap: 5px; width: 100%; aspect-ratio: 3 / 4; padding: 7px;
-  border-radius: 14px; overflow: hidden; position: relative;
-  background: var(--bg-mesh, none), var(--bg);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
-  color: var(--text); font-family: var(--font-ui); text-align: left;
-}
-.tm-title { font: 800 13px/1 var(--font-head); padding: 2px 2px 0; white-space: nowrap; overflow: hidden; }
-.tm-card {
-  display: flex; flex-direction: column; gap: 4px; padding: 5px;
-  background: var(--glass); border: var(--t-bw, 0) solid var(--brd); border-radius: var(--r-md); box-shadow: var(--shadow);
-}
-.tm-chip { width: 52%; height: 7px; border-radius: var(--r-md); background: var(--mode-work); }
-.tm-line { height: 4px; border-radius: 2px; background: var(--text); opacity: .35; }
-.tm-line.s { width: 70%; }
-.tm-sqs { display: flex; gap: 3px; }
-.tm-sqs i { flex: 1; height: 8px; border-radius: min(var(--r-md), 3px); border: 1.5px solid var(--c-todo); }
-.tm-sqs i.d { background: var(--c-done); border-color: var(--c-done); }
-.tm-sqs i.s { border-color: var(--c-started); }
-.tmini.t-glass .tm-card { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.tmini.t-brutal .tm-card { box-shadow: 2px 2px 0 #111; }
-.tmini.t-neon .tm-title { background: linear-gradient(90deg, #ff3ea5, #2de2e6); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.tmini.t-note .tm-title { font-style: italic; }
-.tmini.t-auto { background: linear-gradient(135deg, #e7e6e0 0 50%, #1b1340 50% 100%); display: grid; place-items: center; }
-.tmini.t-auto b { font: 800 22px/1 "Manrope", sans-serif; color: #fff; mix-blend-mode: difference; }
-
-/* Стрелка подгрупп в базе знаний — под оформление тем */
-:root[data-theme="brutal"] .kb-g-caret { background: #ffe066; border: 2px solid #111; border-radius: 6px; box-shadow: 2px 2px 0 #111; color: #111; }
-:root[data-theme="term"] .kb-g-caret, :root[data-theme="swiss"] .kb-g-caret { border-radius: 0; }
-:root[data-theme="term"] .kb-g-caret { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
-:root[data-theme="neon"] .kb-g-caret { background: transparent; color: var(--gc, var(--accent)); box-shadow: 0 0 0 1.5px currentColor, 0 0 10px -2px currentColor; }
-:root[data-theme="glass"] .kb-g-caret { border-radius: 50%; background: color-mix(in srgb, #fff 18%, transparent); box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
-:root[data-theme="note"] .kb-g-caret { border-radius: 4px; border: 1px solid color-mix(in srgb, var(--text) 25%, transparent); background: transparent; }
 :root[data-theme="coral"] .kb-g-caret { border-radius: 50%; }

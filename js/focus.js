@@ -44,13 +44,16 @@ function scaleLabels() {
 }
 
 /* ── Шаровая молния: хромокей + перекраска в цвет режима + радиальный блюр ── */
-const FX_SOURCES = ['videos/lightning.mp4'];
+/* 480×360, 24 к/с, кадр 4:3 из центра исходника. H.264 (~260 КБ) — для
+   Safari и Chrome; WebM/VP9 — запасной для браузеров без H.264 */
+const FX_SRC = document.createElement('video').canPlayType('video/mp4; codecs="avc1.4D401E"')
+  ? 'videos/lightning-v2.mp4' : 'videos/lightning-v2.webm';
 const FX_BLUR_PX = 3;    // максимум блюра в центре панели (7 размазывал ореол)
 const FX_DIM = 0.75;     // приглушение яркости молнии
-let _fxLoad = null;
-let _fxVideo = null, _fxCanvas = null, _fxOn = false, _fxRaf = 0, _fxLogged = false;
+let _fxVideo = null, _fxCanvas = null, _fxOn = false, _fxRaf = 0, _fxVfc = 0;
+let _fxUrl = null, _fxFetch = null, _fxW = 0, _fxH = 0;
 let _gl = null, _glTex = null;
-let _uRes = null, _uVid = null, _uBlur = null, _uAccent = null, _uDim = null;
+let _uRes = null, _uVid = null, _uAccent = null;
 let _accentRGB = [0.86, 0.15, 0.15];
 
 function hexToRgb01(hex) {
@@ -58,9 +61,30 @@ function hexToRgb01(hex) {
   if (!/^[0-9a-f]{6}$/i.test(n)) return [0.86, 0.15, 0.15];
   return [parseInt(n.slice(0, 2), 16) / 255, parseInt(n.slice(2, 4), 16) / 255, parseInt(n.slice(4, 6), 16) / 255];
 }
+let _accentMode = '';
 function refreshAccent() {
+  if (_accentMode === state.mode) return;   // getComputedStyle — только при смене режима
+  _accentMode = state.mode;
   const cs = getComputedStyle(document.documentElement);
   _accentRGB = hexToRgb01(cs.getPropertyValue('--mode-' + (state.mode || 'work')));
+}
+document.addEventListener('mode-colors-changed', () => { _accentMode = ''; });
+
+/* ── Ролик молнии: заранее и целиком ──
+   Раньше видео начинало качаться в момент нажатия «Старт», и первые
+   секунды браузер одновременно тянул сеть, декодировал и перерисовывал
+   экран. Теперь ролик (он маленький) забирается целиком в фоне вскоре
+   после запуска приложения — из кэша service worker, офлайн тоже —
+   и отдаётся видео как blob: без Range-запросов и подгрузки по ходу. */
+function fetchFx() {
+  if (_fxUrl) return Promise.resolve(_fxUrl);
+  if (!_fxFetch) {
+    _fxFetch = fetch(FX_SRC)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+      .then(b => (_fxUrl = URL.createObjectURL(b)))
+      .catch(e => { _fxFetch = null; console.warn('[focus] видео молнии не загрузилось:', e); return null; });
+  }
+  return _fxFetch;
 }
 function ensureFx() {
   const panel = $('focusPanel');
@@ -69,36 +93,29 @@ function ensureFx() {
   _fxCanvas = document.createElement('canvas');
   _fxCanvas.className = 'fp-video';
   panel.insertBefore(_fxCanvas, panel.firstChild);
-  _fxVideo = document.createElement('video');
-  _fxVideo.muted = true;
-  _fxVideo.loop = true;
-  _fxVideo.playsInline = true;
-  _fxVideo.setAttribute('playsinline', '');
-  _fxVideo.preload = 'auto';   // src ставится лишь при первом запуске — до этого ничего не качается
-  let srcIdx = 0;
-  const tryNext = () => {
-    if (!_fxVideo) return;
-    if (srcIdx >= FX_SOURCES.length) {
-      console.warn('[focus] Видео молнии не загрузилось — эффект отключён.');
-      _fxVideo = null;
-      return;
-    }
-    const s = FX_SOURCES[srcIdx++];
-    _fxVideo.src = s;
-    _fxVideo.load();
-  };
-  _fxVideo.addEventListener('error', tryNext);
-  _fxVideo.addEventListener('canplay', () => {
-    if (!_fxLogged) {
-      _fxLogged = true;
-      console.info('[focus] видео загружено:', _fxVideo.currentSrc);
-    }
-    if (_fxOn && initGL()) startFxLoop();
-  });
-  /* Видео тянем только при первом запуске фокусировки, а не на старте:
-     раньше каждый запуск приложения качал ролик целиком. */
-  _fxLoad = tryNext;
+  /* Размер канваса — от наблюдателя, а не чтением clientWidth в каждом кадре */
+  new ResizeObserver(([e]) => {
+    _fxW = Math.round(e.contentRect.width);
+    _fxH = Math.round(e.contentRect.height);
+  }).observe(_fxCanvas);
   return _fxCanvas;
+}
+/* Видео-элемент готовим заранее (первый кадр уже декодирован) */
+async function prepareVideo() {
+  if (_fxVideo) return _fxVideo;
+  const url = await fetchFx();
+  if (!url || _fxVideo) return _fxVideo;
+  const v = document.createElement('video');
+  v.muted = true;
+  v.loop = true;
+  v.playsInline = true;
+  v.setAttribute('playsinline', '');
+  v.preload = 'auto';
+  v.src = url;
+  _fxVideo = v;
+  v.addEventListener('loadeddata', () => { if (_fxOn) startFxLoop(); }, { once: true });
+  v.load();
+  return v;
 }
 function initGL() {
   if (_gl) return true;
@@ -111,7 +128,8 @@ function initGL() {
   const fs = gl.createShader(gl.FRAGMENT_SHADER);
   gl.shaderSource(fs,
     'precision mediump float;varying vec2 uv;' +
-    'uniform sampler2D t;uniform vec2 uRes;uniform vec2 uVid;uniform float uBlur;uniform vec3 uAccent;uniform float uDim;' +
+    'uniform sampler2D t;uniform vec2 uRes;uniform vec2 uVid;uniform vec3 uAccent;' +
+    `const float uBlur=${FX_BLUR_PX.toFixed(1)};const float uDim=${FX_DIM.toFixed(2)};` +
     'void main(){' +
     /* Кадрирование «cover»: видео 16:9 раньше растягивалось на почти
        квадратную панель, и молнии, идущие во всю ширину кадра, упирались
@@ -161,41 +179,58 @@ function initGL() {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   _uRes = gl.getUniformLocation(pr, 'uRes');
   _uVid = gl.getUniformLocation(pr, 'uVid');
-  _uBlur = gl.getUniformLocation(pr, 'uBlur');
   _uAccent = gl.getUniformLocation(pr, 'uAccent');
-  _uDim = gl.getUniformLocation(pr, 'uDim');
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.clearColor(0, 0, 0, 0);
   _gl = gl;
   return true;
 }
-function fxTick() {
+/* Кадр рисуется, только когда у видео появился новый кадр (24 в
+   секунду), а не на каждом обновлении экрана — на 120-герцовом
+   iPhone это в пять раз меньше работы. Где requestVideoFrameCallback
+   нет, рисуем в rAF, пропуская кадры, если видео не сдвинулось. */
+let _lastT = -1;
+function drawFx() {
   const v = _fxVideo, gl = _gl;
-  if (v && gl && v.readyState >= 2 && !v.paused) {
-    const w = _fxCanvas.clientWidth | 0, h = _fxCanvas.clientHeight | 0;
-    if (w > 0 && h > 0) {
-      if (_fxCanvas.width !== w || _fxCanvas.height !== h) {
-        _fxCanvas.width = w;
-        _fxCanvas.height = h;
-        gl.viewport(0, 0, w, h);
-      }
-      gl.uniform2f(_uRes, w, h);
-      gl.uniform2f(_uVid, v.videoWidth || 16, v.videoHeight || 9);
-      gl.uniform1f(_uBlur, FX_BLUR_PX);
-      gl.uniform1f(_uDim, FX_DIM);
-      gl.uniform3f(_uAccent, _accentRGB[0], _accentRGB[1], _accentRGB[2]);
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-      gl.bindTexture(gl.TEXTURE_2D, _glTex);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    }
+  if (!v || !gl || v.readyState < 2) return;
+  const w = _fxW, h = _fxH;
+  if (!w || !h) return;
+  if (_fxCanvas.width !== w || _fxCanvas.height !== h) {
+    _fxCanvas.width = w;
+    _fxCanvas.height = h;
+    gl.viewport(0, 0, w, h);
+    gl.uniform2f(_uRes, w, h);
+    gl.uniform2f(_uVid, v.videoWidth || 4, v.videoHeight || 3);
   }
+  gl.uniform3f(_uAccent, _accentRGB[0], _accentRGB[1], _accentRGB[2]);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+function fxFrame() {
+  if (!_fxOn) return;
+  drawFx();
+  _fxVfc = _fxVideo.requestVideoFrameCallback(fxFrame);
+}
+function fxTick() {
+  if (!_fxOn) return;
+  const v = _fxVideo;
+  if (v && !v.paused && v.currentTime !== _lastT) { _lastT = v.currentTime; drawFx(); }
   _fxRaf = requestAnimationFrame(fxTick);
 }
 function startFxLoop() {
+  if (!_fxOn || !_fxVideo || _fxVideo.readyState < 2 || !initGL()) return;
+  stopFxLoop();
+  _fxCanvas.width = 0;   // заставит drawFx выставить размер и uniform-ы
+  const v = _fxVideo;
+  v.play().catch(() => {});
+  if (v.requestVideoFrameCallback) _fxVfc = v.requestVideoFrameCallback(fxFrame);
+  else _fxRaf = requestAnimationFrame(fxTick);
+  _fxCanvas.classList.add('on');
+}
+function stopFxLoop() {
   cancelAnimationFrame(_fxRaf);
-  _fxRaf = requestAnimationFrame(fxTick);
-  if (_fxVideo) _fxVideo.play().catch(() => {});
-  if (_fxCanvas) _fxCanvas.classList.add('on');
+  if (_fxVfc && _fxVideo && _fxVideo.cancelVideoFrameCallback) _fxVideo.cancelVideoFrameCallback(_fxVfc);
+  _fxRaf = _fxVfc = 0;
 }
 function setFx(on) {
   const panel = $('focusPanel');
@@ -203,13 +238,11 @@ function setFx(on) {
   if (on === _fxOn) return;
   _fxOn = on;
   if (on) {
-    refreshAccent();
-    if (!ensureFx() || !_fxVideo) return;
-    if (_fxLoad) { const load = _fxLoad; _fxLoad = null; load(); return; }   // запустит canplay
-    if (!initGL()) return;
-    startFxLoop();
+    if (!ensureFx()) return;
+    if (_fxVideo && _fxVideo.readyState >= 2) startFxLoop();
+    else prepareVideo();   // запустится по loadeddata
   } else {
-    cancelAnimationFrame(_fxRaf);
+    stopFxLoop();
     if (_fxVideo) { _fxVideo.pause(); _fxVideo.currentTime = 0; }
     if (_gl) _gl.clear(_gl.COLOR_BUFFER_BIT);
     if (_fxCanvas) _fxCanvas.classList.remove('on');
@@ -367,6 +400,10 @@ const fmtMMSS = ms => {
 };
 export function focusInit() {
   renderFocusPanel();
+  /* Ролик и шейдер — заранее, когда браузер свободен: к нажатию «Старт»
+     всё уже готово и первый кадр декодирован */
+  const idle = window.requestIdleCallback || (fn => setTimeout(fn, 1500));
+  idle(() => { prepareVideo(); if (ensureFx()) initGL(); }, { timeout: 4000 });
   document.addEventListener('timer-changed', updateFocusUI);
   document.addEventListener('sync-done', updateFocusUI);
   document.addEventListener('user-change', updateFocusUI);

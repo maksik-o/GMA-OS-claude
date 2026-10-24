@@ -1,6 +1,6 @@
 import {
-  state, WEEKDAYS, addDays, today, iso, TYPE_LABEL, PRIORITY_LABEL,
-  getTagsDict, getTagColor, addTagsToDict, createTask, updateTask, removeTask, getTask,
+  today, TYPE_LABEL, PRIORITY_LABEL,
+  getTagsDict, getTagColor, addTagsToDict, updateTask, removeTask, getTask,
   addSubtask, toggleSubtask, delSubtask,
   esc, MONTHS, taskPlans, setTaskPlan, removeTaskPlan, hmToMin, minToHM,
 } from './store.js';
@@ -151,7 +151,8 @@ function renderPicker() {
 function placePicker() {
   if (!picker || !sheet) return;
   const sw = sheet.offsetWidth, sh = sheet.offsetHeight;
-  const sl = (innerWidth - sw) / 2;
+  /* панель центрована по области контента (на ПК её сдвигает левое меню) */
+  const sl = (innerWidth - sw) / 2 + (parseFloat(getComputedStyle(sheet).marginLeft) || 0);
   const side = isSide();
   picker.classList.toggle('qp-side', side);
   picker.classList.toggle('qp-top', !side);

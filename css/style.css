@@ -49,8 +49,7 @@ html, body,
 .g-hd, .g-hd.today,
 .set-item, .file-line, .assignment-row,
 .key-line, .kbd,
-.search-input, .key-input, .tag-rename, .tag-field,
-.theme-dot, .bg-dot, .font-btn, .font-btn.on, .a-status,
+.search-input, .key-input, .tag-rename, .tag-field, .bg-dot, .font-btn, .font-btn.on, .a-status,
 .sub-panel, .notes-area, .ed-card,
 .pull-spin, .sync .dot,
 .mode-blob, .modes button,
@@ -68,20 +67,7 @@ html, body,
 :root[data-mode="study"] { --accent: var(--mode-study); }
 :root[data-mode="all"]   { --accent: var(--mode-all); }
 /* ── Поверхности: финальные значения (прозрачность управляется --panel-a) ── */
-body[data-surf="light"] {
-  --text:#0f172a;
-  --c-todo:rgba(15,23,42,.55);
-  --dim:rgba(15,23,42,.55);
-  --glass:rgba(255,255,255,var(--panel-a,.45));
-  --card:rgba(255,255,255,calc(var(--panel-a,.45) + .10));
-  --brd:rgba(255,255,255,.55);
-  --shadow:
-    0 1px 2px rgba(15,23,42,.05),
-    0 2px 6px rgba(15,23,42,.07),
-    0 6px 16px rgba(15,23,42,.09);
-  --inner-glow: inset 0 1px 0 rgba(255,255,255,.75);
-  --panel-solid: #fdfefe;
-}
+
 body[data-surf="dark"] {
   --text:#f1f5f9;
   --c-todo:rgba(241,245,249,.55);
@@ -323,7 +309,6 @@ body[data-font="l"] { zoom: 1.1; }
   backdrop-filter: none;
   box-shadow: var(--shadow), var(--inner-glow);
 }
-body[data-surf="light"] .l-head, body[data-surf="light"] .m-head,
 body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head {
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
@@ -612,7 +597,6 @@ body.search-open #app { overflow: hidden; touch-action: none; }
 .set-item .chev { margin-left: auto; opacity: .4; font-size: 18px; }
 .drawer-note { margin-top: auto; padding: 0 6px; color: var(--dim); font-size: 12px; }
 /* Оформление: отступы, чтобы ховер и тени не резались */
-#drawerTheme .theme-row,
 #drawerTheme .bg-row,
 #drawerTheme .bg-presets,
 #drawerTheme .font-row,
@@ -1226,18 +1210,7 @@ input[type="color"]:hover { transform: scale(1.05); }
 .q-cal { margin: 6px 0; background: color-mix(in srgb, var(--text) 5%, transparent); border: 0; border-radius: 12px; padding: 8px; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .cal-title { font-weight: 800; font-size: 13px; }
-.cal-nav {
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  border: 0;
-  background: var(--card);
-  box-shadow: var(--shadow), var(--inner-glow);
-}
-.cal-nav:hover { transform: scale(1.08); }
-.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; width: fit-content; }
-.cal-week span { text-align: center; font-size: 10px; font-weight: 800; color: var(--dim); }
-.cal-week span.we { color: color-mix(in srgb, var(--c-skipped) 70%, var(--dim)); }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; width: fit-content; }
+
 .q-cal .q-day { padding: 3px 0; border-radius: 6px; }
 .q-cal .q-day .d-num { font-size: 12px; }
 .time-sessions { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
@@ -1363,7 +1336,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .toast.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
-.sheet-actions { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--brd); }
+
 .spacer { flex: 1; }
 .btn {
   padding: 10px 18px;
@@ -1736,8 +1709,7 @@ body.dock-drag .dock[data-mode="empty"] { display: none; }
 .dock-panel.yield-right { transform: translateX(18px); }
 .dock-panel.yield-left { transform: translateX(-18px); }
 #grid { transition: transform .25s var(--ease-spring); }
-#grid.yield-top { transform: translateY(12px); }
-#grid.yield-bottom { transform: translateY(-12px); }
+
 #grid.grid-yield-top .pane { transform: translateY(18px); }
 #grid.grid-yield-bottom .pane { transform: translateY(-18px); }
 /* Ручка переноса: дуга 60° */
@@ -2216,7 +2188,7 @@ body.kb-drag { user-select: none; -webkit-user-select: none; }
 
 }
 /* ── Канбан: кнопка и меню видов ── */
-@media (max-width: 720px) { #kanbanBtn { display: none; } }
+
 #viewMenu { z-index: 60; }
 /* ── Канбан: рейндж-навигация, троеточие, поиск в шапках ── */
 @media (max-width: 720px) { #viewBtn { display: none; } }
@@ -2842,9 +2814,7 @@ body.dock-grab { -webkit-user-select: none; user-select: none; }
   background: transparent;
 }
 /* Разлиновка: только когда поле пустое И не в фокусе */
-body[data-surf="light"] .notes-editor.is-empty:not(:focus) {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24'%3E%3Cline x1='0' y1='23.5' x2='9' y2='23.5' stroke='%230f172a' stroke-opacity='0.3' stroke-width='1'/%3E%3C/svg%3E");
-}
+
 body[data-surf="dark"] .notes-editor.is-empty:not(:focus) {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24'%3E%3Cline x1='0' y1='23.5' x2='9' y2='23.5' stroke='%23f1f5f9' stroke-opacity='0.3' stroke-width='1'/%3E%3C/svg%3E");
 }
@@ -3166,15 +3136,13 @@ input.fin-in[type="color"] { height: 42px; padding: 4px; }
    Стекло с blur на iOS в липком контексте почти не работает, и сквозь
    шапку читался контент под ней. Кладём плотную подложку. ── */
 .l-head, .m-head, .kb-head, .fin-head,
-body[data-surf="light"] .l-head, body[data-surf="light"] .m-head,
 body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head {
   background: var(--panel-solid);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
   backdrop-filter: blur(20px) saturate(1.6);
   box-shadow: var(--shadow), var(--inner-glow), 0 1px 0 var(--brd);
 }
-body[data-surf="light"] .l-head, body[data-surf="light"] .m-head,
-body[data-surf="light"] .kb-head, body[data-surf="light"] .fin-head { background: #fbfcfd; }
+
 body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head,
 body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head { background: #1d2431; }
 
@@ -3323,8 +3291,6 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head { background: 
    Свет снизу проходит, но текст под шапкой не читается за счёт
    сильного блюра и плотной, но всё же полупрозрачной подложки. ── */
 .l-head, .m-head, .kb-head, .fin-head,
-body[data-surf="light"] .l-head, body[data-surf="light"] .m-head,
-body[data-surf="light"] .kb-head, body[data-surf="light"] .fin-head,
 body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head,
 body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head {
   background: color-mix(in srgb, var(--panel-solid) 82%, transparent);
@@ -3605,9 +3571,7 @@ body[data-surf="dark"] {
 .notes-edit-wrap:focus-within .ne-frame rect {
   stroke: color-mix(in srgb, var(--accent) 45%, transparent);
 }
-body[data-surf="light"] .notes-editor.is-empty:not(:focus) {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24'%3E%3Cline x1='0' y1='23.5' x2='9' y2='23.5' stroke='%230f172a' stroke-opacity='0.13' stroke-width='1'/%3E%3C/svg%3E");
-}
+
 body[data-surf="dark"] .notes-editor.is-empty:not(:focus) {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24'%3E%3Cline x1='0' y1='23.5' x2='9' y2='23.5' stroke='%23f1f5f9' stroke-opacity='0.13' stroke-width='1'/%3E%3C/svg%3E");
 }
@@ -3998,7 +3962,7 @@ body.cc-dragging, body.cc-dragging #app { touch-action: none; }
   overscroll-behavior: contain;
   position: relative;
 }
-.tl-gutter { position: sticky; left: 0; z-index: 4; flex: none; width: 50px; background: var(--panel-solid); }
+
 .tl-corner { position: sticky; top: 0; z-index: 5; height: 42px; background: var(--panel-solid); }
 .tl-hours { position: relative; }
 .tl-hours span {
@@ -4079,7 +4043,7 @@ body.tl-dragging, body.tl-dragging #app { touch-action: none; -webkit-user-selec
   .focus-panel, .finance-panel, .calendar-panel, .notes-panel { height: 260px !important; width: 100%; }
   .ed-row-cal { grid-template-columns: minmax(0, 1fr); }
   .tl-col { min-width: 96px; }
-  .tl-gutter { width: 40px; }
+
   .tl-hours span { right: 5px; font-size: 9px; }
 }
 
@@ -4120,8 +4084,6 @@ body.tl-dragging, body.tl-dragging #app { touch-action: none; -webkit-user-selec
    тот же блюр, та же насыщенность. Прошлая версия с плотной заливкой
    выглядела глухой плитой. ── */
 .l-head, .m-head, .kb-head, .fin-head,
-body[data-surf="light"] .l-head, body[data-surf="light"] .m-head,
-body[data-surf="light"] .kb-head, body[data-surf="light"] .fin-head,
 body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head,
 body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head {
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
@@ -4408,7 +4370,6 @@ body:not([data-view="week"]) #viewBtn { display: none !important; }
 .tl-col + .tl-col { border-left: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
 .tl-col:first-child { border-left: 0; }
 .tl-area { flex: none; }
-.tl-gutter { border-right: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
 
 .tl-chip {
   max-width: 100%;
@@ -4452,7 +4413,7 @@ body:not([data-view="week"]) #viewBtn { display: none !important; }
 }
 .tl-corner { position: sticky; top: 0; z-index: 5; background: var(--panel-solid); }
 .tl-hours, .tl-area { flex: none; box-sizing: border-box; }
-.tl-col, .tl-gutter { display: flex; flex-direction: column; }
+.tl-col { display: flex; flex-direction: column; }
 .tl-col.drop-over { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
 /* Лоток задач без планирования */
@@ -4523,7 +4484,7 @@ body:not([data-view="week"]) #viewBtn { display: none !important; }
    до их содержимого: колонки и шкала обрывались примерно на 08:00, а
    сама сетка вываливалась из колонки без фона и разделителей. */
 .tl-body { align-items: flex-start; }
-.tl-gutter, .tl-cols { align-self: flex-start; }
+.tl-cols { align-self: flex-start; }
 
 /* ── Timeline: расписание ── */
 .tl-routine {
@@ -5067,16 +5028,6 @@ body {
 }
 
 /* ══════════════ Оформление: мини-экраны тем (сами превью — в themes.css) ══════════════ */
-.theme-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 10px; }
-.theme-dot {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 0; border: 0; background: none; cursor: pointer; color: inherit;
-}
-.theme-dot .tmini { transition: transform .2s var(--ease-spring), box-shadow .2s; }
-.theme-dot:hover .tmini { transform: translateY(-2px); }
-.theme-dot.on .tmini { box-shadow: 0 0 0 2.5px var(--accent), 0 6px 16px rgba(0, 0, 0, .18); }
-.theme-name { font-size: 11.5px; font-weight: 700; color: var(--dim); }
-.theme-dot.on .theme-name { color: var(--text); }
 
 /* ══════════════════════════════════════════════════════════════════
    iPhone / узкие экраны — итоговый слой.
@@ -5493,7 +5444,6 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 #dayPanel > .tl-headbox .kb-row > * { align-self: center; }
 #dayPanel > .tl-headbox .kb-right { margin-left: auto; padding-right: 2px; gap: 8px; }
 
-
 /* Лоток задач без времени — анимация высоты через grid */
 #dayPanel .tl-tray {
   display: grid; grid-template-rows: 0fr; max-height: none !important; overflow: hidden;
@@ -5579,11 +5529,6 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 
 /* Стрелки и прочерки переноса в квадратах Running-list: на светлых
    темах — чёрные (белые с тенью там терялись), на тёмных — белые */
-body[data-surf="light"] .pp-dash::after { background: #111; box-shadow: none; }
-body[data-surf="light"] .pp-arrow::after {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M4%2012h14M11%206l7%206-7%206'%20fill='none'%20stroke='%23111'%20stroke-width='3'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E");
-  filter: none;
-}
 
 /* Кнопка-заголовок блока (Running-list / Kanban / Timeline) — с откликом
    на нажатие, как остальные кнопки */
@@ -5902,7 +5847,7 @@ body[data-surf="light"] .pp-arrow::after {
 .home-view small { color: var(--dim); font-size: 12px; font-weight: 600; }
 .hm-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .hm-empty { margin: 6px 0; color: var(--dim); font-size: 13px; }
-.hm-btn { display: flex; align-items: center; justify-content: center; height: 38px; padding: 0 16px; border-radius: 12px; background: var(--accent) !important; color: #fff !important; font-weight: 800 !important; font-size: 13px; box-shadow: 0 6px 20px var(--hm-glow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-btn { display: flex; align-items: center; justify-content: center; height: 38px; padding: 0 16px; border-radius: 12px; background: var(--accent) !important; color: var(--on-accent, #fff) !important; font-weight: 800 !important; font-size: 13px; box-shadow: 0 6px 20px var(--hm-glow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hm-link { color: var(--accent) !important; font-weight: 700 !important; font-size: 12px; }
 
 /* Левая колонка */
@@ -5932,8 +5877,8 @@ body.hm-drag, body.hm-drag * { cursor: grabbing !important; user-select: none !i
 .hm-day i { height: 8px; font-style: normal; font-size: 10px; line-height: 6px; letter-spacing: 1px; color: var(--accent); }
 .hm-day.past b { color: var(--dim); }
 .hm-day:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.hm-day.today { background: var(--accent); color: #fff; box-shadow: 0 4px 16px var(--hm-glow); }
-.hm-day.today small, .hm-day.today i { color: rgba(255, 255, 255, .85); }
+.hm-day.today { background: var(--accent); color: var(--on-accent, #fff); box-shadow: 0 4px 16px var(--hm-glow); }
+.hm-day.today small, .hm-day.today i { color: inherit; opacity: .8; }
 .hm-gauge { display: block; width: 100%; height: 118px; }
 .hm-g-bg, .hm-g-val { fill: none; stroke-width: 14; stroke-linecap: round; }
 .hm-g-bg { stroke: color-mix(in srgb, var(--text) 9%, transparent); }
@@ -5955,7 +5900,7 @@ body.hm-drag, body.hm-drag * { cursor: grabbing !important; user-select: none !i
 .hm-hero-head h2 { font-size: 18px; }
 .hm-seg { display: flex; gap: 3px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--text) 7%, transparent); }
 .hm-seg button { height: 30px; padding: 0 12px !important; border-radius: 9px; font-size: 12px; font-weight: 700; color: var(--dim) !important; white-space: nowrap; }
-.hm-seg button[aria-pressed="true"] { background: var(--accent); color: #fff !important; box-shadow: 0 4px 14px var(--hm-glow); }
+.hm-seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent, #fff) !important; box-shadow: 0 4px 14px var(--hm-glow); }
 .hm-prog { width: 90px; height: 6px; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--text) 9%, transparent); }
 .hm-prog u { display: block; height: 100%; background: var(--accent); box-shadow: 0 0 10px var(--hm-glow); transition: width .5s var(--ease-spring); }
 .hm-tl { flex: 1; min-height: 300px; display: flex; gap: 14px; }
@@ -6043,27 +5988,29 @@ body.hm-drag, body.hm-drag * { cursor: grabbing !important; user-select: none !i
 
 /* ══════════════ ЛЕВОЕ МЕНЮ ══════════════
    На компьютере и планшете вместо шапки: разделы, режимы, поиск,
-   виджеты, облако и настройки. Цвет — градиент акцента режима,
-   пункты — полупрозрачные пилюли с иконкой в кружке, открытый раздел —
-   «язычок» цвета панелей, выходящий к контенту. Сворачивается в
-   тонкий столбик иконок. На телефоне меню нет — там шапка и пилюля. */
+   виджеты, облако и настройки. Меню — тёмная клавиша темы; цвет
+   режима — только лёгкий отсвет сверху и метка открытого раздела.
+   Пункты — пилюли с иконкой в кружке, открытый раздел — «язычок»,
+   выходящий к контенту. Сворачивается в тонкий столбик иконок.
+   На телефоне меню нет — там шапка и пилюля. */
 #sidebar { display: none; }
 body.has-sidebar { --sb-w: 236px; }
 body.has-sidebar.sb-mini { --sb-w: 72px; }
 body.has-sidebar .topbar { display: none !important; }
 body.has-sidebar #app { left: calc(var(--sb-w) + max(10px, env(safe-area-inset-left))); transition: left .38s var(--ease-spring); }
 body.has-sidebar #sidebar {
-  --sb-tab: var(--panel-solid);
+  --sb-tab: #1c1d21;
   display: flex; flex-direction: column;
   position: fixed; z-index: 20;
   top: max(10px, env(safe-area-inset-top)); bottom: 10px; left: max(10px, env(safe-area-inset-left));
   width: var(--sb-w); padding: 14px 12px 12px;
-  border-radius: 30px; color: #fff;
+  border-radius: 30px; color: #d9dadc;
+  /* Тёмная «клавиша» темы; цвет режима — только лёгким отсветом сверху */
   background:
-    radial-gradient(120% 60% at 30% 0%, rgba(255, 255, 255, .22), transparent 60%),
-    linear-gradient(180deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 58%, #06080c) 100%);
-  border: 1px solid rgba(255, 255, 255, .22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 18px 40px rgba(0, 0, 0, .22);
+    radial-gradient(120% 34% at 30% 0%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 72%),
+    linear-gradient(180deg, #0f1013 0%, #08090b 100%);
+  border: 1px solid #232427;
+  box-shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset, 0 18px 40px rgba(0, 0, 0, .35);
   font-family: var(--font-ui);
   transition: width .38s var(--ease-spring), background .7s var(--ease-mode);
 }
@@ -6071,54 +6018,54 @@ body.has-sidebar #sidebar {
 #sidebar .sb-logo {
   width: 42px; height: 42px; flex: none; border-radius: 50%;
   display: grid; place-items: center; font-weight: 800; font-size: 16px;
-  background: rgba(255, 255, 255, .18);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .4), inset 0 8px 14px rgba(255, 255, 255, .18);
+  color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, #111214);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 #sidebar .sb-name { font: 800 16px var(--font-head); white-space: nowrap; overflow: hidden; }
 #sidebar .sb-collapse {
   position: absolute; top: 28px; right: 14px; z-index: 2;
   width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%;
-  display: grid; place-items: center; cursor: pointer; color: #fff;
-  background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3);
+  display: grid; place-items: center; cursor: pointer; color: #cfd0d2;
+  background: #17181b; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
   transition: right .38s var(--ease-spring), background-color .2s;
 }
-#sidebar .sb-collapse:hover { background: rgba(255, 255, 255, .32); }
+#sidebar .sb-collapse:hover { background: #222327; color: #fff; }
 #sidebar .sb-collapse svg { width: 14px; height: 14px; transition: transform .38s var(--ease-spring); }
 /* Прокрутка — до самой кромки меню, чтобы «язычок» доставал до края */
 #sidebar .sb-scroll { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; margin: 0 -13px 0 0; padding: 0 13px 8px 0; scrollbar-width: none; }
 #sidebar .sb-scroll::-webkit-scrollbar { display: none; }
 #sidebar .sb-sec { display: flex; flex-direction: column; gap: 6px; }
 #sidebar .sb-tools { padding-top: 10px; }
-#sidebar .sb-cap { padding: 16px 10px 6px; font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: rgba(255, 255, 255, .72); white-space: nowrap; }
+#sidebar .sb-cap { padding: 16px 10px 6px; font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #6a6b6c; font-family: var(--font-meta, var(--font-ui)); white-space: nowrap; }
 
 #sidebar .sb-it {
   position: relative; display: flex !important; align-items: center; gap: 10px;
   width: 100% !important; height: 44px !important; min-width: 0 !important; min-height: 0 !important;
   margin: 0; padding: 0 12px 0 6px !important;
   border: 0 !important; border-radius: 999px !important;
-  background: rgba(255, 255, 255, .11) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1) !important;
-  color: #fff !important; font: 700 13.5px var(--font-ui) !important; text-align: left;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #c4c5c8 !important; font: 600 13.5px var(--font-ui) !important; text-align: left;
   cursor: pointer; transform: none !important; opacity: 1 !important;
   transition: background-color .2s, color .2s, width .38s var(--ease-spring), padding .38s var(--ease-spring);
 }
-#sidebar .sb-it:hover { background: rgba(255, 255, 255, .2) !important; }
+#sidebar .sb-it:hover { background: rgba(255, 255, 255, .05) !important; color: #fff !important; }
 #sidebar .sb-it .tb-ico {
   position: relative; width: 32px; height: 32px; flex: none; border-radius: 50%;
   display: grid; place-items: center;
-  background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3);
+  background: #121316; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09);
   transition: background-color .2s, color .2s;
 }
 #sidebar .sb-it .tb-ico svg { width: 17px; height: 17px; display: block; }
 #sidebar .sb-it .tb-lab { display: block !important; flex: 1; min-width: 0; max-width: none !important; opacity: 1 !important; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#sidebar .sb-n { margin-left: auto; flex: none; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center; font-size: 11px; font-weight: 800; background: rgba(255, 255, 255, .22); }
+#sidebar .sb-n { margin-left: auto; flex: none; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #a9aaad; background: rgba(255, 255, 255, .07); }
 /* Открытый раздел — «язычок» к контенту с вогнутыми уголками */
 #sidebar .sb-views .sb-it.on {
   width: calc(100% + 13px) !important; margin-right: -13px;
   border-radius: 999px 0 0 999px !important;
-  background: var(--sb-tab) !important; box-shadow: none !important; color: var(--text) !important;
+  background: var(--sb-tab) !important; box-shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset !important; color: #fff !important;
 }
-#sidebar .sb-views .sb-it.on .tb-ico { background: var(--accent); color: #fff; box-shadow: none; }
+#sidebar .sb-views .sb-it.on .tb-ico { background: color-mix(in srgb, var(--accent) 18%, #121316); color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
 #sidebar .sb-views .sb-it.on .sb-n { background: color-mix(in srgb, var(--text) 10%, transparent); }
 #sidebar .sb-views .sb-it.on::before, #sidebar .sb-views .sb-it.on::after {
   content: ''; position: absolute; right: 0; width: 18px; height: 18px; pointer-events: none;
@@ -6126,35 +6073,34 @@ body.has-sidebar #sidebar {
 #sidebar .sb-views .sb-it.on::before { top: -18px; background: radial-gradient(circle at 0 0, transparent 17.5px, var(--sb-tab) 18px); }
 #sidebar .sb-views .sb-it.on::after { bottom: -18px; background: radial-gradient(circle at 0 100%, transparent 17.5px, var(--sb-tab) 18px); }
 /* Режимы */
-#sidebar .sb-mdot { width: 12px; height: 12px; border-radius: 50%; background: var(--mc); box-shadow: 0 0 0 2px rgba(255, 255, 255, .65); }
-#sidebar .sb-mode.sel { background: rgba(255, 255, 255, .27) !important; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6) !important; }
-#sidebar .sb-mode.sel .tb-ico { background: rgba(255, 255, 255, .9); }
+#sidebar .sb-mdot { width: 10px; height: 10px; border-radius: 50%; background: var(--mc); }
+#sidebar .sb-mode.sel { background: color-mix(in srgb, var(--mc) 9%, transparent) !important; color: #fff !important; }
+#sidebar .sb-mode.sel .tb-ico { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--mc) 70%, transparent); }
 body.view-finance #sidebar :is(.sb-modes, .sb-modes-cap) { display: none; }
 /* Виджеты — только в неделе; пилюля «В панель» выезжает вправо */
 body:not([data-view="week"]) #sidebar #widgetsBtn { display: none !important; }
 #sidebar #widgetsBtn { overflow: visible; }
 #sidebar #widgetsBtn::after { right: auto; left: calc(100% + 12px); background: var(--panel-solid); }
-#sidebar #syncBtn .tb-ico .dot { left: auto; right: -2px; top: -2px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, #06080c); }
+#sidebar #syncBtn .tb-ico .dot { left: auto; right: -2px; top: -2px; box-shadow: 0 0 0 2px #0c0d10; }
 
 /* Тонкий столбик */
 body.sb-mini #sidebar { padding: 14px 10px 12px; }
 body.sb-mini #sidebar .sb-head { justify-content: center; padding: 0 0 16px; }
 body.sb-mini #sidebar :is(.sb-name, .sb-cap, .tb-lab, .sb-n) { display: none !important; }
-body.sb-mini #sidebar .sb-collapse { right: -13px; background: color-mix(in srgb, var(--accent) 75%, #06080c); box-shadow: 0 2px 8px rgba(0, 0, 0, .3), inset 0 0 0 1px rgba(255, 255, 255, .3); }
+body.sb-mini #sidebar .sb-collapse { right: -13px; box-shadow: 0 2px 8px rgba(0, 0, 0, .4), inset 0 0 0 1px rgba(255, 255, 255, .14); }
 body.sb-mini #sidebar .sb-collapse svg { transform: rotate(180deg); }
 body.sb-mini #sidebar .sb-scroll { margin-right: -10px; padding-right: 10px; }
 body.sb-mini #sidebar .sb-sec { align-items: center; }
-body.sb-mini #sidebar .sb-modes { padding-top: 14px; margin-top: 10px; border-top: 1px solid rgba(255, 255, 255, .18); }
+body.sb-mini #sidebar .sb-modes { padding-top: 14px; margin-top: 10px; border-top: 1px solid #232427; }
 body.sb-mini #sidebar .sb-it { width: 44px !important; height: 44px !important; padding: 0 !important; justify-content: center; background: transparent !important; box-shadow: none !important; }
 body.sb-mini #sidebar .sb-it .tb-ico { width: 40px; height: 40px; }
 body.sb-mini #sidebar .sb-views .sb-it.on { width: 44px !important; margin-right: 0; border-radius: 50% !important; background: var(--sb-tab) !important; }
-body.sb-mini #sidebar .sb-views .sb-it.on .tb-ico { background: transparent; color: var(--text); }
+body.sb-mini #sidebar .sb-views .sb-it.on .tb-ico { background: color-mix(in srgb, var(--accent) 18%, #121316); }
 body.sb-mini #sidebar .sb-views .sb-it.on::before, body.sb-mini #sidebar .sb-views .sb-it.on::after { display: none; }
-body.sb-mini #sidebar .sb-mode.sel { background: transparent !important; box-shadow: none !important; }
-body.sb-mini #sidebar .sb-mode.sel .tb-ico { box-shadow: 0 0 0 2px #fff; }
+body.sb-mini #sidebar .sb-mode.sel { background: transparent !important; }
 
 /* Лего: жёсткая обводка и тень, как у панелей */
-:root[data-theme="brutal"] body.has-sidebar #sidebar { border: 2.5px solid #111; box-shadow: 5px 5px 0 #111; }
-:root[data-theme="brutal"] #sidebar .sb-views .sb-it.on { box-shadow: inset 0 2px 0 #111, inset 0 -2px 0 #111, inset 2px 0 0 #111 !important; }
-:root[data-theme="term"] body.has-sidebar #sidebar { border-radius: 6px; }
-:root[data-theme="term"] #sidebar :is(.sb-it, .tb-ico, .sb-logo, .sb-n) { border-radius: 4px !important; }
+
+/* Плавающие окна центруются по области контента, а не по экрану с меню.
+   Панель ввода — нет: справа от неё должно хватать места окну режимов */
+body.has-sidebar :is(.tpill, .editor, .toast) { margin-left: calc((var(--sb-w) + 10px) / 2); }

@@ -151,7 +151,7 @@ const yandexStore = {
     } catch { return ''; }
   },
   login() {
-    const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const st = crypto.randomUUID ? crypto.randomUUID() : [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
     try { sessionStorage.setItem(Y_STATE, st); localStorage.setItem(Y_PENDING, '1'); } catch {}
     location.href = 'https://oauth.yandex.ru/authorize?response_type=token'
       + '&client_id=' + encodeURIComponent(YANDEX_CLIENT_ID)

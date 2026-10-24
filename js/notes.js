@@ -1,5 +1,5 @@
 import { dbAll, dbPut, dbBulk } from './db.js';
-import { uid, today, addDays, mondayOf, parseISO, fmtD, esc, MONTHS_FULL, state as appState, MODES } from './store.js';
+import { uid, today, addDays, mondayOf, parseISO, fmtD, esc, MONTHS_FULL, state as appState, MODES, safeHtml } from './store.js';
 
 const STORE = 'notes';
 const state = { notes: [] };
@@ -554,7 +554,7 @@ function openNoteEditor(n, listOverlay) {
 <h3>${fmtD(n.day)}</h3>
 <button type="button" class="notes-list-close ne-close">✕</button>
 </header>
-<div class="notes-edit-wrap">${FRAME_SVG}<div class="notes-editor ne-body" contenteditable="true">${n.html || ''}</div></div>
+<div class="notes-edit-wrap">${FRAME_SVG}<div class="notes-editor ne-body" contenteditable="true">${safeHtml(n.html)}</div></div>
 <div class="ne-actions">
 <button type="button" class="btn danger ne-del">Удалить</button>
 <span class="spacer"></span>
