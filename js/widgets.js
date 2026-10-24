@@ -225,6 +225,8 @@ function unplaceZoneRect() {
   const b = $('widgetsBtn');
   if (!b) return null;
   const r = b.getBoundingClientRect();
+  /* В левом меню пилюля «В панель» выезжает вправо, к контенту */
+  if (b.closest('#sidebar')) return { left: r.left - 8, top: r.top - 10, right: r.right + 172 + 14, bottom: r.bottom + 10 };
   return { left: r.left - (zoneW || 172) - 14, top: r.top - 10, right: r.right + 8, bottom: r.bottom + 10 };
 }
 /* Ширина пилюли «＋ Панель виджетов» слева от кнопки. На телефоне слева

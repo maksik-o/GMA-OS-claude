@@ -4,28 +4,34 @@ import {
 } from './store.js';
 import { openSheet } from './sheet.js';
 import { openDay } from './week.js';
+import { dbGetKV, dbSetKV } from './db.js';
 import { openSearch } from './search.js';
 import * as tm from './timer.js';
 import { kbNotes } from './kb.js';
-import { getPeople } from './contacts.js';
 import { curMonth, monthStats, budgetProgress, moneyShort } from './finance.js';
 
 /* ══════════════ ГЛАВНАЯ ══════════════
-   Сводка дня на одном экране: меню с подписями и счётчиками, неделя,
-   фокус, ближайшее, таймлайн дня, плитки разделов, фокус за неделю и
-   строка быстрого добавления. Всё оформление — от темы: карточки
-   получают «материал» темы (.glass + .hm-card), цвет — акцент режима. */
+   Сводка дня на одном экране: неделя, фокус, ближайшее, таймлайн дня,
+   плитки разделов, фокус за неделю и строка быстрого добавления.
+   Всё оформление — от темы: карточки получают «материал» темы
+   (.glass + .hm-card), цвет — акцент режима.
+   Карточки раскладываются по двум колонкам и перетаскиваются за ручку
+   в углу — так же, как виджеты недели; раскладка запоминается. */
 
 const FOCUS_GOAL = 240;   // цель фокуса на день, мин
 let homeTab = 'timeline';
-let syncState = '';
 let _host = null;
 let _tick = 0;
+let _drag = null;          // идёт перетаскивание — перерисовку откладываем
+let _pending = false;
+const PANELS = ['week', 'focus', 'soon', 'hero', 'tiles', 'chart'];
+const DEFAULT_LAYOUT = { left: ['week', 'focus', 'soon'], main: ['hero', 'tiles', 'chart'] };
+let layout = DEFAULT_LAYOUT;
+const HANDLE = id => `<svg class="dock-handle hm-handle" data-hmh="${id}" viewBox="0 0 32 32" aria-label="Перетащить" role="img"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>`;
 
 const go = v => document.dispatchEvent(new CustomEvent('go-view', { detail: v }));
 const modeLabel = m => (MODES.find(x => x.id === m) || {}).label || m;
 const inMode = t => !t.deleted && (state.mode === 'all' || t.mode === state.mode);
-const openToday = t => { const s = (t.days || {})[today()]; return s === 'todo' || s === 'started'; };
 
 const ICO = {
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -93,27 +99,6 @@ function upcoming(n) {
 }
 
 /* ── Части экрана ── */
-function sideHTML(st) {
-  const kbN = kbNotes().length;
-  const ctN = getPeople('all').length;
-  const perMode = m => state.tasks.filter(t => !t.deleted && t.mode === m && openToday(t)).length;
-  const syncTxt = { ok: 'Синхронизировано', syncing: 'Синхронизация…', local: 'Только на устройстве', offline: 'Нет сети', auth: 'Нужен вход', error: 'Ошибка синхронизации', off: 'Не настроена', perm: 'Нужен доступ к файлу' }[syncState] || 'Синхронизация';
-  const good = syncState === 'ok' || syncState === 'syncing';
-  const badge = n => n ? `<span class="hm-n">${n}</span>` : '';
-  return `<nav class="hm-side glass hm-card" aria-label="Разделы">
-    <div class="hm-brand"><span class="hm-logo">G</span><div><b>GMA-OS</b><small>личный планировщик</small></div></div>
-    <button type="button" class="hm-nav on" aria-current="page">${svg('home', 19)}<span>Главная</span></button>
-    <button type="button" class="hm-nav" data-go="week">${svg('tasks', 19)}<span>Задачи</span>${badge(st.total - st.done)}</button>
-    <button type="button" class="hm-nav" data-go="kb">${svg('kb', 19)}<span>База знаний</span>${badge(kbN)}</button>
-    <button type="button" class="hm-nav" data-go="finance">${svg('fin', 19)}<span>Финансы</span></button>
-    <button type="button" class="hm-nav" data-go="contacts">${svg('ct', 19)}<span>Контакты</span>${badge(ctN)}</button>
-    <div class="hm-grp">Режимы</div>
-    ${MODES.filter(m => m.id !== 'all').map(m => `<button type="button" class="hm-nav${state.mode === m.id ? ' sel' : ''}" data-mode="${m.id}"><i class="hm-dot" style="background:var(--mode-${m.id})"></i><span>${esc(m.label)}</span>${badge(perMode(m.id))}</button>`).join('')}
-    <span class="hm-flex"></span>
-    <button type="button" class="hm-sync" data-act="sync"><i class="${good ? 'ok' : 'bad'}"></i><span><b>${syncTxt}</b><small>нажмите для настроек</small></span></button>
-    <button type="button" class="hm-nav" data-act="settings">${svg('set', 19)}<span>Настройки</span></button>
-  </nav>`;
-}
 function weekHTML() {
   const t0 = today();
   const ws = mondayOf(t0);
@@ -126,7 +111,7 @@ function weekHTML() {
     const cls = day === t0 ? ' today' : day < t0 ? ' past' : '';
     return `<button type="button" class="hm-day${cls}" data-day="${day}"><small>${w}</small><b>${+day.slice(8)}</b><i>${n ? '•'.repeat(Math.min(3, n)) : ''}</i></button>`;
   }).join('');
-  return `<section class="hm-week glass hm-card">
+  return `<section class="hm-week glass hm-card" data-hm="week">${HANDLE('week')}
     <div class="hm-hello"><small>${hello}</small><b>${DAYS_FULL[(d.getDay() + 6) % 7]}, ${d.getDate()} ${MONTHS_FULL[d.getMonth()]}</b><small>неделя ${isoWeek(t0)}</small></div>
     <div class="hm-days">${cells}</div>
   </section>`;
@@ -138,7 +123,7 @@ function focusHTML(fmap) {
   const act = tm.getActive();
   const at = act && getTask(act.taskId);
   const hm = `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
-  return `<section class="hm-focus glass hm-card">
+  return `<section class="hm-focus glass hm-card" data-hm="focus">${HANDLE('focus')}
     <div class="hm-head"><h2>Фокус</h2><small>цель ${FOCUS_GOAL / 60} ч</small></div>
     <svg viewBox="0 0 200 112" class="hm-gauge" role="img" aria-label="Фокус сегодня: ${fmtMin(min)}">
       <path d="${arcPath()}" class="hm-g-bg"/>
@@ -156,7 +141,7 @@ function soonHTML() {
       <span class="hm-time${it.day === t0 ? ' on' : ''}">${it.day === t0 ? it.start : WEEKDAYS[(parseISO(it.day).getDay() + 6) % 7]}</span>
       <span class="hm-soon-txt"><b>${esc(it.t.title || 'Без названия')}</b><small><i class="hm-dot" style="background:var(--mode-${it.t.mode})"></i>${esc(modeLabel(it.t.mode))} · ${it.start}–${it.end}</small></span>
     </button>`).join('');
-  return `<section class="hm-soon glass hm-card">
+  return `<section class="hm-soon glass hm-card" data-hm="soon">${HANDLE('soon')}
     <div class="hm-head"><h2>Ближайшее</h2><button type="button" class="hm-link" data-go="week">Все</button></div>
     ${rows || '<p class="hm-empty">Ближайших задач со временем нет. Окно задаётся в «Планировании» задачи.</p>'}
   </section>`;
@@ -205,7 +190,7 @@ function heroHTML(st) {
         <small>${esc(modeLabel(t.mode))}</small></div>`;
     }).join('') || '<p class="hm-empty">На сегодня задач нет</p>'}</div>`;
   }
-  return `<section class="hm-hero glass hm-card">
+  return `<section class="hm-hero glass hm-card" data-hm="hero">${HANDLE('hero')}
     <div class="hm-hero-head">
       <h2>Сегодня</h2>
       <div class="hm-seg" role="group" aria-label="Режим">${MODES.map(m => `<button type="button" data-mode="${m.id}" aria-pressed="${state.mode === m.id}">${esc(m.short || m.label)}</button>`).join('')}</div>
@@ -225,14 +210,14 @@ function tilesHTML(fmap) {
   const m = curMonth();
   const ms = monthStats(m);
   const kbN = kbNotes().length;
-  const tile = (ico, on, big, sub, attrs, extra = '') => `<div role="button" tabindex="0" class="hm-tile glass hm-card" ${attrs}>
+  const tile = (ico, on, big, sub, attrs, extra = '') => `<div role="button" tabindex="0" class="hm-tile" ${attrs}>
       <span class="hm-ico${on ? ' on' : ''}">${svg(ico, 18)}</span><span><b>${big}</b><small>${sub}</small></span>${extra}</div>`;
-  return `<div class="hm-tiles">
+  return `<section class="hm-tiles-card glass hm-card hm-half" data-hm="tiles">${HANDLE('tiles')}<div class="hm-tiles">
     ${tile('focus', min > 0, fmtMin(min), 'фокус сегодня', 'data-act="focus"')}
     ${tile('kb', false, kbN, 'заметок в базе', 'data-go="kb"')}
     ${tile('fin', false, moneyShort(ms.expense), 'расходы за месяц', 'data-go="finance"')}
     ${tile('eye', state.hideDone, state.hideDone ? 'Скрыты' : 'Видны', 'выполненные задачи', 'data-act="hide" role="switch" aria-checked="' + state.hideDone + '"', `<i class="hm-tgl${state.hideDone ? ' on' : ''}"></i>`)}
-  </div>`;
+  </div></section>`;
 }
 function chartHTML(fmap) {
   const ws = mondayOf(today());
@@ -240,7 +225,7 @@ function chartHTML(fmap) {
   const vals = WEEKDAYS.map((w, i) => { const d = addDays(ws, i); return { w, d, v: fmap.get(d) || 0 }; });
   const max = Math.max(60, ...vals.map(x => x.v));
   const sum = vals.reduce((a, x) => a + x.v, 0);
-  return `<section class="hm-chart glass hm-card">
+  return `<section class="hm-chart glass hm-card hm-half" data-hm="chart">${HANDLE('chart')}
     <div class="hm-head"><h2>Время фокуса · неделя</h2><b>${fmtMin(sum)}</b></div>
     <div class="hm-bars">${vals.map(x => `<div class="hm-bar${x.d === t0 ? ' today' : ''}${x.d > t0 ? ' future' : ''}" title="${x.w}: ${fmtMin(x.v)}"><i style="height:${Math.max(4, x.v / max * 100).toFixed(1)}%"></i><small>${x.w}</small></div>`).join('')}</div>
   </section>`;
@@ -267,12 +252,15 @@ function quickHTML() {
 export function renderHomeView(el) {
   if (!el) return;
   _host = el;
+  if (_drag) { _pending = true; return; }
   const st = todayStats();
   const fmap = focusByDay();
-  el.innerHTML = `${sideHTML(st)}
-    <div class="hm-left">${weekHTML()}${focusHTML(fmap)}${soonHTML()}</div>
-    <div class="hm-main">${heroHTML(st)}<div class="hm-bottom">${tilesHTML(fmap)}${chartHTML(fmap)}</div></div>
-    ${quickHTML()}`;
+  const parts = {
+    week: weekHTML, focus: () => focusHTML(fmap), soon: soonHTML,
+    hero: () => heroHTML(st), tiles: () => tilesHTML(fmap), chart: () => chartHTML(fmap),
+  };
+  const zone = z => `<div class="hm-zone" data-z="${z}">${layout[z].map(id => parts[id]()).join('')}</div>`;
+  el.innerHTML = `${zone('left')}${zone('main')}${quickHTML()}`;
   if (!el.dataset.bound) bind(el);
   /* Линия «сейчас» и минуты фокуса — раз в минуту, пока экран открыт */
   clearInterval(_tick);
@@ -309,11 +297,138 @@ export function homeInit() {
     const b = e.target;
     if ((e.key === 'Enter' || e.key === ' ') && b.matches && b.matches('.home-view [role="button"]')) { e.preventDefault(); b.click(); }
   });
-  document.addEventListener('sync-status', e => {
-    syncState = e.detail;
+  dbGetKV('homeLayout').then(v => {
+    if (!v || typeof v !== 'object') return;
+    const seen = new Set();
+    const clean = z => (Array.isArray(v[z]) ? v[z] : []).filter(id => PANELS.includes(id) && !seen.has(id) && seen.add(id));
+    const next = { left: clean('left'), main: clean('main') };
+    PANELS.forEach(id => { if (!seen.has(id)) (DEFAULT_LAYOUT.left.includes(id) ? next.left : next.main).push(id); });
+    layout = next;
     if (_host && !_host.hidden && state.view === 'home') renderHomeView(_host);
+  }).catch(() => {});
+  document.addEventListener('pointerdown', e => {
+    const h = e.target.closest('.hm-handle[data-hmh]');
+    if (!h || !_host || !_host.contains(h)) return;
+    e.preventDefault();
+    startDrag(h.closest('[data-hm]'), e);
   });
   document.addEventListener('timer-changed', () => {
     if (_host && !_host.hidden && state.view === 'home') renderHomeView(_host);
   });
+}
+
+/* ══════════════ ПЕРЕТАСКИВАНИЕ КАРТОЧЕК ══════════════
+   Как у виджетов недели: тянем за дугу в углу, карточка поднимается и
+   идёт за пальцем, на её месте — пустое гнездо; соседи плавно
+   расступаются (FLIP), отпущенная карточка доезжает в гнездо.
+   Колонки две, карточку можно перенести в любую. На телефоне колонки
+   сливаются в одну ленту — та же логика по ближайшей карточке. */
+function flip(els, fn) {
+  const before = new Map(els.map(e => [e, e.getBoundingClientRect()]));
+  fn();
+  for (const [e, r] of before) {
+    if (!e.isConnected) continue;
+    const n = e.getBoundingClientRect();
+    const dx = r.left - n.left, dy = r.top - n.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+    e.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.32, .72, .28, 1)' });
+  }
+}
+function dropTarget(x, y, me, ph) {
+  const cards = [..._host.querySelectorAll('[data-hm], .hm-ph')].filter(c => c !== me && c !== ph);
+  let best = null, bd = Infinity;
+  for (const c of cards) {
+    const r = c.getBoundingClientRect();
+    const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+    const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+    const d = Math.hypot(dx, dy);
+    if (d < bd) { bd = d; best = { c, r }; }
+  }
+  /* Пустая колонка: если палец над ней — кладём в неё */
+  for (const z of _host.querySelectorAll('.hm-zone')) {
+    const zr = z.getBoundingClientRect();
+    if (zr.width && x >= zr.left && x <= zr.right && ![...z.children].some(k => k !== me && k !== ph && k.matches('[data-hm]'))) return { zone: z };
+  }
+  if (!best) return null;
+  const half = best.c.classList.contains('hm-half') && best.c.parentNode.dataset.z === 'main' && best.r.width < best.c.parentNode.getBoundingClientRect().width * .8;
+  const before = half ? x < best.r.left + best.r.width / 2 : y < best.r.top + best.r.height / 2;
+  return { ref: best.c, before };
+}
+function startDrag(panel, e) {
+  if (!panel) return;
+  const app = document.getElementById('app');
+  const ctx = { panel, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, started: false, ph: null, rect: null, app, scroll0: app ? app.scrollTop : 0, raf: 0 };
+  _drag = ctx;
+  const blockTouch = ev => { if (ev.cancelable) ev.preventDefault(); };
+  document.addEventListener('touchmove', blockTouch, { passive: false });
+  const move = ev => { ctx.x = ev.clientX; ctx.y = ev.clientY; update(ctx); };
+  const up = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up);
+    document.removeEventListener('touchmove', blockTouch);
+    cancelAnimationFrame(ctx.raf);
+    finish(ctx);
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+  document.addEventListener('pointercancel', up);
+}
+function update(ctx) {
+  const { panel } = ctx;
+  if (!ctx.started) {
+    if (Math.hypot(ctx.x - ctx.sx, ctx.y - ctx.sy) < 8) return;
+    ctx.started = true;
+    const r = panel.getBoundingClientRect();
+    ctx.rect = r;
+    const ph = document.createElement('div');
+    ph.className = 'hm-ph' + (panel.classList.contains('hm-half') ? ' hm-half' : '');
+    ph.style.height = r.height + 'px';
+    panel.before(ph);
+    ctx.ph = ph;
+    Object.assign(panel.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', zIndex: 60, margin: 0 });
+    panel.classList.add('hm-dragging');
+    document.body.classList.add('hm-drag');
+    autoScroll(ctx);
+  }
+  panel.style.transform = `translate(${ctx.x - ctx.sx}px, ${ctx.y - ctx.sy}px) scale(1.02)`;
+  const t = dropTarget(ctx.x, ctx.y, panel, ctx.ph);
+  if (!t) return;
+  const ph = ctx.ph;
+  let changed = false;
+  if (t.zone) { if (ph.parentNode !== t.zone) changed = () => t.zone.appendChild(ph); }
+  else if (t.before ? t.ref.previousElementSibling !== ph : t.ref.nextElementSibling !== ph) changed = () => (t.before ? t.ref.before(ph) : t.ref.after(ph));
+  if (!changed) return;
+  const sibs = [..._host.querySelectorAll('[data-hm], .hm-quick')].filter(c => c !== panel);
+  flip(sibs, changed);
+}
+function autoScroll(ctx) {
+  const tick = () => {
+    const app = ctx.app;
+    if (!app || !ctx.started) return;
+    const EDGE = 70, h = innerHeight;
+    const v = ctx.y < EDGE ? -14 * (EDGE - ctx.y) / EDGE : ctx.y > h - EDGE ? 14 * (ctx.y - (h - EDGE)) / EDGE : 0;
+    if (v) app.scrollTop += v;
+    ctx.raf = requestAnimationFrame(tick);
+  };
+  ctx.raf = requestAnimationFrame(tick);
+}
+function finish(ctx) {
+  const { panel, ph } = ctx;
+  _drag = null;
+  document.body.classList.remove('hm-drag');
+  if (!ctx.started) { if (_pending) { _pending = false; renderHomeView(_host); } return; }
+  const from = panel.getBoundingClientRect();
+  ph.replaceWith(panel);
+  panel.classList.remove('hm-dragging');
+  Object.assign(panel.style, { position: '', left: '', top: '', width: '', height: '', zIndex: '', margin: '', transform: '' });
+  const to = panel.getBoundingClientRect();
+  panel.animate([
+    { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(1.02)` },
+    { transform: 'none' },
+  ], { duration: 300, easing: 'cubic-bezier(.32, 1.18, .28, 1)' });
+  const read = z => [..._host.querySelectorAll(`.hm-zone[data-z="${z}"] > [data-hm]`)].map(c => c.dataset.hm);
+  layout = { left: read('left'), main: read('main') };
+  dbSetKV('homeLayout', layout).catch(() => {});
+  if (_pending) { _pending = false; setTimeout(() => renderHomeView(_host), 320); }
 }
