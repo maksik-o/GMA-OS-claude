@@ -64,7 +64,7 @@ export const STORAGES = [
     note: 'Chrome и Edge на компьютере', available: hasFileApi },
   { id: 'yandex', label: 'Яндекс Диск', icon: 'cloud', soon: () => !YANDEX_CLIENT_ID || !Y_PROXIES.length, desc: 'Папка «Приложения/GMA-OS» в вашем Яндекс Диске. Работает на телефоне и компьютере.' },
   { id: 'gdrive', label: 'Google Диск', icon: 'cloud', soon: true, desc: 'Скрытая папка приложения в вашем Google Диске.' },
-  { id: 'dropbox', label: 'Dropbox', icon: 'cloud', soon: true, desc: 'Папка «Apps/GMA-OS» в вашем Dropbox.' },
+  { id: 'dropbox', label: 'Dropbox', icon: 'cloud', soon: true, desc: 'Папка «Apps/Essential OS» в вашем Dropbox.' },
   { id: 'onedrive', label: 'OneDrive', icon: 'cloud', soon: true, desc: 'Папка приложения в вашем OneDrive.' },
   { id: 'legacy', label: 'Google через скрипт', icon: 'script', legacy: true,
     desc: 'Прежняя синхронизация: данные хранятся на Google Диске владельца приложения.' },
@@ -263,10 +263,10 @@ const yandexStore = {
   },
 };
 
-const PICK_TYPES = [{ description: 'Данные GMA-OS', accept: { 'application/json': ['.json'] } }];
+const PICK_TYPES = [{ description: 'Данные Essential OS', accept: { 'application/json': ['.json'] } }];
 async function pickFile(create) {
   try {
-    if (create) return await window.showSaveFilePicker({ suggestedName: 'gma-os-data.json', types: PICK_TYPES });
+    if (create) return await window.showSaveFilePicker({ suggestedName: 'essential-os-data.json', types: PICK_TYPES });
     const [h] = await window.showOpenFilePicker({ types: PICK_TYPES, multiple: false });
     return h;
   } catch (e) {
@@ -312,7 +312,7 @@ async function vaultSync(manual) {
     for (let i = 0; i < 3 && !written; i++) {
       const { data, rev } = await pv.read();
       if (data) {
-        if (!isSnapshot(data)) throw corrupt('В хранилище лежат не данные GMA-OS');
+        if (!isSnapshot(data)) throw corrupt('В хранилище лежат не данные Essential OS');
         await applySnapshot(data);
       }
       const res = await pv.write(buildSnapshot(), rev);
@@ -413,13 +413,13 @@ export function syncInit() {
 
 /* ══════════════ Резервная копия: экспорт и импорт ══════════════ */
 export async function exportBackup() {
-  const name = `gma-os-${new Date().toISOString().slice(0, 10)}.json`;
+  const name = `essential-os-${new Date().toISOString().slice(0, 10)}.json`;
   const blob = new Blob([JSON.stringify(buildSnapshot())], { type: 'application/json' });
   /* На телефоне — через «Поделиться»: так файл можно сохранить в
      «Файлы», облако или отправить себе. На компьютере — загрузкой. */
   const file = typeof File === 'function' ? new File([blob], name, { type: 'application/json' }) : null;
   if (file && matchMedia('(hover: none)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: 'Резервная копия GMA-OS' }); return; }
+    try { await navigator.share({ files: [file], title: 'Резервная копия Essential OS' }); return; }
     catch (e) { if (e && e.name === 'AbortError') return; }
   }
   const a = document.createElement('a');
@@ -439,7 +439,7 @@ export function importBackup(onDone) {
     if (!f) return;
     try {
       const data = JSON.parse(await f.text());
-      if (!isSnapshot(data)) throw new Error('Это не файл данных GMA-OS');
+      if (!isSnapshot(data)) throw new Error('Это не файл данных Essential OS');
       if (!confirm('Данные из файла объединятся с текущими: более новые записи заменят старые, ничего не удалится. Продолжить?')) return;
       await applySnapshot(data);
       document.dispatchEvent(new CustomEvent('sync-done'));

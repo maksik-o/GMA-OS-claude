@@ -64,12 +64,15 @@ export const SNAPSHOT_FORMAT = 1;
 export function buildSnapshot() {
   const parts = {};
   for (const p of PARTS) parts[p] = partPayload(p, '');
+  /* app: 'GMA-OS' — внутренняя метка формата (прежнее название). Не
+     меняем: иначе файлы, сохранённые раньше, и устройства со старой
+     версией перестанут узнавать данные друг друга. */
   return { app: 'GMA-OS', format: SNAPSHOT_FORMAT, savedAt: new Date().toISOString(), parts };
 }
 export const isSnapshot = x => !!x && typeof x === 'object' && x.app === 'GMA-OS' && x.parts && typeof x.parts === 'object';
 /* Влить снимок в данные устройства (слиянием, а не заменой) */
 export async function applySnapshot(snap) {
-  if (!isSnapshot(snap)) throw new Error('Это не файл данных GMA-OS');
+  if (!isSnapshot(snap)) throw new Error('Это не файл данных Essential OS');
   if ((snap.format || 1) > SNAPSHOT_FORMAT) throw new Error('Файл создан более новой версией приложения — обновите страницу');
   for (const p of PARTS) if (snap.parts[p]) await applyPart(p, snap.parts[p]);
 }
