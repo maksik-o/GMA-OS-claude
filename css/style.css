@@ -6414,3 +6414,40 @@ html.m-hold #app > :not(.topbar):not(#syncAlert):not(#pullIndicator) { opacity: 
 .cmenu.open { visibility: visible; opacity: 1; pointer-events: auto; transform: none; animation: none;
   transition: opacity .3s var(--m-ease), transform .36s var(--m-ease), visibility 0s; }
 .widgets-panel { transition: opacity .3s var(--m-ease), transform .36s var(--m-ease); }
+/* Редактор: шапка не сжимается (окно ограничено по высоте, и прежде
+   название наезжало на вкладки повтора) */
+.ed-v2 .ed-head { flex: none; }
+/* Перенесённый день — приглушённый, с точкой: задача уехала дальше */
+.eds-mgrid button.moved { position: relative; color: color-mix(in srgb, var(--text) 38%, transparent); }
+.eds-mgrid button.moved::after { content: ''; position: absolute; left: 50%; bottom: 5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 60%, transparent); }
+
+/* ══════════════ ЛЕВОЕ МЕНЮ v2 ══════════════
+   Фон — SVG-фигура (js/sidebar.js) с вырезом под открытым разделом:
+   сквозь вырез виден фон приложения или обои. Сворачивание: меню
+   сужается, значки остаются на своих местах, подписи и счётчики гаснут. */
+body.has-sidebar.sb-mini { --sb-w: 68px; }
+body.has-sidebar #sidebar { background: none !important; border: 0 !important; box-shadow: none !important; padding: 14px 12px 12px !important; overflow: visible; }
+#sidebar .sb-bg { position: absolute; left: 0; top: 0; z-index: -1; overflow: visible; pointer-events: none; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .3)); }
+#sidebar .sb-bg-edge { fill: none; stroke: #232427; stroke-width: 1; }
+#sidebar .sb-g0 { stop-color: color-mix(in srgb, var(--accent) 12%, #0f1013); }
+#sidebar .sb-g1 { stop-color: #0e0f12; }
+#sidebar .sb-g2 { stop-color: #08090b; }
+#sidebar .sb-ind { display: none !important; }
+/* открытый раздел — над вырезом: без своей подложки, видно фон */
+#sidebar .sb-views .sb-it.on { background: transparent !important; box-shadow: none !important; width: 100% !important; margin-right: 0 !important; color: #fff !important; }
+#sidebar .sb-views .sb-it.on::before, #sidebar .sb-views .sb-it.on::after { display: none !important; }
+/* значки на месте при сворачивании: одинаковые отступы и размеры в обоих видах */
+#sidebar .sb-it { width: 100% !important; padding: 0 12px 0 6px !important; justify-content: flex-start !important; background: transparent !important; box-shadow: none !important; }
+#sidebar .sb-it .tb-ico { width: 32px !important; height: 32px !important; }
+#sidebar .sb-it .tb-lab, #sidebar .sb-n, #sidebar .sb-name { transition: opacity .22s var(--m-ease); }
+#sidebar .sb-head { justify-content: flex-start !important; padding: 0 1px 16px !important; }
+#sidebar .sb-scroll { margin: 0 !important; padding: 0 0 8px !important; overflow-x: visible; }
+body.sb-mini #sidebar :is(.tb-lab, .sb-n, .sb-name) { display: block !important; opacity: 0; pointer-events: none; }
+body.sb-mini #sidebar .sb-n { display: grid !important; }
+body.sb-mini #sidebar .sb-it { width: 100% !important; height: 44px !important; padding: 0 12px 0 6px !important; }
+body.sb-mini #sidebar .sb-it .tb-ico { width: 32px !important; height: 32px !important; }
+body.sb-mini #sidebar .sb-head { padding: 0 1px 16px !important; }
+body.sb-mini #sidebar .sb-sec { align-items: stretch !important; }
+body.sb-mini #sidebar { padding: 14px 12px 12px !important; }
+#sidebar .sb-it:hover { background: rgba(255, 255, 255, .05) !important; }
+#sidebar .sb-views .sb-it.on:hover { background: transparent !important; }

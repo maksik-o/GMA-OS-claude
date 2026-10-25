@@ -570,10 +570,18 @@ function closeDrawer() {
   d.addEventListener('pointercancel', end);
 })();
 const VIEW_ORDER = ['home', 'week', 'contacts', 'finance', 'kb'];
-function setView(v) {
+/* Пока экран переезжает, новый раздел не открываем: иначе второй
+   переход пропускал анимацию и экран сменялся рывком. Клик в это время
+   игнорируется (подсветка в меню возвращается к открытому разделу),
+   и ещё короткая пауза после приезда — чтобы каскад успел дорисоваться. */
+let viewLock = false;
+async function setView(v) {
+  if (viewLock || isSwapping()) { renderSidebar(); railSync(); return; }
   if (v === state.view) { applyView(v); return; }
   const dir = VIEW_ORDER.indexOf(v) >= VIEW_ORDER.indexOf(state.view) ? 1 : -1;
-  blockSwap(dir, () => applyView(v));
+  viewLock = true;
+  try { await blockSwap(dir, () => applyView(v)); }
+  finally { setTimeout(() => { viewLock = false; }, 140); }
 }
 function applyView(v) {
   /* Блоки недели (канбан и Timeline) живут вне #grid, поэтому сами по
