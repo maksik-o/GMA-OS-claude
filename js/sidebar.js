@@ -36,7 +36,7 @@ function build() {
   sb.setAttribute('aria-label', 'Меню');
   sb.innerHTML = `
     <svg class="sb-bg" aria-hidden="true"><defs><linearGradient id="sbGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="sb-g0"/><stop offset=".35" class="sb-g1"/><stop offset="1" class="sb-g2"/></linearGradient></defs><path class="sb-bg-fill" fill="url(#sbGrad)"/><path class="sb-bg-edge"/></svg>
-    <div class="sb-head"><span class="sb-logo">E</span><b class="sb-name">Essential OS</b></div>
+    <div class="sb-head"><b class="sb-name">Essential <span>OS</span></b></div>
     <button type="button" class="sb-collapse" aria-label="Свернуть меню" title="Свернуть меню">${ICON_CHEV}</button>
     <div class="sb-scroll">
       <div class="sb-sec sb-views"></div>

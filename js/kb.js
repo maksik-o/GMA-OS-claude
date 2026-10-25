@@ -10,7 +10,7 @@
    уходят только метаданные — сами файлы остаются на устройстве,
    иначе один вложенный PDF раздул бы полезную нагрузку sync.
    ══════════════════════════════════════════════════════════════════ */
-import { morph, exit, enter, enterDeep, fadeRemove, pop, EASE, EASE_IN } from './anim.js';
+import { morph, exit, enter, fadeRemove, pop, EASE, EASE_IN } from './anim.js';
 import { dbAll, dbPut, dbBulk, dbGet, dbDel } from './db.js';
 import { uid, esc, MODES, safeHtml } from './store.js';
 import { getAllNotes, updateNoteById, deleteNote } from './notes.js';
@@ -35,7 +35,6 @@ const DEFAULT_GROUPS = [
   { id: 'kb-home', name: 'Дом', color: '#16a34a' },
   { id: 'kb-study', name: 'Учёба', color: '#2563eb' },
 ];
-const PALETTE = ['#ef4444', '#f59e0b', '#10b981', '#2563eb', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 const all = kind => state.items.filter(i => i.kind === kind && !i.deleted);
 /* Три стандартные группы — это режимы. Их название и цвет берём из
@@ -1132,13 +1131,11 @@ function trackTrash(x, y) {
   const open = Math.hypot(dx, dy) < TRASH_NEAR;
   t.classList.toggle('open', open);
   t.classList.toggle('hot', hot);
-  document.body.classList.toggle('kb-trash-open', open);   // нижнее меню сужается (style.css)
   return hot;
 }
 function resetTrash() {
   const t = _host && _host.querySelector('.kb-trash');
   if (t) t.classList.remove('open', 'hot');
-  document.body.classList.remove('kb-trash-open');
 }
 async function trashNote(id) {
   if (editing && editing.id === id) editing = null;

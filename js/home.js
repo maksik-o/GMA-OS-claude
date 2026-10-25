@@ -8,8 +8,9 @@ import { dbGetKV, dbSetKV } from './db.js';
 import { openSearch } from './search.js';
 import { morph, countUp } from './anim.js';
 import * as tm from './timer.js';
+import * as fc from './focus.js';
 import { kbNotes } from './kb.js';
-import { curMonth, monthStats, budgetProgress, moneyShort } from './finance.js';
+import { curMonth, monthStats, moneyShort } from './finance.js';
 
 /* ══════════════ ГЛАВНАЯ ══════════════
    Сводка дня на одном экране: неделя, фокус, ближайшее, таймлайн дня,
@@ -19,7 +20,6 @@ import { curMonth, monthStats, budgetProgress, moneyShort } from './finance.js';
    Карточки раскладываются по двум колонкам и перетаскиваются за ручку
    в углу — так же, как виджеты недели; раскладка запоминается. */
 
-const FOCUS_GOAL = 240;   // цель фокуса на день, мин
 let homeTab = 'timeline';
 let _host = null;
 let _tick = 0;
@@ -113,27 +113,14 @@ function weekHTML() {
     return `<button type="button" class="hm-day${cls}" data-day="${day}"><small>${w}</small><b>${+day.slice(8)}</b><i>${n ? '•'.repeat(Math.min(3, n)) : ''}</i></button>`;
   }).join('');
   return `<section class="hm-week glass hm-card" data-hm="week">${HANDLE('week')}
-    <div class="hm-hello"><small>${hello}</small><b>${DAYS_FULL[(d.getDay() + 6) % 7]}, ${d.getDate()} ${MONTHS_FULL[d.getMonth()]}</b><small>неделя ${isoWeek(t0)}</small></div>
+    <div class="hm-hello"><span class="hm-hi">${hello}</span><b><em>${DAYS_FULL[(d.getDay() + 6) % 7]}</em>, ${d.getDate()} ${MONTHS_FULL[d.getMonth()]}</b><small>неделя ${isoWeek(t0)}</small></div>
     <div class="hm-days">${cells}</div>
   </section>`;
 }
-function arcPath() { return 'M20 100a80 80 0 0 1 160 0'; }
-function focusHTML(fmap) {
-  const min = fmap.get(today()) || 0;
-  const k = Math.min(1, min / FOCUS_GOAL);
-  const act = tm.getActive();
-  const at = act && getTask(act.taskId);
-  const hm = `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
-  return `<section class="hm-focus glass hm-card" data-hm="focus">${HANDLE('focus')}
-    <div class="hm-head"><h2>Фокус</h2><small>цель ${FOCUS_GOAL / 60} ч</small></div>
-    <svg viewBox="0 0 200 112" class="hm-gauge" role="img" aria-label="Фокус сегодня: ${fmtMin(min)}">
-      <path d="${arcPath()}" class="hm-g-bg"/>
-      <path d="${arcPath()}" class="hm-g-val"${k > 0 ? '' : ' style="opacity:0"'} pathLength="100" stroke-dasharray="100" stroke-dashoffset="${(100 - k * 100).toFixed(1)}"/>
-      <text x="100" y="86" class="hm-g-big">${hm}</text>
-      <text x="100" y="105" class="hm-g-sm">из ${FOCUS_GOAL / 60}:00</text>
-    </svg>
-    <button type="button" class="hm-btn" data-act="focus">${at ? `Идёт: ${esc(at.title)}` : 'Начать фокус'}</button>
-  </section>`;
+/* Фокус — та же панель, что в доке экрана задач (focus.js): кольцо,
+   молния, пауза и стоп. Задачу выбирают в «Сегодня» на этом же экране. */
+function focusHTML() {
+  return `<section class="hm-focus glass hm-card" data-hm="focus">${HANDLE('focus')}<div class="focus-panel hm-fp"></div></section>`;
 }
 function soonHTML() {
   const list = upcoming(4);
@@ -231,25 +218,6 @@ function chartHTML(fmap) {
     <div class="hm-bars">${vals.map(x => `<div class="hm-bar${x.d === t0 ? ' today' : ''}${x.d > t0 ? ' future' : ''}" title="${x.w}: ${fmtMin(x.v)}"><i style="height:${Math.max(4, x.v / max * 100).toFixed(1)}%"></i><small>${x.w}</small></div>`).join('')}</div>
   </section>`;
 }
-function budgetLine() {
-  const m = curMonth();
-  const bp = budgetProgress(m);
-  if (bp.length) {
-    const lim = bp.reduce((a, b) => a + b.limit, 0), used = bp.reduce((a, b) => a + b.used, 0);
-    return `${moneyShort(Math.max(0, lim - used))} осталось по бюджетам`;
-  }
-  return '';
-}
-function quickHTML() {
-  return `<div role="button" tabindex="0" class="hm-quick glass hm-card" data-act="new">
-    <span class="hm-quick-plus">${svg('plus', 18)}</span>
-    <span class="hm-quick-ph">Новая задача — например, «созвон завтра в 15:00»</span>
-    <span class="hm-flex"></span>
-    ${budgetLine() ? `<small class="hm-quick-note">${budgetLine()}</small>` : ''}
-    <span class="hm-btn">Добавить</span>
-  </div>`;
-}
-
 /* Вход на экран: данные дорастают, числа докручиваются */
 export function homeEntered() {
   const el = _host;
@@ -265,11 +233,14 @@ export function renderHomeView(el) {
   const st = todayStats();
   const fmap = focusByDay();
   const parts = {
-    week: weekHTML, focus: () => focusHTML(fmap), soon: soonHTML,
+    week: weekHTML, focus: focusHTML, soon: soonHTML,
     hero: () => heroHTML(st), tiles: () => tilesHTML(fmap), chart: () => chartHTML(fmap),
   };
   const zone = z => `<div class="hm-zone" data-z="${z}">${layout[z].map(id => parts[id]()).join('')}</div>`;
-  el.innerHTML = `${zone('left')}${zone('main')}${quickHTML()}`;
+  el.innerHTML = `${zone('left')}${zone('main')}`;
+  const fp = el.querySelector('.hm-fp');
+  if (fp) fc.mountFocus(fp);
+  el.classList.toggle('focus-choosing', fc.isChoosing());
   if (!el.dataset.bound) bind(el);
   /* Линия «сейчас» и минуты фокуса — раз в минуту, пока экран открыт */
   clearInterval(_tick);
@@ -281,6 +252,11 @@ function bind(el) {
   el.addEventListener('click', e => {
     const b = e.target.closest('button, [role="button"]');
     if (!b || !el.contains(b)) return;
+    /* выбор задачи для фокуса — строкой «Сегодня» */
+    if (fc.isChoosing()) {
+      const row = b.closest('[data-id]');
+      if (row && fc.tryChoose(row.dataset.id)) return;
+    }
     if (b.dataset.go) return go(b.dataset.go);
     if (b.dataset.mode) return setMode(b.dataset.mode);
     if (b.dataset.tab) { homeTab = b.dataset.tab; return morph(el, () => renderHomeView(el)); }
@@ -295,7 +271,7 @@ function bind(el) {
     if (a === 'new') openSheet(null);
     else if (a === 'search') openSearch();
     else if (a === 'hide') setHideDone(!state.hideDone);
-    else if (a === 'focus') { if (tm.getActive()) tm.expandPill(); else go('week'); }
+    else if (a === 'focus') { if (tm.getActive()) tm.expandPill(); else fc.enterChoosing(); }
     else if (a === 'settings') document.getElementById('settingsBtn')?.click();
     else if (a === 'sync') document.getElementById('syncBtn')?.click();
   });
@@ -415,7 +391,7 @@ function update(ctx) {
   if (t.zone) { if (ph.parentNode !== t.zone) changed = () => t.zone.appendChild(ph); }
   else if (t.before ? t.ref.previousElementSibling !== ph : t.ref.nextElementSibling !== ph) changed = () => (t.before ? t.ref.before(ph) : t.ref.after(ph));
   if (!changed) return;
-  const sibs = [..._host.querySelectorAll('[data-hm], .hm-quick')].filter(c => c !== panel);
+  const sibs = [..._host.querySelectorAll('[data-hm]')].filter(c => c !== panel);
   flip(sibs, changed);
 }
 function autoScroll(ctx) {

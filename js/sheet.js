@@ -58,8 +58,14 @@ function openQuick() {
   editId = null;
   qStyle = quickStyle();
   renderQuick();
-  if (sheet) sheet.classList.add('open');
+  /* Оформление панели (skin) перечитывается, пока она ещё спрятана: при
+     чтении у неё на миг выключены переходы, и если это случалось уже
+     после «open», браузер ставил панель на место без анимации. И
+     спрятанное положение считаем уже с содержимым — закрытая панель была
+     высотой с ручку, «110% высоты» давали сдвиг в пару десятков пикселей. */
   resetPicker();
+  if (sheet && !sheet.classList.contains('open')) void sheet.offsetHeight;
+  if (sheet) sheet.classList.add('open');
   refreshBackdrop();
 }
 let qStyle = 'builder';

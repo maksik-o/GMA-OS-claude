@@ -1,4 +1,4 @@
-const CACHE = 'rl-v306';
+const CACHE = 'rl-v307';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает
@@ -24,7 +24,8 @@ const SHELL = [
   './js/timeline.js', './js/kb.js', './js/snapshot.js', './js/vault.js', './js/kbgraph.js', './js/charts.js', './js/home.js', './js/sidebar.js', './js/repeat.js', './js/edsched.js', './js/rail.js',
   './css/fonts.css', './css/themes.css',
   './fonts/inter-cyrillic.woff2', './fonts/inter-latin.woff2',
-  './fonts/jetbrains-mono-cyrillic.woff2', './fonts/jetbrains-mono-latin.woff2'
+  './fonts/jetbrains-mono-cyrillic.woff2', './fonts/jetbrains-mono-latin.woff2',
+  './fonts/comfortaa-cyrillic.woff2', './fonts/comfortaa-latin.woff2'
 ];
 
 self.addEventListener('install', e => {

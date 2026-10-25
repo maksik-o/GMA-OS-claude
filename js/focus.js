@@ -12,9 +12,13 @@ const ARC_SPAN = 234;    // 65% от 360°
 const CYCLE_MS = 30 * 60 * 1000;
 
 let choosing = false;
-let _built = false;
-let _centerMode = '';
 let _lastPoms = -1;
+/* Панель фокусировки живёт в двух местах: в доке экрана задач
+   (#focusPanel) и карточкой на «Главной» (.hm-fp). Таймер и выбор
+   задачи у них общие; молния (один канвас и одно видео) переезжает
+   в ту панель, что сейчас на экране. */
+const hosts = () => [$('focusPanel'), ...document.querySelectorAll('#homeView .hm-fp')].filter(Boolean);
+const shownHost = () => hosts().find(p => p.clientWidth > 0) || null;
 
 const ICON_PLAY_S = '<svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></svg>';
 const ICON_PAUSE_S = '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
@@ -87,18 +91,21 @@ function fetchFx() {
   return _fxFetch;
 }
 function ensureFx() {
-  const panel = $('focusPanel');
-  if (!panel) return null;
   if (_fxCanvas) return _fxCanvas;
   _fxCanvas = document.createElement('canvas');
   _fxCanvas.className = 'fp-video';
-  panel.insertBefore(_fxCanvas, panel.firstChild);
+  placeFx();
   /* Размер канваса — от наблюдателя, а не чтением clientWidth в каждом кадре */
   new ResizeObserver(([e]) => {
     _fxW = Math.round(e.contentRect.width);
     _fxH = Math.round(e.contentRect.height);
   }).observe(_fxCanvas);
   return _fxCanvas;
+}
+/* Канвас молнии — под содержимое видимой панели */
+function placeFx() {
+  const p = shownHost() || $('focusPanel');
+  if (_fxCanvas && p && _fxCanvas.parentNode !== p) p.insertBefore(_fxCanvas, p.firstChild);
 }
 /* Видео-элемент готовим заранее (первый кадр уже декодирован) */
 async function prepareVideo() {
@@ -233,8 +240,8 @@ function stopFxLoop() {
   _fxRaf = _fxVfc = 0;
 }
 function setFx(on) {
-  const panel = $('focusPanel');
-  if (on && panel && panel.clientWidth === 0) on = false; // панель не видна — не крутим
+  if (on && !shownHost()) on = false; // ни одной панели на экране — не крутим
+  if (on && _fxCanvas) placeFx();
   if (on === _fxOn) return;
   _fxOn = on;
   if (on) {
@@ -273,22 +280,24 @@ export function tryChoose(taskId) {
   return true;
 }
 function cancelOnOutside(e) {
-  if (e.target.closest('.r-row, .task, .focus-panel')) return;
+  if (e.target.closest('.r-row, .task, .focus-panel, .hm-row, .hm-ev, .hm-chip')) return;
   exitChoosing();
 }
-function enterChoosing() {
+/* Выбор задачи: в неделе мигают строки сетки, на «Главной» — строки «Сегодня» */
+const choosers = () => [$('grid'), $('homeView')].filter(Boolean);
+export const isChoosing = () => choosing;
+export function enterChoosing() {
+  if (choosing || tm.getActive()) return;
   choosing = true;
-  const grid = $('grid');
-  if (grid) grid.classList.add('focus-choosing');
-  renderCenter();
+  choosers().forEach(el => el.classList.add('focus-choosing'));
+  updateFocusUI();
   setTimeout(() => document.addEventListener('pointerdown', cancelOnOutside), 0);
 }
 function exitChoosing() {
   choosing = false;
-  const grid = $('grid');
-  if (grid) grid.classList.remove('focus-choosing');
+  choosers().forEach(el => el.classList.remove('focus-choosing'));
   document.removeEventListener('pointerdown', cancelOnOutside);
-  renderCenter();
+  updateFocusUI();
 }
 async function startWithoutTask() {
   exitChoosing();
@@ -297,11 +306,11 @@ async function startWithoutTask() {
 }
 
 /* ── Рендер панели ── */
-function renderFocusPanel() {
-  const panel = $('focusPanel');
-  if (!panel || _built) return;
-  _built = true;
-  panel.innerHTML = `${handleSVG('focus')}
+function buildPanel(panel, dock) {
+  if (!panel || panel._fpBuilt) return;
+  panel._fpBuilt = true;
+  panel._mode = '';
+  panel.innerHTML = `${dock ? handleSVG('focus') : ''}
 <div class="fp-poms"></div>
 <div class="fp-ring-wrap">
 <svg class="fp-ring" viewBox="0 0 200 200">
@@ -320,21 +329,16 @@ ${scaleLabels()}
   panel.querySelector('.fp-track').style.strokeDasharray = `${ARC} ${C}`;
   panel.querySelector('.fp-stop').onclick = () => tm.stop();
   panel.querySelector('.fp-pause').onclick = () => (tm.isPaused() ? tm.resume() : tm.pause());
-  ensureFx(); // канвас с молнией под контентом
-  renderCenter();
-  updateFocusUI();
 }
-function renderCenter() {
-  const panel = $('focusPanel');
-  if (!panel) return;
+function renderCenter(panel) {
   const center = panel.querySelector('.fp-center');
   if (!center) return;
   const act = tm.getActive();
-  _centerMode = choosing ? 'choose' : act ? 'run' : 'idle';
-  if (_centerMode === 'idle') {
+  panel._mode = choosing ? 'choose' : act ? 'run' : 'idle';
+  if (panel._mode === 'idle') {
     center.innerHTML = `<div class="fp-caption">Фокусировка</div><button type="button" class="fp-play" title="Запустить фокус"><svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></svg></button>`;
     center.querySelector('.fp-play').onclick = enterChoosing;
-  } else if (_centerMode === 'choose') {
+  } else if (panel._mode === 'choose') {
     center.innerHTML = `<div class="fp-choose">Фокусировка на:<br><span class="blink">Выберите задачу</span></div>
 <button type="button" class="fp-notask chip">Без задачи</button>`;
     center.querySelector('.fp-notask').onclick = startWithoutTask;
@@ -342,12 +346,17 @@ function renderCenter() {
     center.innerHTML = `<div class="fp-time">00:00</div>`;
   }
 }
+/* Карточка «Главной» пересобирается вместе с экраном — панель в ней
+   строится заново и сразу получает текущее состояние */
+export function mountFocus(el) {
+  buildPanel(el, false);
+  updateFocusUI();
+}
 function updateFocusUI() {
-  const panel = $('focusPanel');
-  if (!panel || !_built) return;
+  const list = hosts();
+  if (!list.length) return;
   const act = tm.getActive();
   const needMode = choosing ? 'choose' : act ? 'run' : 'idle';
-  if (needMode !== _centerMode) renderCenter();
   /* цвет молнии = цвет текущего режима (обновляем при смене режима) */
   refreshAccent();
   setFx(!!act);
@@ -361,35 +370,39 @@ function updateFocusUI() {
   }
   const total = todayFocusMs();
   const poms = Math.floor(total / CYCLE_MS);
-  const pomsEl = panel.querySelector('.fp-poms');
-  /* Молнии вместо помидоров */
-  if (pomsEl) pomsEl.textContent = poms > 0 ? (poms <= 8 ? '⚡'.repeat(poms) : `⚡ ×${poms}`) : '';
   if (poms > _lastPoms && _lastPoms >= 0) {
     try { if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]); } catch (e) {}
   }
   _lastPoms = poms;
-  const fill = panel.querySelector('.fp-fill');
-  if (fill) {
-    const p = (total % CYCLE_MS) / CYCLE_MS;
-    fill.style.strokeDasharray = `${ARC * p} ${C}`;
-    fill.style.opacity = p > 0.005 ? 1 : 0;
-  }
-  if (act) {
-    const tEl = panel.querySelector('.fp-time');
-    if (tEl) {
-      tEl.textContent = fmtMMSS(act.elapsed);
-      tEl.classList.toggle('shrink', Math.floor(act.elapsed / 60000) >= 100);
+  const p = (total % CYCLE_MS) / CYCLE_MS;
+  for (const panel of list) {
+    if (!panel._fpBuilt) continue;
+    if (needMode !== panel._mode) renderCenter(panel);
+    const pomsEl = panel.querySelector('.fp-poms');
+    /* Молнии вместо помидоров */
+    if (pomsEl) pomsEl.textContent = poms > 0 ? (poms <= 8 ? '⚡'.repeat(poms) : `⚡ ×${poms}`) : '';
+    const fill = panel.querySelector('.fp-fill');
+    if (fill) {
+      fill.style.strokeDasharray = `${ARC * p} ${C}`;
+      fill.style.opacity = p > 0.005 ? 1 : 0;
     }
-  }
-  const totEl = panel.querySelector('.fp-total');
-  if (totEl) totEl.innerHTML = `Общее время фокусировки за сегодня: <span class="fp-total-time">${fmtMin(Math.floor(total / 60000))}</span>`;
-  const stopBtn = panel.querySelector('.fp-stop');
-  if (stopBtn) stopBtn.style.display = act ? '' : 'none';
-  const pauseBtn = panel.querySelector('.fp-pause');
-  if (pauseBtn) {
-    pauseBtn.style.display = act ? '' : 'none';
-    pauseBtn.innerHTML = act ? (act.paused ? ICON_PLAY_S : ICON_PAUSE_S) : '';
-    pauseBtn.title = act && act.paused ? 'Продолжить' : 'Пауза';
+    if (act) {
+      const tEl = panel.querySelector('.fp-time');
+      if (tEl) {
+        tEl.textContent = fmtMMSS(act.elapsed);
+        tEl.classList.toggle('shrink', Math.floor(act.elapsed / 60000) >= 100);
+      }
+    }
+    const totEl = panel.querySelector('.fp-total');
+    if (totEl) totEl.innerHTML = `Общее время фокусировки за сегодня: <span class="fp-total-time">${fmtMin(Math.floor(total / 60000))}</span>`;
+    const stopBtn = panel.querySelector('.fp-stop');
+    if (stopBtn) stopBtn.style.display = act ? '' : 'none';
+    const pauseBtn = panel.querySelector('.fp-pause');
+    if (pauseBtn) {
+      pauseBtn.style.display = act ? '' : 'none';
+      pauseBtn.innerHTML = act ? (act.paused ? ICON_PLAY_S : ICON_PAUSE_S) : '';
+      pauseBtn.title = act && act.paused ? 'Продолжить' : 'Пауза';
+    }
   }
 }
 const fmtMMSS = ms => {
@@ -399,12 +412,15 @@ const fmtMMSS = ms => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 export function focusInit() {
-  renderFocusPanel();
+  buildPanel($('focusPanel'), true);
+  updateFocusUI();
   /* Ролик и шейдер — заранее, когда браузер свободен: к нажатию «Старт»
      всё уже готово и первый кадр декодирован */
   const idle = window.requestIdleCallback || (fn => setTimeout(fn, 1500));
   idle(() => { prepareVideo(); if (ensureFx()) initGL(); }, { timeout: 4000 });
   document.addEventListener('timer-changed', updateFocusUI);
+  /* смена экрана: молния переезжает в панель, которая теперь видна */
+  document.addEventListener('screen-entered', updateFocusUI);
   document.addEventListener('sync-done', updateFocusUI);
   document.addEventListener('user-change', updateFocusUI);
 }
