@@ -6099,31 +6099,38 @@ body.has-sidebar :is(.tpill, .editor, .toast) { margin-left: calc((var(--sb-w) +
 .eds-none { color: color-mix(in srgb, var(--text) 30%, transparent); letter-spacing: .04em; }
 
 /* ══════════════ МЕНЮ-КАРУСЕЛЬ (iPhone) ══════════════
-   Полоса у левого края с «плечами» изгиба; выбранный раздел — в
-   глянцевой пилюле цвета режима. Пока палец на полосе, пилюля
-   становится кремовой, вытягивается и показывает подпись вертикально. */
+   Полоса у правого края (rail.js) с «плечами» изгиба; фон — чистый
+   чёрный, на OLED эти пиксели выключены. Контент от неё отодвинут
+   (padding-right), поверх него полоса не лежит. Выбранный раздел — в
+   глянцевой пилюле цвета режима; пока палец на полосе, пилюля кремовая
+   и показывает подпись вертикально. Размер и место задаёт rail.js. */
 .rail { display: none; }
 
-body.has-rail #app { padding-left: max(58px, calc(env(safe-area-inset-left) + 50px)); }
+body.has-rail #app { padding-right: max(56px, calc(env(safe-area-inset-right) + 50px)); }
 body.has-rail .rail {
   display: block; position: fixed; z-index: 25;
-  left: env(safe-area-inset-left, 0px); top: 50%; transform: translateY(-50%);
+  right: env(safe-area-inset-right, 0px); top: 0;
   width: 48px; touch-action: none; -webkit-user-select: none; user-select: none;
   -webkit-touch-callout: none;
+  transition: transform .42s var(--m-ease, cubic-bezier(.22, 1, .36, 1)), height .42s var(--m-ease, cubic-bezier(.22, 1, .36, 1));
 }
-.rail .rl-bg { position: absolute; left: 0; top: 0; overflow: visible; filter: drop-shadow(2px 0 10px rgba(0, 0, 0, .45)); }
-.rail .rl-fill { fill: #131418; }
-.rail .rl-edge { fill: none; stroke: rgba(255, 255, 255, .1); stroke-width: 1; }
+/* над панелью ввода — поверх затемнения и самой панели */
+body.has-rail .rail.rl-lift { z-index: 31; }
+.rail .rl-cap, .rail .rl-body { position: absolute; right: 0; top: 0; transition: transform .42s var(--m-ease, cubic-bezier(.22, 1, .36, 1)), height .42s var(--m-ease, cubic-bezier(.22, 1, .36, 1)); }
+.rail .rl-cap { overflow: visible; transform-origin: 0 0; }
+.rail .rl-cap path { fill: #000; }
+.rail .rl-body { width: 46px; background: #000; }
 .rail .rl-it {
-  position: absolute; left: 23px; width: 40px; height: 46px; padding: 0;
+  position: absolute; left: 25px; top: 0; width: 40px; height: 46px; padding: 0;
   transform: translateX(-50%); border: 0; background: none; color: #7d7e83;
   display: grid; place-items: center; cursor: pointer;
-  transition: transform .2s var(--ease-spring), opacity .2s ease, color .2s;
+  transition: transform .42s var(--m-ease, cubic-bezier(.22, 1, .36, 1)), opacity .25s ease, color .2s;
 }
+.rail.held .rl-it { transition: transform .2s var(--ease-spring), opacity .2s ease, color .2s; }
 .rail .rl-it svg { width: 20px; height: 20px; transition: opacity .15s; }
 .rail .rl-it.under svg { opacity: 0; }
 .rail .rl-pill {
-  position: absolute; left: 23px; top: 0; z-index: 2; pointer-events: none;
+  position: absolute; left: 25px; top: 0; z-index: 2; pointer-events: none;
   width: 38px; height: 40px; border-radius: 999px;
   display: grid; place-items: center; color: #1c0e08;
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 42%, #fff) 0%, var(--accent) 100%);
