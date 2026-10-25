@@ -33,7 +33,7 @@ function build() {
   sb.className = 'sidebar';
   sb.setAttribute('aria-label', 'Меню');
   sb.innerHTML = `
-    <div class="sb-head"><span class="sb-logo">G</span><b class="sb-name">GMA-OS</b></div>
+    <div class="sb-head"><span class="sb-logo">E</span><b class="sb-name">Essential OS</b></div>
     <button type="button" class="sb-collapse" aria-label="Свернуть меню" title="Свернуть меню">${ICON_CHEV}</button>
     <div class="sb-scroll">
       <div class="sb-sec sb-views"></div>

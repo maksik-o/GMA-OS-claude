@@ -1,4 +1,5 @@
 import { dbAll, dbPut, dbBulk, dbDel, dbGetKV, dbSetKV } from './db.js';
+import { applyRepeat } from './repeat.js';
 
 const DEFAULT_MODES = [
   { id: 'work', label: 'Работа' },
@@ -336,16 +337,24 @@ export async function rolloverDay(force) {
   let moved = 0;
   for (const t of state.tasks) {
     if (!t || t.deleted) continue;
-    const days = { ...(t.days || {}) };
+    let days = { ...(t.days || {}) };
     let touched = false;
+    const rep = t.repeat && t.repeat.freq ? t.repeat : null;
     for (const d of Object.keys(days)) {
       if (d >= t0) continue;                       // сегодня и будущее не трогаем
       if (days[d] !== 'todo' && days[d] !== 'started') continue;
-      days[d] = 'postponed';
+      /* У повторяющейся задачи пропущенный раз не переезжает на сегодня —
+         иначе ежедневная задача копилась бы; он помечается отменённым */
+      days[d] = rep ? 'skipped' : 'postponed';
       touched = true;
     }
+    if (rep) {
+      /* продлеваем даты повтора на горизонт вперёд */
+      const next = applyRepeat(days, rep, t0);
+      if (Object.keys(next).length !== Object.keys(days).length) touched = true;
+      days = next;
+    } else if (touched && !days[t0]) days[t0] = 'todo';   // задача переезжает на сегодня
     if (!touched) continue;
-    if (!days[t0]) days[t0] = 'todo';              // задача переезжает на сегодня
     await updateTask(t.id, { days });
     moved++;
   }
