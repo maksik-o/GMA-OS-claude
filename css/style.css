@@ -311,8 +311,8 @@ body[data-font="l"] { zoom: 1.1; }
 }
 body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head {
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .g-hd { border: 0; background: transparent; padding: 4px 0; border-radius: 8px; text-align: center; color: var(--dim); font-size: 10.5px; font-weight: 800; letter-spacing: .05em; line-height: 1.15; }
@@ -466,8 +466,8 @@ body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head {
   transform: translate(-50%, -50%) scale(.92);
   transition: all .35s var(--ease-bounce);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
   text-align: left;
 }
@@ -530,8 +530,8 @@ body.search-open #app { overflow: hidden; touch-action: none; }
     background-color var(--dur-mode) var(--ease-mode),
     box-shadow var(--dur-mode) var(--ease-mode);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .drawer.open { transform: none; }
@@ -623,8 +623,8 @@ body.search-open #app { overflow: hidden; touch-action: none; }
   transform: translate(-50%, -50%) scale(.9);
   transition: all .35s var(--ease-bounce);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .auth.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
@@ -979,8 +979,8 @@ input[type="color"]:hover { transform: scale(1.05); }
   flex-direction: column;
   gap: 2px;
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .cmenu.open { display: flex; animation: pop .25s var(--ease-bounce); }
@@ -1033,8 +1033,8 @@ input[type="color"]:hover { transform: scale(1.05); }
   clip-path: inset(-40px -40px -40px -40px round 999px);
   transition: all .35s var(--ease-bounce), clip-path .55s var(--ease-spring);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .tpill.on { transform: translate(-50%, 0) scale(1); opacity: 1; pointer-events: auto; }
@@ -1139,8 +1139,8 @@ input[type="color"]:hover { transform: scale(1.05); }
   transition: transform .5s var(--ease-bounce), max-height .3s ease, visibility 0s linear .5s;
   will-change: transform;
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .sheet.open { transform: translate(-50%, 0); visibility: visible; transition: transform .5s var(--ease-bounce), max-height .3s ease, visibility 0s; }
@@ -1266,8 +1266,8 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   transform: translate(-50%, -50%) scale(.92);
   transition: all .35s var(--ease-bounce);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .editor.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
@@ -1331,8 +1331,8 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   padding: 10px 14px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .toast.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
@@ -1443,8 +1443,8 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   border-radius: var(--r-lg);
   overflow: visible;
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
   border: 0;
   animation: modal-in .35s var(--ease-bounce);
@@ -2074,8 +2074,8 @@ body, button, input, textarea, select,
     border-radius: 999px;
     height: 48px;
     background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    backdrop-filter: blur(28px) saturate(1.8);
+    -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+    backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
     box-shadow: var(--shadow), var(--inner-glow);
   }
   .bottomnav button {
@@ -2122,8 +2122,8 @@ body, button, input, textarea, select,
   margin: -10px -10px 10px; padding: 10px 10px 8px;
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
   display: flex; flex-direction: column; gap: 8px;
 }
@@ -2957,8 +2957,8 @@ body.row-swiping, body.row-swiping #app { touch-action: none; overscroll-behavio
   padding: 8px 10px; margin-bottom: 10px;
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .fin-tabs { display: flex; gap: 3px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--text) 7%, transparent); }
@@ -3242,8 +3242,8 @@ body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head { background: 
   border-radius: var(--r-lg);
   padding: 12px 14px;
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
   border-left: 3px solid var(--gc);
 }
@@ -3582,8 +3582,8 @@ body[data-surf="dark"] .notes-editor.is-empty:not(:focus) {
   padding: var(--sp-3);
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
 }
 .kb-side { display: flex; flex-direction: column; gap: var(--sp-2); max-height: calc(100dvh - 150px); }
 .kb-q {
@@ -4087,8 +4087,8 @@ body.tl-dragging, body.tl-dragging #app { touch-action: none; -webkit-user-selec
 body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head,
 body[data-surf="dark"] .kb-head, body[data-surf="dark"] .fin-head {
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
+  backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--elev-1), var(--inner-glow);
 }
 .l-head::after, .m-head::after, .kb-head::after, .fin-head::after { display: none; }
@@ -5218,7 +5218,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   padding: var(--sp-3) calc(var(--sp-3) + 12px) var(--sp-3) var(--sp-3);
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8); backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
   transform: translateX(-110%); visibility: hidden;
   transition: transform .45s var(--ease-spring), visibility 0s linear .45s;
@@ -5613,7 +5613,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .kb-board-head {
   display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass)); box-shadow: var(--shadow), var(--inner-glow);
-  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8); backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
 }
 .kb-board-head b { font: 800 16px/1.2 var(--font-head); color: var(--accent); }
 .kb-board-close { margin-left: auto; }
@@ -5626,7 +5626,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0;
   padding: 10px 10px 10px 12px; border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass)); box-shadow: var(--shadow), var(--inner-glow);
-  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8); backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   border-top: 3px solid var(--gc); transition: box-shadow .15s, background .15s;
 }
 .kb-bcol.kb-drop-over { box-shadow: 0 0 0 2px var(--gc), var(--shadow); background: color-mix(in srgb, var(--gc) 10%, var(--glass)); }
@@ -5654,7 +5654,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
 .kb-loose {
   position: relative; min-width: 0; padding: 8px 8px 8px 20px; border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass)); box-shadow: var(--shadow), var(--inner-glow);
-  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8); backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   border-top: 3px solid #94a3b8;
 }
 .kb-bcol-dot { border: 0; padding: 0; cursor: pointer; width: 12px; height: 12px; transition: transform .15s; }
@@ -5724,7 +5724,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   padding: 12px; border-radius: var(--r-lg);
   display: flex; flex-direction: column; gap: 8px;
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
-  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8); backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
   visibility: hidden; pointer-events: none; transform: var(--qp-hide, translateX(-320px));
   /* не тает, а целиком уезжает под панель и только потом прячется */
@@ -6333,7 +6333,7 @@ body.has-rail .topbar .wn-right > :is(#searchBtn, #settingsBtn) { display: none 
 @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
 @keyframes pop-down { from { opacity: 0; transform: translateY(-8px) scale(.97); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
 @keyframes popup-up { from { opacity: 0; transform: translateY(8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
-@keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(.97); filter: blur(10px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
 @keyframes kbMenuIn { from { opacity: 0; transform: translateY(8px) scale(.97); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
 @keyframes fade-in { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: blur(0); } }
 @keyframes qpHelpIn { from { opacity: 0; transform: translateY(6px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
@@ -6344,17 +6344,14 @@ body.has-rail .topbar .wn-right > :is(#searchBtn, #settingsBtn) { display: none 
 .cmenu.open { animation: pop .32s var(--m-ease); }
 
 /* Окна: проявляются из размытия, уходят растворяясь */
-.editor, .searchpanel { filter: blur(10px); }
-.editor.open, .searchpanel.open { filter: blur(0); }
-.editor { transition: opacity .38s var(--m-ease), transform .44s var(--m-ease), filter .38s var(--m-ease); }
-.searchpanel { transition: opacity .34s var(--m-ease), transform .4s var(--m-ease), filter .34s var(--m-ease); }
-@media (max-width: 720px) { .editor { filter: none; transition: transform .46s var(--m-ease); } }
+.editor { transition: opacity .38s var(--m-ease), transform .44s var(--m-ease); }
+.searchpanel { transition: opacity .34s var(--m-ease), transform .4s var(--m-ease); }
+@media (max-width: 720px) { .editor { transition: transform .46s var(--m-ease); } }
 .sheet { transition: transform .46s var(--m-ease), max-height .3s var(--m-ease), visibility 0s linear .46s; }
 .sheet.open { transition: transform .46s var(--m-ease), max-height .3s var(--m-ease), visibility 0s; }
 .drawer { transition: transform .46s var(--m-ease), box-shadow .3s; }
 .backdrop { transition: opacity .34s var(--m-ease); }
-.toast { transition: opacity .3s var(--m-ease), transform .38s var(--m-ease), filter .3s var(--m-ease); filter: blur(6px); }
-.toast.show, .toast.on, .toast.open { filter: blur(0); }
+.toast { transition: opacity .3s var(--m-ease), transform .38s var(--m-ease); }
 .anim-ghost-layer { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
 
 /* Переезжающие пилюли-индикаторы в переключателях */
@@ -6394,3 +6391,26 @@ body.has-rail .topbar .wn-right > :is(#searchBtn, #settingsBtn) { display: none 
 body.sb-mini #sidebar .sb-ind { width: 44px; left: 50%; margin-left: -22px; border-radius: 50%; }
 body.sb-mini #sidebar .sb-ind::before, body.sb-mini #sidebar .sb-ind::after { display: none; }
 body.sb-mini #sidebar .sb-views .sb-it.on { background: transparent !important; }
+
+/* Переход экрана: новое невидимо до первого кадра появления (anim.js) */
+html.m-hold #app > :not(.topbar):not(#syncAlert):not(#pullIndicator) { opacity: 0 !important; }
+/* Закрытие окон — равномерно и чуть быстрее: кривая «рывок в начале»
+   на обратном ходе гасила окно за первые 100 мс — выглядело мгновенно */
+.editor:not(.open), .searchpanel:not(.open) { transition: opacity .3s cubic-bezier(.4, 0, .2, 1), transform .32s cubic-bezier(.4, 0, .2, 1); }
+.sheet:not(.open) { transition: transform .36s cubic-bezier(.4, 0, .2, 1), max-height .3s ease, visibility 0s linear .36s; }
+.drawer:not(.open) { transition: transform .36s cubic-bezier(.4, 0, .2, 1), box-shadow .3s; }
+.backdrop:not(.open) { transition: opacity .3s cubic-bezier(.4, 0, .2, 1); }
+.toast:not(.show) { transition: opacity .26s cubic-bezier(.4, 0, .2, 1), transform .3s cubic-bezier(.4, 0, .2, 1); }
+@media (max-width: 720px) { .editor:not(.open) { transition: transform .36s cubic-bezier(.4, 0, .2, 1); } }
+/* Телефон: редактор уезжает вниз целиком видимым — раньше прозрачность
+   обнулялась мгновенно и окно пропадало за кадр */
+@media (max-width: 720px) {
+  #editor.editor { opacity: 1; visibility: hidden; transition: transform .36s cubic-bezier(.4, 0, .2, 1), visibility 0s linear .36s; }
+  #editor.editor.open { visibility: visible; transition: transform .46s var(--m-ease), visibility 0s; }
+}
+/* Контекстные меню: не «display: none», а плавное появление и уход */
+.cmenu { display: flex !important; visibility: hidden; opacity: 0; pointer-events: none; transform: translateY(6px) scale(.97); transform-origin: top center;
+  transition: opacity .2s cubic-bezier(.4, 0, .2, 1), transform .22s cubic-bezier(.4, 0, .2, 1), visibility 0s linear .22s; }
+.cmenu.open { visibility: visible; opacity: 1; pointer-events: auto; transform: none; animation: none;
+  transition: opacity .3s var(--m-ease), transform .36s var(--m-ease), visibility 0s; }
+.widgets-panel { transition: opacity .3s var(--m-ease), transform .36s var(--m-ease); }

@@ -1163,7 +1163,7 @@ function renderNotesPanelSync() {
   renderNotesPanel(panel);
 }
 /* Перерисовка «на месте» с движением (anim.morph); сама отрисовка — ниже */
-export function renderAll() { morph(document.getElementById('app'), () => renderAllNow()); }
+export function renderAll() { morph(document.getElementById('app'), renderAllNow); }
 function renderAllNow() {
   closeCellMenu();
   collapseRevealed();

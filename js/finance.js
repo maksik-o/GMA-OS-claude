@@ -7,7 +7,7 @@
 import { dbAll, dbPut, dbBulk } from './db.js';
 import { uid, esc, today, iso, parseISO, addDays, MONTHS, MONTHS_FULL } from './store.js';
 import { readFinanceFile, detectColumns, rowsToTx, fingerprint, toCSV, download } from './finimport.js';
-import { rowBrickSwap, contentFade, morph } from './anim.js';
+import { rowBrickSwap, contentFade, morph, fadeRemove } from './anim.js';
 import { ringChart, ringLegend, barChart, gauge, lineChart } from './charts.js';
 import { getPeople } from './contacts.js';
 
@@ -831,7 +831,7 @@ function modal(title, inner, onSave, onDelete) {
       <button type="button" class="btn primary fin-save">Сохранить</button>
     </div></div>`;
   document.body.appendChild(ov);
-  const close = () => ov.remove();
+  const close = () => fadeRemove(ov);
   ov.querySelector('.notes-list-close').onclick = close;
   ov.onclick = e => { if (e.target === ov) close(); };
   ov.querySelector('.fin-save').onclick = async () => {
@@ -1027,7 +1027,7 @@ function openIOSheet() {
       <p class="hint">Одинаковые операции при повторном импорте пропускаются — сравниваем дату, сумму, направление и описание.</p>
     </div></div>`;
   document.body.appendChild(ov);
-  const close = () => ov.remove();
+  const close = () => fadeRemove(ov);
   ov.querySelector('.notes-list-close').onclick = close;
   ov.onclick = e => { if (e.target === ov) close(); };
   ov.querySelector('.fin-export').onclick = () => { exportTxCSV(); close(); };

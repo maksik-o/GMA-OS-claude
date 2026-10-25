@@ -1,5 +1,5 @@
 import { dbAll, dbPut, dbBulk } from './db.js';
-import { morph } from './anim.js';
+import { morph, fadeRemove } from './anim.js';
 import { uid, today, addDays, mondayOf, parseISO, fmtD, esc, MONTHS_FULL, state as appState, MODES, safeHtml } from './store.js';
 
 const STORE = 'notes';
@@ -544,8 +544,8 @@ function showNotesList() {
     };
   });
   refreshList(overlay);
-  overlay.querySelector('.notes-list-close').onclick = () => overlay.remove();
-  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  overlay.querySelector('.notes-list-close').onclick = () => fadeRemove(overlay);
+  overlay.onclick = e => { if (e.target === overlay) fadeRemove(overlay); };
 }
 
 /* ── Просмотр и редактирование заметки из списка (без отдельного заголовка) ── */
@@ -569,7 +569,7 @@ function openNoteEditor(n, listOverlay) {
   refreshEmpty(bodyEl);
   bodyEl.addEventListener('input', () => refreshEmpty(bodyEl));
   bodyEl.addEventListener('blur', () => refreshEmpty(bodyEl));
-  const close = () => ov.remove();
+  const close = () => fadeRemove(ov);
   const after = async () => {
     if (listOverlay) refreshList(listOverlay);
     if (_panelEl && (!_currentNote || _currentNote.id === n.id)) {
