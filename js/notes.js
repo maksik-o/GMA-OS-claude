@@ -1,4 +1,5 @@
 import { dbAll, dbPut, dbBulk } from './db.js';
+import { morph } from './anim.js';
 import { uid, today, addDays, mondayOf, parseISO, fmtD, esc, MONTHS_FULL, state as appState, MODES, safeHtml } from './store.js';
 
 const STORE = 'notes';
@@ -309,7 +310,9 @@ function applyFontSize(px) {
 }
 
 /* ── Рендер панели ── */
-export function renderNotesPanel(container) {
+/* Перерисовка «на месте» с движением (anim.morph); сама отрисовка — ниже */
+export function renderNotesPanel(container) { morph(container, () => renderNotesPanelNow(container)); }
+function renderNotesPanelNow(container) {
   if (!container) return;
   _panelEl = container;
   const key = currentWeekStart + '|' + currentDay;

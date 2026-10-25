@@ -123,6 +123,21 @@ export function renderSidebar() {
       <span class="tb-ico"><i class="sb-mdot"></i></span><span class="tb-lab"><span>${esc(m.label)}</span></span>${n ? `<span class="sb-n">${n}</span>` : ''}</button>`;
   }).join('');
   if (modes.innerHTML !== html) modes.innerHTML = html;
+  moveInd(sb);
+}
+/* Пилюля открытого раздела переезжает между пунктами */
+function moveInd(sb) {
+  const views = sb.querySelector('.sb-views');
+  if (!views) return;
+  let ind = views.querySelector('.sb-ind');
+  if (!ind) { ind = document.createElement('i'); ind.className = 'sb-ind'; ind.setAttribute('aria-hidden', 'true'); views.prepend(ind); }
+  const on = views.querySelector('.sb-it.on');
+  if (!on) { ind.style.opacity = '0'; return; }
+  const first = !ind.dataset.placed;
+  if (first) ind.style.transition = 'none';
+  ind.style.opacity = '1';
+  ind.style.transform = `translateY(${on.offsetTop}px)`;
+  if (first) { void ind.offsetWidth; ind.style.transition = ''; ind.dataset.placed = '1'; }
 }
 
 export function sidebarInit() {

@@ -1,126 +1,275 @@
 /* ══════════════════════════════════════════════════════════════════
-   Анимации перерисовки. Всё на WAAPI — inline-стили не трогаем,
-   убирать после завершения нечего, следующая перерисовка не ломается.
+   ДВИЖЕНИЕ. Единый язык анимаций приложения (по мотивам «бенто»-
+   дашборда): без пружин и отскоков, плавное замедление в конце.
 
-   Здесь осталось ровно два движения, которые реально используются:
-   rowBrickSwap — смена содержимого «кирпичиками» по рядам,
-   contentFade — мягкая подмена содержимого без сдвига блоков.
-   Прежние slideIn / stagger / popIn / swapContent / brickSwap /
-   viewSwap были вытеснены движком blockSwap из week.js и удалены.
+   • Уход: содержимое растворяется — прозрачность, лёгкое размытие и
+     чуть уменьшается. Быстро.
+   • Появление: из размытия, поднимаясь на несколько пикселей; блоки
+     и строки идут каскадом сверху вниз, слева направо.
+   • Перерисовка на месте (morph): что осталось — плавно переезжает на
+     новое место, новое — проявляется, удалённое — растворяется,
+     сменивший вид (статус дня) — коротко «щёлкает».
+   • Числа докручиваются, заголовки проявляются слева направо.
+   Всё на WAAPI — стили элементов не трогаем, после анимации убирать
+   нечего; при «уменьшить движение» анимации выключаются.
    ══════════════════════════════════════════════════════════════════ */
-const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+export const EASE = 'cubic-bezier(.22, 1, .36, 1)';      // плавное замедление
+export const EASE_IN = 'cubic-bezier(.4, 0, 1, 1)';
+export const IN_MS = 440, OUT_MS = 170, STAGGER = 34, MAX_STAGGER = 420;
+export const reduced = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const can = el => !!el && !!el.animate && !reduced();
+const visible = el => el && el.isConnected && el.getClientRects().length > 0;
 
-/* ══════════════════════════════════════════════════════════════════
-   Построчный обмен блоков.
+const ENTER_FROM = { opacity: 0, transform: 'translateY(10px) scale(.985)', filter: 'blur(8px)' };
+const ENTER_TO = { opacity: 1, transform: 'none', filter: 'blur(0)' };
 
-   Задача: ряд, который опустел, должен заполняться новыми блоками
-   СРАЗУ, не дожидаясь, пока уедет весь вид. Проблема в том, что
-   перерисовка контейнера одна на всё — нельзя перерисовать один ряд.
-
-   Решение: снимаем «фотографию» старых блоков — клонируем их в
-   абсолютно спозиционированный слой поверх контейнера, — затем
-   перерисовываем контент под ним. Дальше старые копии уезжают, а
-   новые блоки приезжают с теми же задержками, ряд за рядом, блок за
-   блоком. Визуально ряд освобождается и тут же занимается.
-   ══════════════════════════════════════════════════════════════════ */
-const ROW_TOL = 24;   // блоки в пределах 24px по вертикали считаем одним рядом
-
-function groupRows(nodes) {
-  const items = nodes.map(n => {
-    const r = n.getBoundingClientRect();
-    return { n, r };
-  }).filter(o => o.r.width > 0 && o.r.height > 0);
-  items.sort((a, b) => a.r.top - b.r.top || a.r.left - b.r.left);
-  const rows = [];
-  for (const it of items) {
-    const row = rows[rows.length - 1];
-    if (row && Math.abs(it.r.top - row.top) <= ROW_TOL) row.items.push(it);
-    else rows.push({ top: it.r.top, items: [it] });
-  }
-  rows.forEach(r => r.items.sort((a, b) => a.r.left - b.r.left));
-  return rows;
+/* Порядок «сверху вниз, слева направо» */
+function byPosition(nodes) {
+  return nodes.map(n => ({ n, r: n.getBoundingClientRect() }))
+    .filter(o => o.r.width > 0 || o.r.height > 0)
+    .sort((a, b) => (Math.abs(a.r.top - b.r.top) > 18 ? a.r.top - b.r.top : a.r.left - b.r.left))
+    .map(o => o.n);
 }
 
-export function rowBrickSwap(container, dir, selector, render, opts) {
+/* ── Уход и появление ── */
+export function exit(nodes, opts) {
   const o = opts || {};
-  if (!container || !container.animate || reduced()) { render(); return; }
-  const STEP = o.step != null ? o.step : 70;      // задержка между блоками в ряду
-  const ROW_STEP = o.rowStep != null ? o.rowStep : 90;  // задержка между рядами
-  const OUT = o.outDuration || 260;
-  const IN = o.inDuration || 320;
-  const off = o.off || (innerWidth + 60);
-  const outX = dir >= 0 ? -off : off;
-  const inX = -outX;
-
-  const oldNodes = [...container.querySelectorAll(selector)];
-  const oldRows = groupRows(oldNodes);
-  const delays = new Map();
-  oldRows.forEach((row, ri) => row.items.forEach((it, ci) => delays.set(it.n, ri * ROW_STEP + ci * STEP)));
-
-  /* Фотография старого состояния: копии живут в fixed-слое и не мешают
-     новому контенту занять своё место. */
-  let layer = null;
-  if (oldNodes.length) {
-    layer = document.createElement('div');
-    layer.className = 'anim-ghost-layer';
-    for (const row of oldRows) {
-      for (const it of row.items) {
-        const g = it.n.cloneNode(true);
-        g.style.position = 'fixed';
-        g.style.left = it.r.left + 'px';
-        g.style.top = it.r.top + 'px';
-        g.style.width = it.r.width + 'px';
-        g.style.height = it.r.height + 'px';
-        g.style.margin = '0';
-        g.style.pointerEvents = 'none';
-        layer.appendChild(g);
-        g.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${outX}px)` }],
-          { duration: OUT, delay: delays.get(it.n), easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
-      }
-    }
-    document.body.appendChild(layer);
-  }
-
-  render();
-
-  const newRows = groupRows([...container.querySelectorAll(selector)]);
-  newRows.forEach((row, ri) => row.items.forEach((it, ci) => {
-    /* Новый блок трогается в тот момент, когда его место освободил старый */
-    it.n.animate([{ transform: `translateX(${inX}px)` }, { transform: 'translateX(0)' }],
-      { duration: IN, delay: ri * ROW_STEP + ci * STEP + OUT * 0.55, easing: 'cubic-bezier(.32,.72,.28,1)', fill: 'backwards' });
+  const list = (nodes || []).filter(visible);
+  if (!list.length || !can(list[0])) return Promise.resolve([]);
+  const anims = list.map(n => n.animate(
+    [{ opacity: 1, transform: 'none', filter: 'blur(0)' },
+     { opacity: 0, transform: `translateY(${o.y ?? -4}px) scale(.985)`, filter: 'blur(6px)' }],
+    { duration: o.duration || OUT_MS, easing: EASE_IN, fill: 'forwards' }));
+  return Promise.all(anims.map(a => a.finished.catch(() => {}))).then(() => anims);
+}
+export function enter(nodes, opts) {
+  const o = opts || {};
+  const list = byPosition((nodes || []).filter(visible));
+  if (!list.length || !can(list[0])) return;
+  const step = o.stagger ?? STAGGER;
+  list.forEach((n, i) => n.animate([ENTER_FROM, ENTER_TO], {
+    duration: o.duration || IN_MS,
+    delay: (o.delay || 0) + Math.min(i * step, o.max ?? MAX_STAGGER),
+    easing: EASE, fill: 'backwards',
   }));
-
-  const last = oldRows.length ? Math.max(...[...delays.values()]) : 0;
-  setTimeout(() => { if (layer) layer.remove(); }, last + OUT + 60);
+}
+/* Строки внутри появившихся блоков — следом, своим каскадом */
+const ROWS = '.r-row, .l-row, .m-task, .task, .kb-col-note, .kb-note, .kb-g, .ftx-row, .fin-card, .fs-card, .cg-person, .contact-card, .hm-soon-row, .hm-nrow, .hm-tile, .hm-row, .tl-block, .kb-card, .notes-item';
+export function enterDeep(blocks, opts) {
+  const o = opts || {};
+  enter(blocks, o);
+  if (reduced()) return;
+  (blocks || []).forEach((b, bi) => {
+    if (!visible(b)) return;
+    const rows = [...b.querySelectorAll(ROWS)].slice(0, 16);
+    if (rows.length) enter(rows, { delay: 90 + bi * 40, stagger: 26, duration: 380, max: 360 });
+  });
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   Листание стрелками: блоки НЕ двигаются. Меняется только содержимое
-   внутри них — мягким перекрёстным затуханием.
-   ══════════════════════════════════════════════════════════════════ */
+/* ── Смена экрана: всё растворяется, перестраивается, проявляется ── */
+let swapping = false;     // идёт смена экрана — перерисовки на месте не анимируем
+export async function screenSwap(collect, apply) {
+  swapping = true;
+  try {
+    const old = collect();
+    const outs = await exit(old);
+    await apply();
+    /* перерисовка по уведомлению стора приходит в ближайшем кадре */
+    await new Promise(r => requestAnimationFrame(() => r()));
+    outs.forEach(a => a.cancel());
+    enterDeep(collect());
+  } finally {
+    swapping = false;
+  }
+}
+
+/* ── Перерисовка на месте ──
+   Элементы с ключом (data-id [+ data-day]) переживают перерисовку:
+   до неё запоминаем их место и вид, после — проигрываем разницу. */
+const KEYED = '[data-id], [data-flip]';
+const keyOf = el => el.dataset.flip ? 'f:' + el.dataset.flip
+  : `${el.dataset.id}|${el.dataset.day || ''}|${(el.getAttribute('class') || '').split(' ')[0]}`;
+const LIMIT = 900;        // больше ключевых элементов — перерисовка без движения (дорого мерить)
+function snapshot(root) {
+  const map = new Map();
+  if (!root) return map;
+  const all = root.querySelectorAll(KEYED);
+  if (all.length > LIMIT) { map.big = true; return map; }
+  for (const el of all) {
+    const k = keyOf(el);
+    if (map.has(k) || !visible(el)) continue;
+    map.set(k, { el, r: el.getBoundingClientRect(), cls: el.getAttribute('class') || '' });
+  }
+  return map;
+}
+let depth = 0;            // вложенная перерисовка внутри morph — без второго прохода
+export function morph(root, render) {
+  if (depth || swapping || !root || !visible(root) || !can(root)) { render(); return; }
+  const before = snapshot(root);
+  if (before.big) { render(); return; }             // огромные списки — без подсчётов
+  depth++;
+  try { render(); } finally { depth--; }
+  const after = snapshot(root);
+  if (after.big) return;
+  const fresh = [];
+  for (const [k, a] of after) {
+    const b = before.get(k);
+    if (!b) { fresh.push(a.el); continue; }
+    const dx = b.r.left - a.r.left, dy = b.r.top - a.r.top;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      a.el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 420, easing: EASE });
+    } else if (b.cls !== a.cls && !k.startsWith('f:')) {
+      pop(a.el);
+      if (/\bdone\b/.test(a.cls) && !/\bdone\b/.test(b.cls)) { a.el.classList.add('m-struck'); setTimeout(() => a.el.classList.remove('m-struck'), 700); }
+    }
+  }
+  /* новое — проявляется (если его не слишком много — тогда это смена вида) */
+  if (fresh.length && fresh.length <= 40) enter(fresh.filter(el => !fresh.some(p => p !== el && p.contains(el))), { stagger: 24, max: 240 });
+  /* ушедшее — растворяется призраком на старом месте */
+  const gone = [...before].filter(([k]) => !after.has(k)).map(([, b]) => b).filter(b => b.r.width > 0);
+  if (gone.length && gone.length <= 30) ghosts(gone.filter(g => !gone.some(p => p !== g && p.el.contains(g.el))));
+  /* флип-индикаторы (переезжающие пилюли) */
+  for (const [k, a] of after) {
+    if (!k.startsWith('f:')) continue;
+    const b = before.get(k);
+    if (!b) continue;
+    flipFrom(a.el, b.r);
+  }
+}
+function ghosts(list) {
+  const layer = document.createElement('div');
+  layer.className = 'anim-ghost-layer';
+  for (const g of list) {
+    const c = g.el.cloneNode(true);
+    Object.assign(c.style, { position: 'fixed', left: g.r.left + 'px', top: g.r.top + 'px', width: g.r.width + 'px', height: g.r.height + 'px', margin: '0', pointerEvents: 'none' });
+    layer.appendChild(c);
+    c.animate([{ opacity: 1, filter: 'blur(0)', transform: 'none' }, { opacity: 0, filter: 'blur(6px)', transform: 'scale(.97)' }],
+      { duration: 260, easing: EASE_IN, fill: 'forwards' });
+  }
+  document.body.appendChild(layer);
+  setTimeout(() => layer.remove(), 320);
+}
+/* Короткий «щелчок» — элемент сменил состояние */
+export function pop(el) {
+  if (!can(el)) return;
+  el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.18)', offset: .35 }, { transform: 'scale(1)' }], { duration: 360, easing: EASE });
+}
+/* Элемент переезжает со старого места на новое (пилюля-индикатор) */
+export function flipFrom(el, from) {
+  if (!can(el) || !from) return;
+  const to = el.getBoundingClientRect();
+  if (!to.width || !from.width) return;
+  const dx = from.left - to.left, dy = from.top - to.top;
+  const sx = from.width / to.width, sy = from.height / to.height;
+  if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01) return;
+  el.animate([{ transformOrigin: '0 0', transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` }, { transformOrigin: '0 0', transform: 'none' }],
+    { duration: 460, easing: EASE });
+}
+/* Содержимое блока сменилось целиком — мягкая подмена */
+export function swapContent(el, render) {
+  if (!el || !visible(el) || !can(el)) { render(); return; }
+  const before = snapshot(el);
+  render();
+  const after = snapshot(el);
+  for (const [k, a] of after) {
+    if (!k.startsWith('f:')) continue;
+    const b = before.get(k);
+    if (b) flipFrom(a.el, b.r);
+  }
+  el.animate([{ opacity: .35, filter: 'blur(4px)', transform: 'translateY(3px)' }, ENTER_TO], { duration: 300, easing: EASE });
+}
+
+/* ── Числа докручиваются ── */
+export function countUp(el, opts) {
+  if (!el || reduced()) return;
+  const txt = el.textContent;
+  const m = txt.match(/-?\d[\d\s ]*(?:[.,]\d+)?/);
+  if (!m) return;
+  const raw = m[0];
+  const target = parseFloat(raw.replace(/[\s ]/g, '').replace(',', '.'));
+  if (!isFinite(target) || target === 0) return;
+  const dec = (raw.split(/[.,]/)[1] || '').length;
+  const t0 = performance.now(), dur = (opts && opts.duration) || 700;
+  const fmt = v => {
+    const s = v.toFixed(dec).replace('.', raw.includes(',') ? ',' : '.');
+    return /\s| /.test(raw) ? s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : s;
+  };
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 4);
+    el.textContent = txt.replace(raw, fmt(target * e));
+    if (p < 1) requestAnimationFrame(step); else el.textContent = txt;
+  };
+  requestAnimationFrame(step);
+}
+/* ── Заголовок проявляется слева направо ── */
+export function revealText(el, delay) {
+  if (!can(el)) return;
+  el.animate([{ clipPath: 'inset(0 100% 0 0)', opacity: .2, filter: 'blur(3px)' }, { clipPath: 'inset(0 0 0 0)', opacity: 1, filter: 'blur(0)' }],
+    { duration: 560, delay: delay || 0, easing: EASE, fill: 'backwards' });
+}
+
+/* ── Совместимость с прежними вызовами ── */
+/* Смена вкладки финансов: блоки растворяются и проявляются каскадом */
+export function rowBrickSwap(container, dir, selector, render) {
+  if (!container || !can(container)) { render(); return; }
+  const old = [...container.querySelectorAll(selector)];
+  exit(old).then(outs => {
+    swapping = true;
+    try { render(); } finally { swapping = false; }
+    outs.forEach(a => a.cancel());
+    enterDeep([...container.querySelectorAll(selector)]);
+  });
+}
+/* Листание стрелками: блоки на месте, содержимое мягко подменяется */
 export function contentFade(render, opts) {
   const o = opts || {};
   const sel = o.selector || '.pane, .dock-panel, .fin-body, .kanban-panel';
-  const nodes = [...document.querySelectorAll(sel)].filter(n => n.offsetWidth > 0);
-  if (reduced() || !nodes.length || !nodes[0].animate) { render(); return; }
-  const DUR = o.duration || 170;
-  const shift = o.shift != null ? o.shift : 6;
-  const dir = o.dir >= 0 ? 1 : -1;
+  const nodes = [...document.querySelectorAll(sel)].filter(visible);
+  if (!nodes.length || !can(nodes[0])) { render(); return; }
   const outs = nodes.map(n => n.animate(
-    [{ opacity: 1, transform: 'translateX(0)' },
-     { opacity: 0, transform: `translateX(${-dir * shift}px)` }],
-    { duration: DUR, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }));
-  const go = () => {
-    render();
-    outs.forEach(a => a.cancel());
-    [...document.querySelectorAll(sel)].filter(n => n.offsetWidth > 0).forEach(n => n.animate(
-      [{ opacity: 0, transform: `translateX(${dir * shift}px)` },
-       { opacity: 1, transform: 'translateX(0)' }],
-      { duration: DUR + 90, easing: 'cubic-bezier(.32,.72,.28,1)' }));
-  };
+    [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(4px)' }],
+    { duration: 140, easing: EASE_IN, fill: 'forwards' }));
   let done = false;
-  const once = () => { if (!done) { done = true; go(); } };
-  outs[0].onfinish = once;
-  outs[0].oncancel = once;
-  setTimeout(once, DUR + 60);
+  const go = () => {
+    if (done) return;
+    done = true;
+    swapping = true;
+    try { render(); } finally { swapping = false; }
+    outs.forEach(a => a.cancel());
+    const now = [...document.querySelectorAll(sel)].filter(visible);
+    now.forEach(n => n.animate([{ opacity: 0, filter: 'blur(5px)', transform: 'translateY(4px)' }, ENTER_TO], { duration: 380, easing: EASE }));
+    now.forEach((n, bi) => { const rows = [...n.querySelectorAll(ROWS)].slice(0, 14); if (rows.length) enter(rows, { delay: 40 + bi * 30, stagger: 22, duration: 340, max: 300 }); });
+  };
+  outs[0].onfinish = go;
+  setTimeout(go, 200);
+}
+
+/* ── Свежесозданное и удаляемое ── */
+const freshIds = new Set();
+export function markFresh(id) { freshIds.add(id); setTimeout(() => freshIds.delete(id), 2500); }
+/* Новые элементы с только что созданным id — проявляются с подсветкой */
+if (typeof MutationObserver !== 'undefined') {
+  new MutationObserver(muts => {
+    if (!freshIds.size) return;
+    for (const m of muts) for (const n of m.addedNodes) {
+      if (n.nodeType !== 1) continue;
+      const hits = n.matches && n.matches('[data-id]') ? [n] : [];
+      if (n.querySelectorAll) hits.push(...n.querySelectorAll('[data-id]'));
+      for (const h of hits) {
+        if (!freshIds.has(h.dataset.id) || h.dataset.day) continue;
+        requestAnimationFrame(() => {
+          if (!can(h) || !visible(h)) return;
+          h.animate([{ ...ENTER_FROM, boxShadow: '0 0 0 2px var(--accent)' }, { ...ENTER_TO, boxShadow: '0 0 0 2px transparent' }], { duration: 700, easing: EASE });
+        });
+      }
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+}
+/* Перед удалением — строки задачи растворяются */
+export function animateGone(id) {
+  const els = [...document.querySelectorAll(`[data-id="${CSS.escape(id)}"]`)].filter(el => visible(el) && !el.dataset.day);
+  if (!els.length || !can(els[0])) return Promise.resolve();
+  return Promise.all(els.map(el => el.animate(
+    [{ opacity: 1, filter: 'blur(0)', transform: 'none' }, { opacity: 0, filter: 'blur(6px)', transform: 'translateX(-10px) scale(.98)' }],
+    { duration: 220, easing: EASE_IN, fill: 'forwards' }).finished.catch(() => {})));
 }

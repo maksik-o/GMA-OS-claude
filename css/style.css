@@ -6310,3 +6310,87 @@ body.has-rail .rail {
 }
 /* Поиск и настройки на телефоне — в карусели, в шапке их не дублируем */
 body.has-rail .topbar .wn-right > :is(#searchBtn, #settingsBtn) { display: none !important; }
+
+/* ══════════════ ДВИЖЕНИЕ ══════════════
+   Единый язык анимаций (js/anim.js): без пружин и отскоков, плавное
+   замедление в конце; появление — из размытия с подъёмом, уход —
+   растворение. Переопределяем общие кривые и все «всплытия» разом. */
+:root {
+  --m-ease: cubic-bezier(.22, 1, .36, 1);
+  --m-ease-in: cubic-bezier(.4, 0, 1, 1);
+  --ease-spring: var(--m-ease);
+  --ease-bounce: var(--m-ease);
+  --ease-mode: cubic-bezier(.4, 0, .2, 1);
+  --dur-mode: 380ms;
+  --dur-hover: 220ms;
+}
+@keyframes m-rise { from { opacity: 0; transform: translateY(10px) scale(.985); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes m-drop { from { opacity: 0; transform: translateY(-8px) scale(.985); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes m-fade { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: blur(0); } }
+@keyframes m-click { 0% { transform: scale(1); } 35% { transform: scale(1.18); } 100% { transform: scale(1); } }
+/* прежние имена — тем же движением, чтобы ничего не выскакивало резко */
+@keyframes task-appear { from { opacity: 0; transform: translateY(10px) scale(.985); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes pop-down { from { opacity: 0; transform: translateY(-8px) scale(.97); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes popup-up { from { opacity: 0; transform: translateY(8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(.97); filter: blur(10px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes kbMenuIn { from { opacity: 0; transform: translateY(8px) scale(.97); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes fade-in { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: blur(0); } }
+@keyframes qpHelpIn { from { opacity: 0; transform: translateY(6px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes qxpop { from { opacity: 0; transform: scale(.9); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes qxin { from { opacity: 0; transform: translateX(-8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes pillpop { from { opacity: 0; transform: scale(.9); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes status-pop { 0% { transform: scale(1); } 35% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.cmenu.open { animation: pop .32s var(--m-ease); }
+
+/* Окна: проявляются из размытия, уходят растворяясь */
+.editor, .searchpanel { filter: blur(10px); }
+.editor.open, .searchpanel.open { filter: blur(0); }
+.editor { transition: opacity .38s var(--m-ease), transform .44s var(--m-ease), filter .38s var(--m-ease); }
+.searchpanel { transition: opacity .34s var(--m-ease), transform .4s var(--m-ease), filter .34s var(--m-ease); }
+@media (max-width: 720px) { .editor { filter: none; transition: transform .46s var(--m-ease); } }
+.sheet { transition: transform .46s var(--m-ease), max-height .3s var(--m-ease), visibility 0s linear .46s; }
+.sheet.open { transition: transform .46s var(--m-ease), max-height .3s var(--m-ease), visibility 0s; }
+.drawer { transition: transform .46s var(--m-ease), box-shadow .3s; }
+.backdrop { transition: opacity .34s var(--m-ease); }
+.toast { transition: opacity .3s var(--m-ease), transform .38s var(--m-ease), filter .3s var(--m-ease); filter: blur(6px); }
+.toast.show, .toast.on, .toast.open { filter: blur(0); }
+.anim-ghost-layer { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
+
+/* Переезжающие пилюли-индикаторы в переключателях */
+.seg-ind { position: absolute; inset: 0; border-radius: inherit; background: var(--accent); z-index: -1; pointer-events: none; }
+.hm-seg button, .eds-tabs button { position: relative; z-index: 0; isolation: isolate; }
+.hm-seg button[aria-pressed="true"], .eds-tabs button[aria-pressed="true"] { background: transparent !important; }
+
+/* Данные дорастают при входе на экран */
+.m-enter .hm-bar i { animation: m-grow .8s var(--m-ease) backwards; transform-origin: bottom; }
+.m-enter .hm-bar:nth-child(2) i { animation-delay: .04s; } .m-enter .hm-bar:nth-child(3) i { animation-delay: .08s; }
+.m-enter .hm-bar:nth-child(4) i { animation-delay: .12s; } .m-enter .hm-bar:nth-child(5) i { animation-delay: .16s; }
+.m-enter .hm-bar:nth-child(6) i { animation-delay: .2s; } .m-enter .hm-bar:nth-child(7) i { animation-delay: .24s; }
+.m-enter .hm-prog u, .m-enter .hm-tl .hm-ev { animation: m-grow-x .8s var(--m-ease) backwards; transform-origin: left; }
+.m-enter .hm-g-val { animation: m-dash 1s var(--m-ease) backwards; }
+@keyframes m-grow { from { transform: scaleY(0); } }
+@keyframes m-grow-x { from { transform: scaleX(0); opacity: 0; } }
+@keyframes m-dash { from { stroke-dashoffset: 100; } }
+/* зачёркивание только что выполненного прорисовывается по строке (класс
+   ставит anim.js на «щелчке» сменившегося элемента) */
+.m-struck .hm-row-t, .m-struck.hm-chip { text-decoration: none !important; background-image: linear-gradient(currentColor, currentColor); background-position: left 55%; background-size: 100% 1.5px; background-repeat: no-repeat; animation: m-strike .5s var(--m-ease) backwards; }
+@keyframes m-strike { from { background-size: 0 1.5px; } }
+/* Левое меню: «язычок» открытого раздела — отдельная пилюля, переезжает */
+#sidebar .sb-views { position: relative; }
+#sidebar .sb-ind {
+  position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
+  width: calc(100% + 13px); height: 44px; border-radius: 999px 0 0 999px;
+  background: var(--sb-tab); box-shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset;
+  transition: transform .5s var(--m-ease), opacity .3s;
+}
+#sidebar .sb-ind::before, #sidebar .sb-ind::after { content: ''; position: absolute; right: 0; width: 18px; height: 18px; }
+#sidebar .sb-ind::before { top: -18px; background: radial-gradient(circle at 0 0, transparent 17.5px, var(--sb-tab) 18px); }
+#sidebar .sb-ind::after { bottom: -18px; background: radial-gradient(circle at 0 100%, transparent 17.5px, var(--sb-tab) 18px); }
+#sidebar .sb-views .sb-it { z-index: 1; }
+#sidebar .sb-views .sb-it.on { background: transparent !important; box-shadow: none !important; }
+#sidebar .sb-views .sb-it.on::before, #sidebar .sb-views .sb-it.on::after { display: none; }
+#sidebar .sb-views .sb-it .tb-ico, #sidebar .sb-views .sb-it { transition: color .35s var(--m-ease), background-color .35s var(--m-ease), width .38s var(--m-ease); }
+body.sb-mini #sidebar .sb-ind { width: 44px; left: 50%; margin-left: -22px; border-radius: 50%; }
+body.sb-mini #sidebar .sb-ind::before, body.sb-mini #sidebar .sb-ind::after { display: none; }
+body.sb-mini #sidebar .sb-views .sb-it.on { background: transparent !important; }

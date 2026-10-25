@@ -19,7 +19,8 @@ import { init as financeInit, renderFinanceView, financeSubscribe } from './fina
 import { init as kbInit, renderKbView, kbSubscribe, newKbNote } from './kb.js';
 import { focusInit } from './focus.js';
 import { widgetsInit, openWidgetsPanel } from './widgets.js';
-import { renderHomeView, homeInit } from './home.js';
+import { renderHomeView, homeInit, homeEntered } from './home.js';
+import { morph, enter } from './anim.js';
 import { sidebarInit, renderSidebar } from './sidebar.js';
 import { railInit, railSync } from './rail.js';
 import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanban, currentBlock } from './kanban.js';
@@ -504,6 +505,9 @@ function showDrawerView(v) {
   if (v === 'theme') renderLookPanel();
   if (v === 'tags') renderTagsPanel();
   if (v === 'keys') hk.renderKeysPanel($('keysRows'));
+  /* открытая страница настроек проявляется каскадом */
+  const pane = { main: dm, sync: ds, theme: dt, tags: dg, keys: dk }[v];
+  if (pane && !pane.hidden) enter([...pane.children].slice(0, 18), { stagger: 22, duration: 360, max: 300 });
 }
 function openDrawer(view) {
   const d = $('drawer');
@@ -628,13 +632,16 @@ function applyView(v) {
   if (v === 'contacts' && cv) renderContactsView(cv, state.mode);
   else if (v === 'finance' && fv) renderFinanceView(fv);
   else if (v === 'kb' && kv) renderKbView(kv);
-  else if (v === 'home' && hv) renderHomeView(hv);
+  else if (v === 'home' && hv) { renderHomeView(hv); homeEntered(); }
   else renderAll();
   placeWeekNav();
   renderSidebar();
   railSync();
 }
-function renderCurrent() {
+/* Перерисовка по изменению данных — «на месте»: переехавшее плавно
+   переезжает, новое проявляется, удалённое растворяется (anim.morph) */
+function renderCurrent() { morph($('app'), renderCurrentNow); }
+function renderCurrentNow() {
   renderSidebar();
   if (state.view === 'week') {
     renderAll();

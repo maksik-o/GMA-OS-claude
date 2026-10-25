@@ -21,7 +21,7 @@ import {
 import { openSheet } from './sheet.js';
 import { squaresMode, setSquaresMode, renderAll } from './week.js';
 import { renderTimeline, setTimelineRange, timelineRange, shiftTimeline, toggleExpanded, timelineExpanded, setTimelineHooks, TL_RANGES } from './timeline.js';
-import { contentFade } from './anim.js';
+import { contentFade, morph, exit, enterDeep } from './anim.js';
 
 
 const $ = id => document.getElementById(id);
@@ -301,7 +301,9 @@ function animatePanelHeight(panel) {
 }
 
 /* ── Рендер панели ── */
-export function renderKanban() {
+/* Перерисовка «на месте» с движением (anim.morph); сама отрисовка — ниже */
+export function renderKanban() { morph(document.getElementById('app'), () => renderKanbanNow()); }
+function renderKanbanNow() {
   const panel = $('kanbanPanel');
   if (!panel || !isOpen) return;
   const names = getTagsDict().map(t => t.name).concat('__none');
@@ -882,8 +884,6 @@ export async function setBlock(kind) {
   blockKind = kind;
   isOpen = kind === 'kanban';
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const off = innerWidth + 60;
-  const EXIT = { duration: 240, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' };
 
   const showTarget = () => {
     if (from && from !== to) from.hidden = true;
@@ -899,25 +899,18 @@ export async function setBlock(kind) {
     : [from].filter(Boolean);
   if (reduce || !leaving.length) { showTarget(); return; }
 
+  /* Смена вида: уходящее растворяется, новое проявляется каскадом */
   animBusy = true;
   exitAnims.forEach(a => a.cancel());
-  exitAnims = leaving.map((el, i) => el.animate(
-    [{ transform: 'translateX(0)' }, { transform: `translateX(${-off}px)` }],
-    Object.assign({ delay: i * 110 }, EXIT)));
-  await Promise.all(exitAnims.map(a => a.finished.catch(() => {})));
+  exitAnims = await exit(leaving);
+  showTarget();
   exitAnims.forEach(a => a.cancel());
   exitAnims = [];
-  showTarget();
-
   const entering = kind === 'week'
     ? [visiblePane(grid, '.p-left') || visiblePane(grid, '.p-mobile'), visiblePane(grid, '.p-right')].filter(Boolean)
     : [to];
-  const EN = { duration: 320, easing: 'cubic-bezier(.32,.72,.28,1)', fill: 'backwards' };
-  entering.forEach((el, i) => {
-    if (el.getAnimations) el.getAnimations().forEach(x => x.cancel());
-    el.animate([{ transform: `translateX(${off}px)` }, { transform: 'translateX(0)' }],
-      Object.assign({ delay: i * 110 }, EN));
-  });
+  entering.forEach(el => { if (el.getAnimations) el.getAnimations().forEach(x => x.cancel()); });
+  enterDeep(entering);
   animBusy = false;
 }
 export function kanbanForceClose() {

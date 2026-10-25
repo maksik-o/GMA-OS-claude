@@ -1,4 +1,5 @@
 import { dbAll, dbPut, dbBulk } from './db.js';
+import { morph } from './anim.js';
 import { uid, esc, MODES } from './store.js';
 
 const STORE = 'contacts';
@@ -326,7 +327,9 @@ function bindDrag(container, mode) {
   });
 }
 
-export function renderContactsView(container, mode) {
+/* Перерисовка «на месте» с движением (anim.morph); сама отрисовка — ниже */
+export function renderContactsView(container, mode) { morph(container, () => renderContactsViewNow(container, mode)); }
+function renderContactsViewNow(container, mode) {
   if (!container) return;
   const groups = getGroups();
   const people = getPeople('all');

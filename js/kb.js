@@ -10,6 +10,7 @@
    уходят только метаданные — сами файлы остаются на устройстве,
    иначе один вложенный PDF раздул бы полезную нагрузку sync.
    ══════════════════════════════════════════════════════════════════ */
+import { morph, exit, enterDeep } from './anim.js';
 import { dbAll, dbPut, dbBulk, dbGet, dbDel } from './db.js';
 import { uid, esc, MODES, safeHtml } from './store.js';
 import { getAllNotes, updateNoteById, deleteNote } from './notes.js';
@@ -262,7 +263,9 @@ async function setLink(aId, bId, on) {
 }
 
 /* ── Каркас ── */
-export function renderKbView(el) {
+/* Перерисовка «на месте» с движением (anim.morph); сама отрисовка — ниже */
+export function renderKbView(el) { morph(el, () => renderKbViewNow(el)); }
+function renderKbViewNow(el) {
   if (!el) return;
   if (_host !== el || !el.querySelector(':scope > .kb-side')) buildShell(el);
   _host = el;
@@ -1506,18 +1509,15 @@ function openColorPop(dot) {
     document.addEventListener('pointerdown', away);
   }, 0);
 }
-/* Окно заметки уезжает вправо, на его место выезжает другое (граф) */
+/* Окно заметки растворяется, на его месте проявляется другое (граф) */
 async function swapMainAnimated(apply) {
   const main = _host && _host.querySelector('.kb-main');
   if (!main || reduceMotion() || !main.offsetWidth) { apply(); return; }
-  const off = innerWidth - main.getBoundingClientRect().left + 40;
-  const out = main.animate([{ transform: 'none' }, { transform: `translateX(${off}px)` }],
-    { duration: 300, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
-  await out.finished.catch(() => {});
+  const outs = await exit([main]);
   apply();
-  out.cancel();
-  main.animate([{ transform: `translateX(${off}px)` }, { transform: 'none' }],
-    { duration: 440, easing: 'cubic-bezier(.32,.72,.28,1)', fill: 'backwards' });
+  outs.forEach(a => a.cancel());
+  const now = _host && _host.querySelector('.kb-main');
+  if (now) enterDeep([now]);
 }
 /* ── Каскад «как кубики» ──
    Панели группируются в ряды по положению на экране. Въезд — снизу,

@@ -6,6 +6,7 @@
    Источник размещения — планы задачи (см. store.js): либо заданные
    вручную, либо выведенные из завершённых сессий фокусировки.
    ══════════════════════════════════════════════════════════════════ */
+import { morph } from './anim.js';
 import {
   state, getTask, visibleTasks, isDone, esc, createTask,
   today, addDays, parseISO, WEEKDAYS, MONTHS,
@@ -152,7 +153,9 @@ function unplanned(day) {
   return visibleTasks().filter(t => (t.days || {})[day] && !isDone(t) && !plansForDay(t, day).length);
 }
 
-export function renderTimeline(panel) {
+/* Перерисовка «на месте» с движением (anim.morph); сама отрисовка — ниже */
+export function renderTimeline(panel) { morph(panel, () => renderTimelineNow(panel)); }
+function renderTimelineNow(panel) {
   if (!panel) return;
   _panel = panel;
   const list = days();

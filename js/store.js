@@ -1,5 +1,6 @@
 import { dbAll, dbPut, dbBulk, dbDel, dbGetKV, dbSetKV } from './db.js';
 import { applyRepeat } from './repeat.js';
+import { markFresh, animateGone } from './anim.js';
 
 const DEFAULT_MODES = [
   { id: 'work', label: 'Работа' },
@@ -269,6 +270,7 @@ export async function createTask(data) {
     doneAt: null, createdAt: now, updatedAt: now
   };
   removeTombstone(t.id);
+  markFresh(t.id);             // новая строка проявится с подсветкой
   state.tasks.push(t);
   await dbPut('tasks', t);
   notify();
@@ -285,6 +287,7 @@ export async function updateTask(id, patch) {
   userChange();
 }
 export async function removeTask(id) {
+  await animateGone(id);      // строки задачи растворяются, потом удаляем
   const t = getTask(id);
   if (!t) return;
   addTombstone(id);
