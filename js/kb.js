@@ -10,7 +10,7 @@
    уходят только метаданные — сами файлы остаются на устройстве,
    иначе один вложенный PDF раздул бы полезную нагрузку sync.
    ══════════════════════════════════════════════════════════════════ */
-import { morph, exit, enterDeep, fadeRemove } from './anim.js';
+import { morph, exit, enter, enterDeep, fadeRemove, pop, EASE, EASE_IN } from './anim.js';
 import { dbAll, dbPut, dbBulk, dbGet, dbDel } from './db.js';
 import { uid, esc, MODES, safeHtml } from './store.js';
 import { getAllNotes, updateNoteById, deleteNote } from './notes.js';
@@ -309,16 +309,23 @@ function buildShell(el) {
   el.querySelector('.kb-board').addEventListener('click', onBoardClick);
   bindBoardDrag(el.querySelector('.kb-board'));
   /* Название новой группы: сохраняем по Enter или когда поле теряет фокус */
-  const boardEl = el.querySelector('.kb-board');
+  const boardNode = el.querySelector('.kb-board');
   const saveName = async inp => {
     const v = inp.value.trim();
-    if (!v || inp._saved) return;
+    if (inp._saved) return;
+    const g = rawItem(inp.dataset.gid);
+    if (!v) { if (g && g.name) renderBoard(false, true); return; }   // переименование отменено
     inp._saved = true;
     if (freshId === inp.dataset.gid) freshId = null;
+    if (g && g.name === v) { renderBoard(false, true); return; }
     await kbSave('group', { name: v }, inp.dataset.gid);
   };
-  boardEl.addEventListener('keydown', e => { if (e.target.classList.contains('kb-bcol-input') && e.key === 'Enter') { e.preventDefault(); saveName(e.target); } });
-  boardEl.addEventListener('focusout', e => { if (e.target.classList.contains('kb-bcol-input')) saveName(e.target); });
+  boardNode.addEventListener('keydown', e => {
+    if (!e.target.classList.contains('kb-bcol-input')) return;
+    if (e.key === 'Enter') { e.preventDefault(); saveName(e.target); }
+    else if (e.key === 'Escape') { e.target.value = ''; e.target.blur(); }
+  });
+  boardNode.addEventListener('focusout', e => { if (e.target.classList.contains('kb-bcol-input')) saveName(e.target); });
 }
 
 /* Ручка колонки заметок: тап — свернуть, свайп влево — колонка едет
@@ -1167,8 +1174,8 @@ function bindNoteDrag(el, side) {
   side.addEventListener('pointerdown', e => {
     const node = e.target.closest('.kb-item');
     if (!node || e.button > 0) return;
-    if (node.closest('.kb-loose')) return;   // отдельная заметка на доске тянется за ручку
-    board = node.closest('.kb-board');
+    if (node.closest('.kb-board')) return;   // на доске — свой перенос (bindBoardDrag)
+    board = null;
     slot = null;
     src = node;
     sx = e.clientX;
@@ -1200,42 +1207,192 @@ function flatGroups() {
   return out;
 }
 const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
-const LOOSE_HANDLE = '<svg class="dock-handle kb-loose-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
-const BCOL_HANDLE = '<svg class="dock-handle kb-bcol-handle" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
 let freshId = null;   // только что созданная группа — сразу дать ввести название
+/* ── Папки ──
+   Группа верхнего уровня лежит на доске папкой: сзади цветная вкладка,
+   из-под матового «стекла» выглядывают листы — подпапки и заметки.
+   Наведение — листы веером приподнимаются, стекло отклоняется. Клик —
+   папка на этом же месте раскрывается в колонку: подпапки в ней снова
+   папками (их можно открыть, перетащить в другую папку или вытащить на
+   доску отдельной папкой), ниже — заметки. Что открыто, помнит устройство. */
+const OPEN_KEY = 'rl_kb_open';
+function loadOpen() { try { const v = JSON.parse(localStorage.getItem(OPEN_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } }
+let openMap = loadOpen();   // id папки на доске → id открытой в её колонке (подпапки)
+const saveOpen = () => { try { localStorage.setItem(OPEN_KEY, JSON.stringify(openMap)); } catch {} };
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
+const ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+const ICON_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></svg>';
+const ICON_FOLD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>';
+function folderInfo(gid, groups, notes) {
+  const subs = childGroups(gid, groups);
+  const own = notes.filter(n => n.groupId === gid);
+  return { subs, own, count: subs.length + own.length };
+}
+function nameHTML(g, cls) {
+  return g.name ? `<b class="${cls}">${esc(g.name)}</b>`
+    : `<input class="kb-bcol-input ${cls}" data-gid="${g.id}" type="text" maxlength="60" placeholder="Название папки">`;
+}
+/* Папка: back — вкладка, papers — листы, front — стекло с названием */
+function foldHTML(g, groups, notes, mini) {
+  const { subs, own, count } = folderInfo(g.id, groups, notes);
+  const papers = [
+    ...subs.map(x => ({ t: x.name || 'Новая папка', m: `Папка · ${folderInfo(x.id, groups, notes).count}`, c: x.color })),
+    ...own.slice().sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
+      .map(n => ({ t: titleOf(n), m: String(n.updatedAt || '').slice(5, 10).split('-').reverse().join('.') })),
+  ].slice(0, mini ? 2 : 3).reverse();
+  return `<div class="kb-fold${mini ? ' mini' : ''}" data-fold="${g.id}" data-into="${g.id}" style="--gc:${g.color || '#94a3b8'}">
+      <div class="kf-back"></div>
+      <div class="kf-papers">${papers.map((x, k) => { const z = papers.length - 1 - k; return `<div class="kf-paper" style="--k:${z};--r:${[0, -3, 2.5][z]}"><b>${x.c ? `<svg class="kf-pico" viewBox="0 0 24 24" style="color:${x.c}" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="currentColor"/></svg>` : ''}${esc(x.t)}</b><em>${esc(x.m)}</em><i></i><i></i><i></i></div>`; }).join('')}</div>
+      <div class="kf-shade"></div>
+      <div class="kf-front">
+        ${nameHTML(g, 'kf-name')}
+        <em class="kf-meta">${count} ${plural(count, 'элемент', 'элемента', 'элементов')}</em>
+        ${mini ? '' : `<button type="button" class="kf-add" data-add="${g.id}" title="Добавить" aria-label="Добавить в папку">${ICON_PLUS}</button>`}
+      </div>
+    </div>`;
+}
+/* Раскрытая папка: вкладка сверху, стекло-колонка с подпапками и заметками */
+function colHTML(root, cur, groups, notes) {
+  const { subs, own, count } = folderInfo(cur.id, groups, notes);
+  const list = own.slice().sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
+  return `<div class="kb-fcol" data-into="${cur.id}" style="--gc:${cur.color || '#94a3b8'}">
+      <div class="kf-back"></div>
+      <div class="kf-glass">
+        <header class="kf-head">
+          ${cur.id !== root.id ? `<button type="button" class="kf-hbtn kf-up" title="Назад" aria-label="Назад">${ICON_BACK}</button>` : ''}
+          <button type="button" class="kb-g-dot kb-bcol-dot" data-gid="${cur.id}" title="Цвет папки" style="background:${cur.color || '#94a3b8'}"></button>
+          <span class="kf-title">${cur.id !== root.id ? `<i>${esc(root.name || '')} ›</i>` : ''}${nameHTML(cur, 'kf-hname')}</span>
+          <span class="kb-g-n">${count}</span>
+          <button type="button" class="kf-hbtn kf-plus" data-add="${cur.id}" title="Добавить" aria-label="Добавить в папку">${ICON_PLUS}</button>
+          <button type="button" class="kf-hbtn kf-close" title="Свернуть папку" aria-label="Свернуть папку">${ICON_FOLD}</button>
+        </header>
+        <div class="kf-body">
+          ${subs.length ? `<div class="kf-subs">${subs.map(x => `<div class="kf-sub" data-sub="${x.id}">${foldHTML(x, groups, notes, true)}</div>`).join('')}</div>` : ''}
+          <div class="kb-bcol-list">${list.map(itemHTML).join('')}</div>
+          ${count ? '' : '<p class="empty">Перетащите сюда заметку или папку</p>'}
+        </div>
+      </div>
+    </div>`;
+}
 function renderBoard(animate, force) {
   if (!_host) return;
   const board = _host.querySelector('.kb-board');
   const notes = kbNotes();
-  const known = new Set(kbGroups().map(g => g.id));
+  const groups = kbGroups();
+  const known = new Set(groups.map(g => g.id));
+  const roots = groups.filter(g => !g.parentId || !known.has(g.parentId));
+  /* открытое — только существующее и внутри своей папки */
+  for (const k of Object.keys(openMap)) {
+    if (!roots.some(r => r.id === k)) delete openMap[k];
+    else if (!groupBranch(k, groups).has(openMap[k])) openMap[k] = k;
+  }
   let i = 0;   // порядок элементов: раскладка по столбцам переставляет узлы
-  const cols = flatGroups().map(({ g, path }) => {
-    const list = notes.filter(n => n.groupId === g.id);
-    const name = g.name
-      ? `${path.length ? `<i>${esc(path.join(' › '))} ›</i> ` : ''}${esc(g.name)}`
-      : `<input class="kb-bcol-input" data-gid="${g.id}" type="text" maxlength="60" placeholder="Введите наименование">`;
-    return `<div class="kb-bcol" data-i="${i++}" data-bid="${g.id}" data-drop="${g.id}" data-col="${g.id}" style="--gc:${g.color || '#94a3b8'}">${BCOL_HANDLE}
-      <header class="kb-bcol-head"><button type="button" class="kb-g-dot kb-bcol-dot" data-gid="${g.id}" title="Цвет группы"></button>
-        <span class="kb-bcol-name">${name}</span>
-        <span class="kb-g-n">${list.length}</span></header>
-      <div class="kb-bcol-list">${list.map(itemHTML).join('') || '<p class="empty">Перетащите сюда заметку</p>'}</div>
-    </div>`;
+  const items = roots.map(g => {
+    const cur = openMap[g.id] ? groups.find(x => x.id === openMap[g.id]) || g : null;
+    return `<div class="kb-fi${cur ? ' open' : ''}" data-i="${i++}" data-bid="${g.id}" data-root="${g.id}">${cur ? colHTML(g, cur, groups, notes) : foldHTML(g, groups, notes, false)}</div>`;
   }).join('');
-  /* Заметки без группы — отдельными серыми плашками после групп; тянутся
-     за ручку, как колонки, и бросаются в группу */
+  /* Заметки без папки — отдельными плашками после папок */
   const loose = notes.filter(n => !n.groupId || !known.has(n.groupId))
-    .map(n => `<div class="kb-loose" data-i="${i++}" data-bid="${n.id}" data-note="${n.id}" style="--gc:#94a3b8">${LOOSE_HANDLE}${itemHTML(n)}</div>`).join('');
+    .map(n => `<div class="kb-loose" data-i="${i++}" data-bid="${n.id}" data-note="${n.id}" style="--gc:#94a3b8">${itemHTML(n)}</div>`).join('');
   const html = `<header class="kb-board-head"><b>Структура</b>
-      <span class="kb-board-hint">Перетаскивайте заметки между колонками или на свободное место, колонки и отдельные заметки — за ручку в углу</span>
+      <span class="kb-board-hint">Нажмите на папку, чтобы открыть. Папки и заметки перетаскиваются в другие папки или на свободное место</span>
       <button type="button" class="btn mini kb-board-close">✕ Закрыть</button></header>
-    <div class="kb-board-cols" data-drop="${LOOSE}">${cols}${loose}${cols || loose ? '' : '<p class="empty">Пусто — нажмите «+», чтобы создать группу или заметку</p>'}</div>
+    <div class="kb-board-cols" data-drop="${LOOSE}">${items}${loose}${items || loose ? '' : '<p class="empty">Пусто — нажмите «+», чтобы создать папку или заметку</p>'}</div>
     <div class="btn danger kb-trash" aria-hidden="true">${TRASH_SVG}<span>Удалить</span></div>`;
+  saveOpen();
   const changed = board._html !== html;
   setHTML(board, html);
   if (changed || force) layoutBoard(board);
   const inp = board.querySelector('.kb-bcol-input');
   if (inp && freshId && inp.dataset.gid === freshId && document.activeElement !== inp) inp.focus();
-  if (animate) cascadeIn([...board.querySelectorAll('.kb-board-head, .kb-bcol, .kb-loose')]);
+  if (animate) cascadeIn([...board.querySelectorAll('.kb-board-head, .kb-fi, .kb-loose')]);
+}
+/* ── Папка раскрывается в колонку на своём месте ──
+   Колонка растёт из прямоугольника папки (clip-path), соседи ниже
+   плавно расступаются, содержимое поднимается каскадом. Закрытие —
+   наоборот: содержимое гаснет, колонка сжимается до размера папки. */
+let foldBusy = false;
+const FOLD_AR = 1.45;   // ширина / высота папки (style.css: .kb-fold)
+function boardEl() { return view === 'structure' && _host ? _host.querySelector('.kb-board') : null; }
+const fiOf = (board, id) => board.querySelector(`.kb-fi[data-root="${CSS.escape(id)}"]`);
+function growFrom(el, fromH, ms = 520) {
+  const H = el.offsetHeight;
+  if (reduceMotion() || H <= fromH) return Promise.resolve();
+  return el.animate([{ clipPath: `inset(0 0 ${H - fromH}px 0 round 22px)` }, { clipPath: 'inset(0 0 0 0 round 22px)' }],
+    { duration: ms, easing: EASE }).finished.catch(() => {});
+}
+async function openFolder(id, sub) {
+  const board = boardEl();
+  if (!board || foldBusy) return;
+  foldBusy = true;
+  try {
+    const fi = fiOf(board, id);
+    const fromH = fi ? fi.offsetHeight : 0;
+    const snaps = snapBoard(board);
+    openMap[id] = sub || id;
+    renderBoard(false, true);
+    flipBoard(board, snaps, 520);
+    const now = fiOf(board, id);
+    const col = now && now.querySelector('.kb-fcol');
+    if (!col) return;
+    enter([...col.querySelectorAll('.kf-head, .kf-sub, .kb-item, .kf-body > .empty')], { delay: 90, stagger: 30 });
+    await growFrom(col, fromH);
+  } finally { foldBusy = false; }
+}
+async function closeFolder(id) {
+  const board = boardEl();
+  if (!board || foldBusy) return;
+  foldBusy = true;
+  try {
+    const fi = fiOf(board, id);
+    const col = fi && fi.querySelector('.kb-fcol');
+    if (col && !reduceMotion()) {
+      const H = col.offsetHeight, toH = Math.round(col.offsetWidth / FOLD_AR);
+      const outs = await exit([...col.querySelectorAll('.kf-body > *')], { y: -4 });
+      if (H > toH) await col.animate([{ clipPath: 'inset(0 0 0 0 round 22px)' }, { clipPath: `inset(0 0 ${H - toH}px 0 round 22px)` }],
+        { duration: 340, easing: EASE_IN, fill: 'forwards' }).finished.catch(() => {});
+      outs.forEach(a => a.cancel && a.cancel());
+    }
+    const snaps = snapBoard(board);
+    delete openMap[id];
+    renderBoard(false, true);
+    flipBoard(board, snaps, 420);
+    const now = fiOf(board, id);
+    const papers = now ? [...now.querySelectorAll('.kf-paper')] : [];
+    papers.forEach((p, k) => p.animate([{ transform: 'translateY(40%)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+      { duration: 420, delay: 60 + k * 50, easing: EASE, fill: 'backwards' }));
+  } finally { foldBusy = false; }
+}
+/* Переход в подпапку и назад — внутри колонки: содержимое уезжает
+   в сторону, новое приезжает с другой, высота колонки — плавно */
+async function drillTo(rootId, gid, dir) {
+  const board = boardEl();
+  if (!board || foldBusy) return;
+  foldBusy = true;
+  try {
+    const fi = fiOf(board, rootId);
+    const col = fi && fi.querySelector('.kb-fcol');
+    const oldH = col ? col.offsetHeight : 0;
+    if (col && !reduceMotion()) {
+      await Promise.all([...col.querySelectorAll('.kf-body > *, .kf-title')].map(n => n.animate(
+        [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateX(${-24 * dir}px)` }],
+        { duration: 160, easing: EASE_IN, fill: 'forwards' }).finished.catch(() => {})));
+    }
+    const snaps = snapBoard(board);
+    openMap[rootId] = gid;
+    renderBoard(false, true);
+    flipBoard(board, snaps, 460);
+    const now = fiOf(board, rootId);
+    const c2 = now && now.querySelector('.kb-fcol');
+    if (!c2 || reduceMotion()) return;
+    [...c2.querySelectorAll('.kf-title, .kf-sub, .kb-item, .kf-body > .empty')].forEach((n, k) => n.animate(
+      [{ opacity: 0, transform: `translateX(${28 * dir}px)` }, { opacity: 1, transform: 'none' }],
+      { duration: 380, delay: Math.min(k * 28, 280), easing: EASE, fill: 'backwards' }));
+    const H = c2.offsetHeight;
+    if (Math.abs(H - oldH) > 2) c2.animate(H > oldH
+      ? [{ clipPath: `inset(0 0 ${H - oldH}px 0 round 22px)` }, { clipPath: 'inset(0 0 0 0 round 22px)' }]
+      : [{ clipPath: 'inset(0 0 0 0 round 22px)' }, { clipPath: 'inset(0 0 0 0 round 22px)' }], { duration: 420, easing: EASE });
+  } finally { foldBusy = false; }
 }
 /* ── Корзина «Структуры» (левый нижний угол) ──
    Пока тянем заметку или группу, корзина следит за курсором: поднесли
@@ -1341,7 +1498,7 @@ function saveLayout(lists) { try { localStorage.setItem(LAYOUT_KEY, JSON.stringi
 function layoutBoard(board) {
   const wrap = board && board.querySelector('.kb-board-cols');
   if (!wrap || !wrap.offsetWidth) return;
-  const items = [...wrap.querySelectorAll('.kb-bcol, .kb-loose')].sort((a, b) => a.dataset.i - b.dataset.i);
+  const items = [...wrap.querySelectorAll('.kb-fi, .kb-loose')].sort((a, b) => a.dataset.i - b.dataset.i);
   if (!items.length) return;
   const min = innerWidth <= 720 ? 160 : 230;
   const n = Math.max(1, Math.floor((wrap.clientWidth + BOARD_GAP) / (min + BOARD_GAP)));
@@ -1390,8 +1547,11 @@ function slotAt(board, x, y, skip, canInto) {
     const el = items[k];
     const r = el.getBoundingClientRect();
     const top = r.top - (el._shift || 0);
-    /* заметку на середину группы — положить в группу */
-    if (canInto && el.classList.contains('kb-bcol') && y > top + r.height * .2 && y < top + r.height * .8) return { into: el.dataset.col, el };
+    /* на середину папки — положить в папку */
+    if (canInto && el.classList.contains('kb-fi') && y > top + r.height * .2 && y < top + r.height * .8) {
+      const t = el.querySelector('[data-into]');
+      return { into: t.dataset.into, el: t };
+    }
     if (y < top + r.height / 2) return { c, k };
   }
   return { c, k: items.length };
@@ -1451,34 +1611,48 @@ function freeColor() {
   const used = new Set(kbGroups().map(g => String(g.color || '').toLowerCase()));
   return GROUP_COLORS.find(c => !used.has(c)) || `hsl(${Math.floor(Math.random() * 360)} 70% 55%)`;
 }
-async function createBoardGroup() {
-  const roots = kbGroups().filter(g => !g.parentId);
-  const order = roots.reduce((m, g) => Math.max(m, g.order || 0), 0) + 10;
-  const g = await kbSave('group', { name: '', color: freeColor(), order, parentId: '' });
+async function createBoardGroup(parent = '') {
+  const sibs = kbGroups().filter(g => (g.parentId || '') === parent);
+  const order = sibs.reduce((m, g) => Math.max(m, g.order || 0), 0) + 10;
+  const g = await kbSave('group', { name: '', color: freeColor(), order, parentId: parent });
   freshId = g.id;
   renderBoard(false);
 }
-async function createBoardNote() {
-  await kbSave('note', { title: '', html: '', groupId: '', files: [], links: [], tags: [] });
-  renderBoard(false);
+async function createBoardNote(gid = '') {
+  const n = await kbSave('note', { title: '', html: '', groupId: gid, files: [], links: [], tags: [] });
+  if (!gid) { renderBoard(false); return; }
+  /* заметка в папке — сразу открыть её на редактирование */
+  curGroup = gid;
+  notesOpen = true;
+  await setStructure(false);
+  openNote(n.id, true);
 }
 /* Меню над кнопкой «+»: «+ Группа» / «+ Заметка» */
 let addMenu = null;
 function closeAddMenu() { if (addMenu) { addMenu.remove(); addMenu = null; } }
-function toggleAddMenu(anchor) {
+function toggleAddMenu(anchor, gid = '') {
   if (addMenu) { closeAddMenu(); return; }
   addMenu = document.createElement('div');
   addMenu.className = 'kb-add-menu glass';
-  addMenu.innerHTML = '<button type="button" class="btn" data-add="group">＋ Группа</button><button type="button" class="btn" data-add="note">＋ Заметка</button>';
+  addMenu.innerHTML = `<button type="button" class="btn" data-add="group">＋ ${gid ? 'Подпапка' : 'Папка'}</button><button type="button" class="btn" data-add="note">＋ Заметка</button>`;
   document.body.appendChild(addMenu);
   const r = anchor ? anchor.getBoundingClientRect() : { top: innerHeight - 80, right: innerWidth - 16 };
   addMenu.style.right = Math.max(8, innerWidth - r.right) + 'px';
-  addMenu.style.bottom = (innerHeight - r.top + 10) + 'px';
-  addMenu.onclick = e => {
+  /* у кнопки в папке меню ниже кнопки, у общей «+» — над ней */
+  if (gid && r.bottom + 110 < innerHeight) { addMenu.style.top = (r.bottom + 8) + 'px'; addMenu.style.transformOrigin = 'top right'; }
+  else addMenu.style.bottom = (innerHeight - r.top + 10) + 'px';
+  addMenu.onclick = async e => {
     const b = e.target.closest('[data-add]');
     if (!b) return;
     closeAddMenu();
-    if (b.dataset.add === 'group') createBoardGroup(); else createBoardNote();
+    if (b.dataset.add !== 'group') { createBoardNote(gid); return; }
+    if (!gid) { createBoardGroup(); return; }
+    /* подпапка: папка раскрывается (если была закрыта) и в ней поле названия */
+    const g = kbGroups();
+    let root = gid, guard = 0;
+    for (let x = g.find(q => q.id === gid); x && x.parentId && guard++ < 50; x = g.find(q => q.id === x.parentId)) root = x.parentId;
+    await createBoardGroup(gid);
+    if (!openMap[root]) await openFolder(root, gid); else if (openMap[root] !== gid) await drillTo(root, gid, 1);
   };
   setTimeout(() => {
     const away = e => {
@@ -1579,7 +1753,7 @@ async function setStructure(on) {
     } else {
       closeAddMenu();
       /* Шапка падает последней — после всех рядов колонок и поверх них */
-      const items = [...board.querySelectorAll('.kb-bcol, .kb-loose')];
+      const items = [...board.querySelectorAll('.kb-fi, .kb-loose')];
       const head = board.querySelector('.kb-board-head');
       const nRows = rowsOf(items).length;
       let headAnim = null;
@@ -1600,75 +1774,166 @@ async function setStructure(on) {
     }
   } finally { structBusy = false; }
 }
-/* Колонки-группы и отдельные заметки переносятся за ручку: элемент
-   «поднимается» над доской, остальные смыкаются; место вставки
-   показывают расступившиеся соседи. Отдельную заметку можно бросить
-   на середину группы — она уйдёт в эту группу. */
+/* ── Перенос по доске ──
+   Тянуть можно папку (закрытую — целиком, открытую — за шапку),
+   подпапку из колонки, заметку из колонки и отдельную заметку. Мышью —
+   сразу после сдвига, пальцем — после короткого удержания (иначе не
+   прокрутить доску). Цели:
+   • папка или подпапка под курсором, открытая колонка — положить внутрь
+     (подпапка уезжает вместе со своими заметками);
+   • промежуток между элементами доски — встать туда: подпапка становится
+     отдельной папкой, заметка — отдельной заметкой;
+   • корзина — удалить. */
 function bindBoardDrag(board) {
-  let el = null, id = '', note = false, gx = 0, gy = 0, slot = null, home = null, trash = false;
-  const move = e => {
-    if (!el) return;
-    trash = trackTrash(e.clientX, e.clientY);
-    el.style.left = (e.clientX - gx) + 'px';
-    el.style.top = (e.clientY - gy) + 'px';
-    el.style.transform = `rotate(1.5deg)${trash ? ' scale(.3)' : ''}`;
-    el.classList.toggle('kb-to-trash', trash);
-    slot = trash ? null : slotAt(board, e.clientX, e.clientY, id, note);
-    showSlot(board, slot, id);
+  let d = null;   // { kind: 'note'|'group', id, src, rootItem, ghost, gx, gy, started, hold, sx, sy }
+  const ancestorsOk = (gid, into) => !groupBranch(gid).has(into);
+  const targetAt = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const inCol = el && el.closest('.kb-fcol');
+    if (inCol && !(d.rootItem && d.src.contains(inCol))) {
+      const t = el.closest('.kb-fold.mini') || inCol;
+      return { into: t.dataset.into, el: t };
+    }
+    const sl = slotAt(board, x, y, d.rootItem ? d.id : null, true);
+    return sl;
   };
-  const up = async () => {
+  const valid = t => {
+    if (!t || !t.into) return true;
+    if (d.kind === 'group') return t.into !== d.id && ancestorsOk(d.id, t.into);
+    return true;
+  };
+  const begin = () => {
+    d.started = true;
+    const r = d.src.getBoundingClientRect();
+    d.gx = d.sx - r.left; d.gy = d.sy - r.top;
+    const g = d.src.cloneNode(true);
+    g.classList.add('kb-drag-card', 'kb-drag-fold');
+    g.classList.remove('dragging', 'on');
+    g.style.width = r.width + 'px';
+    g.style.height = r.height + 'px';
+    document.body.appendChild(g);
+    d.ghost = g;
+    const snaps = snapBoard(board);
+    if (d.rootItem) { d.src.classList.add('kb-lifting'); flipBoard(board, snaps, 260); }   // столбец смыкается
+    else d.src.classList.add('dragging');
+    document.body.classList.add('kb-dragging');
+    try { navigator.vibrate(8); } catch {}
+  };
+  const move = e => {
+    if (!d) return;
+    if (!d.started) {
+      const far = Math.abs(e.clientX - d.sx) > 6 || Math.abs(e.clientY - d.sy) > 6;
+      if (e.pointerType === 'touch') { if (far && d.hold) { clearTimeout(d.hold); d.hold = null; cancel(); } return; }
+      if (!far) return;
+      begin();
+    }
+    const inTrash = trackTrash(e.clientX, e.clientY);
+    d.ghost.style.transformOrigin = `${d.gx}px ${d.gy}px`;
+    d.ghost.style.transform = `translate(${e.clientX - d.gx}px, ${e.clientY - d.gy}px) rotate(2deg)${inTrash ? ' scale(.35)' : ''}`;
+    d.ghost.classList.toggle('kb-to-trash', inTrash);
+    d.trash = inTrash;
+    let t = inTrash ? null : targetAt(e.clientX, e.clientY);
+    if (!valid(t)) t = null;
+    d.slot = t;
+    showSlot(board, t && !t.into ? t : null, d.rootItem ? d.id : null);
+    board.querySelectorAll('.kb-drop-over').forEach(x => x.classList.remove('kb-drop-over'));
+    if (t && t.into) t.el.classList.add('kb-drop-over');
+  };
+  const block = e => { if (d && d.started && e.cancelable) e.preventDefault(); };
+  const cancel = () => {
     document.removeEventListener('pointermove', move);
     document.removeEventListener('pointerup', up);
     document.removeEventListener('pointercancel', up);
-    if (!el) return;
-    const from = el.getBoundingClientRect();
-    const snaps = snapBoard(board);
-    snaps.set(id, from);
-    el.classList.remove('kb-lifted', 'kb-to-trash');
-    el.style.left = el.style.top = el.style.width = el.style.transform = el.style.transformOrigin = '';
-    resetTrash();
+    document.removeEventListener('touchmove', block);
+    if (d && d.hold) clearTimeout(d.hold);
+    d = null;
+  };
+  const up = async () => {
+    const c = d;
+    cancel();
+    if (!c || !c.started) return;
     dragGuard = Date.now();
-    const src = id, isNote = note, toTrash = trash, sl = slot || home;
-    el = null; trash = false; slot = null;
-    if (toTrash) {
-      showSlot(board, null);
-      if (isNote) await trashNote(src); else await trashGroup(src, from);
+    document.body.classList.remove('kb-dragging');
+    board.querySelectorAll('.kb-drop-over').forEach(x => x.classList.remove('kb-drop-over'));
+    resetTrash();
+    const gr = c.ghost.getBoundingClientRect();
+    const t = c.slot;
+    const snaps = snapBoard(board);
+    const done = () => { c.ghost.remove(); c.src.classList.remove('kb-lifting', 'dragging'); };
+    if (c.trash) {
+      done(); showSlot(board, null);
+      if (c.kind === 'note') await trashNote(c.id); else await trashGroup(c.id, gr);
       renderBoard(false, true);
       return;
     }
-    if (sl.into) {
-      await settleBoard(board, snaps, async () => {
-        if (editing && editing.id === src) flushEditor();
-        await kbSave('note', { groupId: sl.into }, src);
-      });
+    if (!t) {   // отпустили мимо — всё возвращается на место
+      if (!reduceMotion()) {
+        const r = c.src.classList.contains('kb-lifting') ? null : c.src.getBoundingClientRect();
+        if (r) await c.ghost.animate([{ transform: c.ghost.style.transform }, { transform: `translate(${r.left}px, ${r.top}px)` }],
+          { duration: 280, easing: EASE, fill: 'forwards' }).finished.catch(() => {});
+      }
+      done(); showSlot(board, null);
+      if (c.rootItem) { snaps.set(c.id, gr); renderBoard(false, true); flipBoard(board, snaps); }
       return;
     }
-    placeInLayout(board, src, sl);
-    await settleBoard(board, snaps);
+    if (t.into) {
+      /* «проглатывание»: миниатюра ныряет в папку */
+      const tr = t.el.getBoundingClientRect();
+      if (!reduceMotion()) await c.ghost.animate([
+        { transform: c.ghost.style.transform, opacity: 1 },
+        { transform: `translate(${tr.left + tr.width / 2 - gr.width * .1}px, ${tr.top + Math.min(tr.height, 120) * .35}px) scale(.2)`, opacity: 0 }],
+        { duration: 300, easing: EASE_IN, fill: 'forwards' }).finished.catch(() => {});
+      done(); showSlot(board, null);
+      await settleBoard(board, snaps, async () => {
+        if (c.kind === 'note') {
+          if (editing && editing.id === c.id) flushEditor();
+          await kbSave('note', { groupId: t.into }, c.id);
+        } else {
+          const sibs = kbGroups().filter(g => (g.parentId || '') === t.into && g.id !== c.id);
+          const order = sibs.reduce((m, g) => Math.max(m, g.order || 0), 0) + 10;
+          await kbSave('group', { parentId: t.into, order }, c.id);
+          if (openMap[c.id]) delete openMap[c.id];
+        }
+      });
+      const fold = board.querySelector(`[data-into="${CSS.escape(t.into)}"]`);
+      if (fold) pop(fold);
+      return;
+    }
+    /* промежуток на доске */
+    done();
+    snaps.set(c.id, gr);
+    placeInLayout(board, c.id, t);
+    await settleBoard(board, snaps, async () => {
+      if (c.kind === 'note') {
+        const n = kbItem(c.id);
+        if (n && n.groupId) { if (editing && editing.id === c.id) flushEditor(); await kbSave('note', { groupId: '' }, c.id); }
+      } else if (!c.rootItem) {
+        const roots = kbGroups().filter(g => !g.parentId);
+        await kbSave('group', { parentId: '', order: roots.reduce((m, g) => Math.max(m, g.order || 0), 0) + 10 }, c.id);
+      }
+    });
   };
   board.addEventListener('pointerdown', e => {
-    const h = e.target.closest('.kb-bcol-handle, .kb-loose-handle');
-    if (!h || e.button > 0) return;
-    e.preventDefault();
-    note = h.classList.contains('kb-loose-handle');
-    el = h.closest('[data-bid]');
-    id = el.dataset.bid;
-    const mcol = el.parentElement;
-    home = { c: [...board.querySelectorAll('.kb-mcol')].indexOf(mcol), k: colItems(mcol).indexOf(el) };
-    const r = el.getBoundingClientRect();
-    gx = e.clientX - r.left; gy = e.clientY - r.top;
-    const snaps = snapBoard(board);
-    el.style.width = r.width + 'px';
-    el.style.left = r.left + 'px';
-    el.style.top = r.top + 'px';
-    el.style.transformOrigin = `${gx}px ${gy}px`;   // над корзиной сжимается к курсору
-    el.classList.add('kb-lifted');
-    flipBoard(board, snaps, 260);   // столбец смыкается на месте поднятого элемента
-    slot = home;
-    showSlot(board, slot, id);
+    if (e.button > 0 || d || foldBusy) return;
+    if (e.target.closest('button:not(.kb-item), input, .kb-board-head')) return;
+    let src = null, kind = '', id = '', rootItem = false;
+    const item = e.target.closest('.kb-item');
+    const head = e.target.closest('.kf-head');
+    const mini = e.target.closest('.kf-sub');
+    const fi = e.target.closest('.kb-fi');
+    if (item) {
+      const loose = item.closest('.kb-loose');
+      src = loose || item; kind = 'note'; id = item.dataset.id; rootItem = !!loose;
+    } else if (mini) { src = mini; kind = 'group'; id = mini.dataset.sub; }
+    else if (fi && (head || !fi.classList.contains('open'))) { src = fi; kind = 'group'; id = fi.dataset.root; rootItem = true; }
+    if (!src) return;
+    d = { src, kind, id, rootItem, sx: e.clientX, sy: e.clientY, started: false };
+    if (e.pointerType !== 'touch') e.preventDefault();
+    else d.hold = setTimeout(() => { if (d) { d.hold = null; begin(); } }, 360);
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
     document.addEventListener('pointercancel', up);
+    document.addEventListener('touchmove', block, { passive: false });
   });
 }
 async function onBoardClick(e) {
@@ -1677,6 +1942,29 @@ async function onBoardClick(e) {
   const dot = e.target.closest('.kb-bcol-dot');
   if (dot) { openColorPop(dot); return; }
   if (e.target.closest('.kb-bcol-input')) return;
+  const add = e.target.closest('[data-add]');
+  if (add) { toggleAddMenu(add, add.dataset.add); return; }
+  const fi = e.target.closest('.kb-fi');
+  const root = fi && fi.dataset.root;
+  if (e.target.closest('.kf-close')) { closeFolder(root); return; }
+  if (e.target.closest('.kf-up')) {
+    const cur = kbGroups().find(g => g.id === openMap[root]);
+    drillTo(root, (cur && cur.parentId) || root, -1);
+    return;
+  }
+  /* название в шапке колонки — переименовать */
+  const hn = e.target.closest('b.kf-hname');
+  if (hn) {
+    const gid = e.target.closest('.kb-fcol').dataset.into;
+    const inp = document.createElement('input');
+    inp.className = 'kb-bcol-input kf-hname';
+    inp.dataset.gid = gid; inp.maxLength = 60; inp.value = hn.textContent;
+    hn.replaceWith(inp); inp.focus(); inp.select();
+    return;
+  }
+  const sub = e.target.closest('.kf-sub');
+  if (sub) { drillTo(root, sub.dataset.sub, 1); return; }
+  if (fi && !fi.classList.contains('open') && e.target.closest('.kb-fold')) { openFolder(root); return; }
   const item = e.target.closest('.kb-item');
   if (!item) return;
   const id = item.dataset.id;
