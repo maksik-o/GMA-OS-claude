@@ -8,6 +8,7 @@ import { attachFile, openTaskFile, removeTaskFile, fmtSize } from './files.js';
 import { limitNote } from './attach.js';
 import { quickStyle, setQuickStyle, renderQuickAlt, QUICK_STYLES } from './quick.js';
 import { skinPanel, BUMP_LEN } from './skin.js';
+import { safeInsets, RAIL_MINI_H } from './safe.js';
 /* Перерисовка экрана — через общий renderCurrent: пока открыт редактор,
    она откладывается до его закрытия и не рвёт анимации в нём */
 const renderAll = () => document.dispatchEvent(new CustomEvent('render-now'));
@@ -194,9 +195,10 @@ function placePicker() {
     picker.classList.remove('qp-compact');
     /* над высокой панелью места мало: окно не должно заезжать под
        статус-бар — тогда компактные строки */
-    const avail = innerHeight - sh - GAP_TOP - 64;
+    const avail = innerHeight - sh - GAP_TOP - Math.max(64, safeInsets().t + RAIL_MINI_H + 14);   // сверху — мини-полоса меню
     const padM = parseFloat(getComputedStyle(picker).paddingTop) * 2;
     if (!helpFor && picker.querySelector('.qp-in').offsetHeight + padM > avail) picker.classList.add('qp-compact');
+    picker.style.maxHeight = Math.max(140, avail) + 'px';   // выше — не заезжает под мини-полосу меню
     /* на телефоне окно — во всю ширину, как сама панель */
     picker.style.width = sw + 'px';
     /* контейнер — над краем панели до верха экрана */
