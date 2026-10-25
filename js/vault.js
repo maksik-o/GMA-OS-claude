@@ -18,6 +18,7 @@
    Прежняя синхронизация через скрипт Google остаётся вариантом
    «legacy» — для тех, кто уже ею пользуется.
    ══════════════════════════════════════════════════════════════════ */
+import { fadeRemove } from './anim.js';
 import { buildSnapshot, applySnapshot, isSnapshot } from './snapshot.js';
 import { dbGetKV, dbSetKV } from './db.js';
 import { esc } from './store.js';
@@ -597,5 +598,5 @@ export function openStorageChooser() {
     ${filePickHTML}
   </div>`;
   document.body.appendChild(ov);
-  bindOptions(ov, () => ov.remove());
+  bindOptions(ov, () => fadeRemove(ov));
 }

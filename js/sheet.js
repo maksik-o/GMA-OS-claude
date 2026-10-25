@@ -8,7 +8,9 @@ import { attachFile, openTaskFile, removeTaskFile, fmtSize } from './files.js';
 import { limitNote } from './attach.js';
 import { quickStyle, setQuickStyle, renderQuickAlt, QUICK_STYLES } from './quick.js';
 import { skinPanel, BUMP_LEN } from './skin.js';
-import { renderAll } from './week.js';
+/* Перерисовка экрана — через общий renderCurrent: пока открыт редактор,
+   она откладывается до его закрытия и не рвёт анимации в нём */
+const renderAll = () => document.dispatchEvent(new CustomEvent('render-now'));
 import { openSched, renderSched } from './edsched.js';
 import * as tm from './timer.js';
 
@@ -384,6 +386,7 @@ function openEditor(task) {
 }
 export function closeEditor() {
   if (editor) editor.classList.remove('open');
+  document.dispatchEvent(new CustomEvent('editor-closed'));
   refreshBackdrop();
   editId = null;
 }
@@ -699,12 +702,13 @@ on('edCancel', 'click', closeEditor);
 on('edConfirm', 'click', async () => {
   const t = getTask(editId);
   if (!t) return;
-  await updateTask(editId, {
-    title: $('edTitle')?.value.trim() || t.title,
-    notes: $('edNotes')?.value || ''
-  });
+  const editId0 = editId;
+  const title = $('edTitle')?.value.trim() || t.title;
+  const notes = $('edNotes')?.value || '';
+  /* поля сохраняются по ходу ввода; лишняя запись перерисовала бы экран
+     прямо во время анимации закрытия и порвала её */
   closeEditor();
-  renderAll();
+  if (title !== t.title || notes !== (t.notes || '')) setTimeout(() => updateTask(editId0, { title, notes }), 360);
 });
 on('edDelete', 'click', async () => {
   if (editId && confirm('Удалить задачу?')) {

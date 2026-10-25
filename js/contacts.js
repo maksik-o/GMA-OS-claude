@@ -1,5 +1,5 @@
 import { dbAll, dbPut, dbBulk } from './db.js';
-import { morph } from './anim.js';
+import { morph, fadeRemove } from './anim.js';
 import { uid, esc, MODES } from './store.js';
 
 const STORE = 'contacts';
@@ -450,7 +450,7 @@ export function openNewPersonSheet(groupId) {
     <div class="ne-actions"><span class="spacer"></span>
       <button type="button" class="btn primary np-save">Добавить</button></div></div>`;
   document.body.appendChild(ov);
-  const close = () => ov.remove();
+  const close = () => fadeRemove(ov);
   ov.querySelector('.notes-list-close').onclick = close;
   ov.onclick = e => { if (e.target === ov) close(); };
   const name = ov.querySelector('.np-name');
@@ -494,7 +494,7 @@ export function openPersonEditor(personId, mode) {
     };
   });
   const close = () => {
-    overlay.remove();
+    fadeRemove(overlay);
     editorOpen = false;
   };
   overlay.querySelectorAll('.pe-cancel, .pe-cancel2').forEach(b => { b.onclick = close; });

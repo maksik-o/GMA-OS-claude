@@ -10,7 +10,7 @@
    уходят только метаданные — сами файлы остаются на устройстве,
    иначе один вложенный PDF раздул бы полезную нагрузку sync.
    ══════════════════════════════════════════════════════════════════ */
-import { morph, exit, enterDeep } from './anim.js';
+import { morph, exit, enterDeep, fadeRemove } from './anim.js';
 import { dbAll, dbPut, dbBulk, dbGet, dbDel } from './db.js';
 import { uid, esc, MODES, safeHtml } from './store.js';
 import { getAllNotes, updateNoteById, deleteNote } from './notes.js';
@@ -863,7 +863,7 @@ function openLinkPicker(noteId) {
           ${g ? `<span class="kb-pick-g">${esc(g.name)}</span>` : ''}</button>`;
       }).join('') : (q ? '' : '<p class="empty">Нет других заметок</p>'));
   };
-  const close = () => { ov.remove(); };
+  const close = () => { fadeRemove(ov); };
   ov.querySelector('.notes-list-close').onclick = close;
   ov.querySelector('.kb-pick-done').onclick = close;
   ov.onclick = e => { if (e.target === ov) close(); };
@@ -1026,7 +1026,7 @@ function openGroupSheet(id, host, parentPreset = '') {
       <button type="button" class="btn primary kg-save">Сохранить</button>
     </div></div>`;
   document.body.appendChild(ov);
-  const close = () => ov.remove();
+  const close = () => fadeRemove(ov);
   ov.querySelector('.notes-list-close').onclick = close;
   ov.onclick = e => { if (e.target === ov) close(); };
   let picked = color;
@@ -1315,7 +1315,7 @@ function askGroupDelete() {
         <button type="button" class="btn" data-a="group">Удалить только группу</button>
       </div></div>`;
     document.body.appendChild(ov);
-    const close = v => { ov.remove(); document.removeEventListener('keydown', esc); done(v); };
+    const close = v => { fadeRemove(ov); document.removeEventListener('keydown', esc); done(v); };
     const esc = e => { if (e.key === 'Escape') close(null); };
     document.addEventListener('keydown', esc);
     ov.onclick = e => {

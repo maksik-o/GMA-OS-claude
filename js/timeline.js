@@ -6,7 +6,7 @@
    Источник размещения — планы задачи (см. store.js): либо заданные
    вручную, либо выведенные из завершённых сессий фокусировки.
    ══════════════════════════════════════════════════════════════════ */
-import { morph } from './anim.js';
+import { morph, fadeRemove } from './anim.js';
 import {
   state, getTask, visibleTasks, isDone, esc, createTask,
   today, addDays, parseISO, WEEKDAYS, MONTHS,
@@ -465,7 +465,7 @@ function openPlanPicker(day, start, end) {
       : '<p class="empty">Все задачи этого дня уже стоят в таймлайне</p>'}</div>
   </div>`;
   document.body.appendChild(ov);
-  const close = () => ov.remove();
+  const close = () => fadeRemove(ov);
   ov.querySelector('.notes-list-close').onclick = close;
   ov.onclick = e => { if (e.target === ov) close(); };
   ov.querySelectorAll('.kb-pick').forEach(b => b.onclick = async () => {
@@ -766,11 +766,11 @@ function openRoutines() {
         </button>`).join('') : '<p class="empty">Пока пусто</p>'}</div>
       <div class="ne-actions"><span class="spacer"></span>
         <button type="button" class="btn primary tl-radd">＋ Дело</button></div></div>`;
-    ov.querySelector('.notes-list-close').onclick = () => ov.remove();
+    ov.querySelector('.notes-list-close').onclick = () => fadeRemove(ov);
     ov.querySelector('.tl-radd').onclick = () => openRoutineEditor(null, draw);
     ov.querySelectorAll('.tl-rrow').forEach(b => b.onclick = () => openRoutineEditor(b.dataset.id, draw));
   };
-  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  ov.onclick = e => { if (e.target === ov) fadeRemove(ov); };
   draw();
   document.body.appendChild(ov);
 }
@@ -801,7 +801,7 @@ function openRoutineEditor(id, after) {
       <span class="spacer"></span>
       <button type="button" class="btn primary tr-save">Сохранить</button></div></div>`;
   document.body.appendChild(ov);
-  const close = () => ov.remove();
+  const close = () => fadeRemove(ov);
   ov.querySelector('.notes-list-close').onclick = close;
   ov.onclick = e => { if (e.target === ov) close(); };
   ov.querySelectorAll('.tr-day').forEach(b => b.onclick = () => {

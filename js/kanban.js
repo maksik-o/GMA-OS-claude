@@ -302,7 +302,7 @@ function animatePanelHeight(panel) {
 
 /* ── Рендер панели ── */
 /* Перерисовка «на месте» с движением (anim.morph); сама отрисовка — ниже */
-export function renderKanban() { morph(document.getElementById('app'), () => renderKanbanNow()); }
+export function renderKanban() { morph(document.getElementById('app'), renderKanbanNow); }
 function renderKanbanNow() {
   const panel = $('kanbanPanel');
   if (!panel || !isOpen) return;

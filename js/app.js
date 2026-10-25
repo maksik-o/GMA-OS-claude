@@ -20,7 +20,7 @@ import { init as kbInit, renderKbView, kbSubscribe, newKbNote } from './kb.js';
 import { focusInit } from './focus.js';
 import { widgetsInit, openWidgetsPanel } from './widgets.js';
 import { renderHomeView, homeInit, homeEntered } from './home.js';
-import { morph, enter } from './anim.js';
+import { morph, enter, isSwapping } from './anim.js';
 import { sidebarInit, renderSidebar } from './sidebar.js';
 import { railInit, railSync } from './rail.js';
 import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanban, currentBlock } from './kanban.js';
@@ -632,7 +632,7 @@ function applyView(v) {
   if (v === 'contacts' && cv) renderContactsView(cv, state.mode);
   else if (v === 'finance' && fv) renderFinanceView(fv);
   else if (v === 'kb' && kv) renderKbView(kv);
-  else if (v === 'home' && hv) { renderHomeView(hv); homeEntered(); }
+  else if (v === 'home' && hv) { renderHomeView(hv); if (!isSwapping()) homeEntered(); }
   else renderAll();
   placeWeekNav();
   renderSidebar();
@@ -640,7 +640,20 @@ function applyView(v) {
 }
 /* Перерисовка по изменению данных — «на месте»: переехавшее плавно
    переезжает, новое проявляется, удалённое растворяется (anim.morph) */
-function renderCurrent() { morph($('app'), renderCurrentNow); }
+let renderLater = false;
+function renderCurrent() {
+  /* Пока открыт редактор задачи, экран за ним не перестраиваем: тяжёлая
+     перерисовка недели рвала анимации внутри редактора. Догоним после
+     того, как он закроется и доедет. */
+  const ed = $('editor');
+  if (ed && ed.classList.contains('open')) { renderLater = true; return; }
+  morph($('app'), renderCurrentNow);
+}
+document.addEventListener('editor-closed', () => {
+  if (!renderLater) return;
+  renderLater = false;
+  setTimeout(renderCurrent, 380);
+});
 function renderCurrentNow() {
   renderSidebar();
   if (state.view === 'week') {
@@ -744,6 +757,8 @@ async function boot() {
   await focusInit();
   widgetsInit();
   homeInit();
+  /* данные «Главной» дорастают, когда экран начал проявляться */
+  document.addEventListener('screen-entered', () => { if (state.view === 'home') homeEntered(); });
   kanbanInit(); // троеточие видов + панель доски + жесты
   await loadModeColors();
   await hk.loadKeys();
