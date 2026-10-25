@@ -135,7 +135,8 @@ function monthHTML(t, r) {
     const out = +d.slice(5, 7) - 1 !== m;
     let cls = out ? 'out' : '';
     if (st === 'done') cls += ' done';
-    else if (st === 'skipped' || st === 'postponed') cls += ' miss';
+    else if (st === 'skipped') cls += ' miss';
+    else if (st === 'postponed') cls += ' moved';   // перенесён дальше — не отменён
     else if (st) cls += ' on';
     else if (r && d > addDays(t0, 0) && matches(r, d)) cls += ' proj';   // за горизонтом — проекция правила
     if (d === t0) cls += ' today';
@@ -148,7 +149,7 @@ function monthHTML(t, r) {
 }
 function nextHTML(t, r) {
   const t0 = today();
-  const list = r ? nextN(r, t0, 5).filter(d => (t.days || {})[d] !== 'skipped') : Object.keys(t.days || {}).filter(d => d >= t0 && t.days[d] === 'todo').sort().slice(0, 5);
+  const list = r ? nextN(r, t0, 5).filter(d => (t.days || {})[d] !== 'skipped') : Object.keys(t.days || {}).filter(d => d >= t0 && (t.days[d] === 'todo' || t.days[d] === 'started')).sort().slice(0, 5);
   const time = t.blockStart || '';
   const rows = list.map((d, i) => {
     const dow = DOW_FULL[isoDow(d)];
@@ -158,7 +159,7 @@ function nextHTML(t, r) {
 }
 function footHTML(t, r) {
   const t0 = today();
-  const nx = r ? nextN(r, t0, 1)[0] : Object.keys(t.days || {}).filter(d => d >= t0 && t.days[d] === 'todo').sort()[0];
+  const nx = r ? nextN(r, t0, 1)[0] : Object.keys(t.days || {}).filter(d => d >= t0 && (t.days[d] === 'todo' || t.days[d] === 'started')).sort()[0];
   if (!nx) return '';
   const d = parseISO(nx);
   return `<i class="eds-dot"></i>Следующий раз <b>${DOW_FULL[isoDow(nx)].toLowerCase()}, ${d.getDate()} ${MONTHS_FULL[d.getMonth()]}${t.blockStart ? ', ' + t.blockStart : ''}</b> · ${relDay(nx, t0)}${t.blockStart ? ` · ${fmtDur(t.blockMin || 30)}` : ''}`;

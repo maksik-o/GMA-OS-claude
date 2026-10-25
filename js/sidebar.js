@@ -1,4 +1,4 @@
-import { state, MODES, today, esc } from './store.js';
+import { state, today, esc } from './store.js';
 import { openSearch } from './search.js';
 import { kbNotes } from './kb.js';
 import { getPeople } from './contacts.js';
@@ -8,9 +8,11 @@ import { getPeople } from './contacts.js';
    закреплённом меню слева. Кнопки разделов, виджетов, облака и
    настроек не копируются, а переезжают сюда как есть — с их
    обработчиками, состоянием «.on», точкой синхронизации и зоной
-   «убрать в панель виджетов». Режимы — свои кнопки, нажимают
-   скрытые кнопки шапки, чтобы смена шла с той же анимацией.
-   Меню сворачивается в тонкий столбик иконок; выбор запоминается.
+   «убрать в панель виджетов».
+   Фон меню — SVG-фигура с «вырезом» под открытым разделом: сквозь него
+   виден фон приложения или обои, и он плавно переезжает между пунктами.
+   Меню сворачивается в тонкий столбик иконок; значки при этом стоят на
+   месте — сужается только само меню, подписи гаснут. Выбор запоминается.
    На телефоне всё возвращается в шапку и нижнюю пилюлю. */
 
 const $ = id => document.getElementById(id);
@@ -33,23 +35,19 @@ function build() {
   sb.className = 'sidebar';
   sb.setAttribute('aria-label', 'Меню');
   sb.innerHTML = `
+    <svg class="sb-bg" aria-hidden="true"><defs><linearGradient id="sbGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="sb-g0"/><stop offset=".35" class="sb-g1"/><stop offset="1" class="sb-g2"/></linearGradient></defs><path class="sb-bg-fill" fill="url(#sbGrad)"/><path class="sb-bg-edge"/></svg>
     <div class="sb-head"><span class="sb-logo">E</span><b class="sb-name">Essential OS</b></div>
     <button type="button" class="sb-collapse" aria-label="Свернуть меню" title="Свернуть меню">${ICON_CHEV}</button>
     <div class="sb-scroll">
       <div class="sb-sec sb-views"></div>
-      <div class="sb-cap sb-modes-cap">Режимы</div>
-      <div class="sb-sec sb-modes"></div>
     </div>
     <div class="sb-sec sb-tools">${item('sb-search', ICON_SEARCH, 'Поиск')}</div>`;
   document.body.insertBefore(sb, $('app'));
   sb.querySelector('.sb-collapse').onclick = () => setMini(!document.body.classList.contains('sb-mini'));
   sb.querySelector('.sb-search').onclick = () => openSearch();
-  sb.querySelector('.sb-modes').addEventListener('click', e => {
-    const b = e.target.closest('[data-m]');
-    if (!b) return;
-    const real = document.querySelector(`#modes button[data-m="${b.dataset.m}"]`);
-    if (real) real.click();
-  });
+  /* фигура фона пересчитывается при любом изменении размера меню
+     (в том числе каждый кадр сворачивания) */
+  new ResizeObserver(() => drawBg()).observe(sb);
   return sb;
 }
 function setMini(on) {
@@ -116,33 +114,60 @@ export function renderSidebar() {
     if (!n) { n = document.createElement('span'); n.className = 'sb-n'; b.appendChild(n); }
     n.textContent = v;
   }
-  const modes = sb.querySelector('.sb-modes');
-  const html = MODES.map(m => {
-    const n = m.id === 'all' ? live.filter(open).length : live.filter(t => t.mode === m.id && open(t)).length;
-    return `<button type="button" class="sb-it sb-mode${state.mode === m.id ? ' sel' : ''}" data-m="${m.id}" title="${esc(m.label)}" aria-label="${esc(m.label)}" aria-pressed="${state.mode === m.id}" style="--mc:var(--mode-${m.id})">
-      <span class="tb-ico"><i class="sb-mdot"></i></span><span class="tb-lab"><span>${esc(m.label)}</span></span>${n ? `<span class="sb-n">${n}</span>` : ''}</button>`;
-  }).join('');
-  if (modes.innerHTML !== html) modes.innerHTML = html;
   moveInd(sb);
 }
-/* Пилюля открытого раздела переезжает между пунктами */
+
+/* ── Фон с вырезом ──
+   Скруглённый прямоугольник меню; под открытым разделом из него
+   вырезана пилюля, открытая к правому краю, с вогнутыми скруглениями
+   в местах стыка с краем меню. */
+const R = 30, TAB_H = 44, TAB_R = 22, FIL = 16, TAB_X = 12;
+let indY = null, indAnim = 0;
+function drawBg() {
+  const sb = $('sidebar');
+  if (!sb || mqMobile.matches) return;
+  const svg = sb.querySelector('.sb-bg');
+  const W = sb.offsetWidth, H = sb.offsetHeight;
+  if (!svg || !W || !H) return;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  let d;
+  if (indY == null) {
+    d = `M${R} 0H${W - R}A${R} ${R} 0 0 1 ${W} ${R}V${H - R}A${R} ${R} 0 0 1 ${W - R} ${H}H${R}A${R} ${R} 0 0 1 0 ${H - R}V${R}A${R} ${R} 0 0 1 ${R} 0Z`;
+  } else {
+    const y = indY, y2 = y + TAB_H, cx = TAB_X + TAB_R;
+    d = `M${R} 0H${W - R}A${R} ${R} 0 0 1 ${W} ${R}` +
+      `V${y - FIL}A${FIL} ${FIL} 0 0 1 ${W - FIL} ${y}` +          // вогнутое скругление над вырезом
+      `H${cx}A${TAB_R} ${TAB_R} 0 0 0 ${cx} ${y2}` +                // скруглённый левый край выреза
+      `H${W - FIL}A${FIL} ${FIL} 0 0 1 ${W} ${y2 + FIL}` +           // вогнутое скругление под вырезом
+      `V${H - R}A${R} ${R} 0 0 1 ${W - R} ${H}H${R}A${R} ${R} 0 0 1 0 ${H - R}V${R}A${R} ${R} 0 0 1 ${R} 0Z`;
+  }
+  svg.querySelector('.sb-bg-fill').setAttribute('d', d);
+  svg.querySelector('.sb-bg-edge').setAttribute('d', d);
+}
+/* Вырез переезжает к открытому разделу — плавно, без отскока */
 function moveInd(sb) {
-  const views = sb.querySelector('.sb-views');
-  if (!views) return;
-  let ind = views.querySelector('.sb-ind');
-  if (!ind) { ind = document.createElement('i'); ind.className = 'sb-ind'; ind.setAttribute('aria-hidden', 'true'); views.prepend(ind); }
-  const on = views.querySelector('.sb-it.on');
-  if (!on) { ind.style.opacity = '0'; return; }
-  const first = !ind.dataset.placed;
-  if (first) ind.style.transition = 'none';
-  ind.style.opacity = '1';
-  ind.style.transform = `translateY(${on.offsetTop}px)`;
-  if (first) { void ind.offsetWidth; ind.style.transition = ''; ind.dataset.placed = '1'; }
+  const on = sb.querySelector('.sb-views .sb-it.on');
+  if (!on) { indY = null; drawBg(); return; }
+  const target = on.getBoundingClientRect().top - sb.getBoundingClientRect().top;
+  cancelAnimationFrame(indAnim);
+  if (indY == null || Math.abs(target - indY) < 1 || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    indY = target; drawBg(); return;
+  }
+  const from = indY, t0 = performance.now(), DUR = 520;
+  const step = now => {
+    const p = Math.min(1, (now - t0) / DUR);
+    const e = 1 - Math.pow(1 - p, 4);
+    indY = from + (target - from) * e;
+    drawBg();
+    if (p < 1) indAnim = requestAnimationFrame(step);
+  };
+  indAnim = requestAnimationFrame(step);
 }
 
 export function sidebarInit() {
   try { if (localStorage.getItem(MINI_KEY) === '1') document.body.classList.add('sb-mini'); } catch (e) {}
   place();
   if (mqMobile.addEventListener) mqMobile.addEventListener('change', place);
-  document.addEventListener('mode-labels-changed', renderSidebar);
 }
