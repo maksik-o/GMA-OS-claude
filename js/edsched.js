@@ -5,6 +5,7 @@
    правило прочитано словами, календарь месяца с отмеченными днями и
    «ближайшие пять». Любое изменение сохраняется сразу.
    Даты повторяющейся задачи раскладывает repeat.js в обычные t.days. */
+import { swapContent } from './anim.js';
 import { today, addDays, parseISO, MONTHS, MONTHS_FULL, esc, getTask, updateTask, hmToMin, minToHM } from './store.js';
 import {
   FREQS, NTH, DOW_FULL, matches, nextN, applyRepeat, describe, defaultRepeat, relDay, isoDow, fmtDur, plural,
@@ -50,7 +51,7 @@ const patchRepeat = p => { const r = repOf(task()); if (r) setRepeat({ ...r, ...
 /* ── Левая колонка ── */
 function tabsHTML(r) {
   const cur = r ? r.freq : '';
-  return FREQS.map(f => `<button type="button" data-freq="${f.id}" aria-pressed="${f.id === cur}">${f.label}</button>`).join('');
+  return FREQS.map(f => `<button type="button" data-freq="${f.id}" aria-pressed="${f.id === cur}">${f.id === cur ? '<i class="seg-ind" data-flip="eds-tab"></i>' : ''}${f.label}</button>`).join('');
 }
 const stepper = (key, v, unit) => `<span class="eds-step"><button type="button" data-step="${key}" data-d="-1" aria-label="Меньше">−</button><b>${v}</b><button type="button" data-step="${key}" data-d="1" aria-label="Больше">+</button></span>${unit ? `<span class="eds-unit">${unit}</span>` : ''}`;
 function optsHTML(t, r) {
@@ -168,7 +169,14 @@ export function renderSched() {
   if (!t) return;
   const r = repOf(t);
   if (!cursor) cursor = firstDay(t).slice(0, 7);
-  const set = (id, html) => { const el = $(id); if (el && el.innerHTML !== html) el.innerHTML = html; };
+  /* сменившийся кусок — мягкой подменой (при открытии редактора — сразу) */
+  const set = (id, html) => {
+    const el = $(id);
+    if (!el || el.innerHTML === html) return;
+    if (opening) { el.innerHTML = html; return; }
+    if (id === 'edClock') return setClock(el, html);
+    swapContent(el, () => { el.innerHTML = html; });
+  };
   set('edFreq', tabsHTML(r));
   set('edFreqOpts', optsHTML(t, r));
   if (!dragging) set('edClock', clockHTML(t));
@@ -179,12 +187,26 @@ export function renderSched() {
   const eb = $('edEyebrow');
   if (eb) eb.textContent = r ? '↻ Повторяющаяся задача' : 'Задача';
 }
+let opening = false;
 export function openSched(id, changed) {
   editId = id;
   onChange = changed || (() => {});
   cursor = '';
   bind();
+  opening = true;
   renderSched();
+  opening = false;
+}
+/* Циферблат: стрелки доворачиваются со старого положения на новое */
+function setClock(el, html) {
+  const old = [...el.querySelectorAll('.hand')].map(h => h.style.transform);
+  el.innerHTML = html;
+  const hands = [...el.querySelectorAll('.hand')];
+  if (old.length !== hands.length) return;
+  const next = hands.map(h => h.style.transform);
+  hands.forEach((h, i) => { h.style.transition = 'none'; h.style.transform = old[i]; });
+  void el.offsetWidth;
+  hands.forEach((h, i) => { h.style.transition = ''; h.style.transform = next[i]; });
 }
 
 /* ── Перетаскивание стрелок ── */

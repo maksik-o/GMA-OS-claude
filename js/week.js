@@ -8,7 +8,7 @@ import {
 import { openSheet, refreshBackdrop } from './sheet.js';
 import { renderNotesPanel, setWeekStart } from './notes.js';
 import { calTitle, createCalDrum } from './cal.js';
-import { contentFade } from './anim.js';
+import { contentFade, screenSwap, revealText, morph } from './anim.js';
 
 import * as hk from './hotkeys.js';
 import * as tm from './timer.js';
@@ -317,57 +317,20 @@ export async function blockSwap(dir, apply, opts) {
     modeAnimBusy = false;
   }
 }
-async function runBlockSwap(dir, apply, o) {
-  const back = dir < 0;
-  const exitSign = back ? -1 : 1;
-  const enterSign = -exitSign;
-  const off = innerWidth + 60;
-  const STEP = o.step != null ? o.step : 90;
-  const ROW_STEP = o.rowStep != null ? o.rowStep : 90;
-  const EXIT_MS = 230, ENTER_MS = 320;
-  const rows = collectRowBlocks();
-  const enterRow = blocks => {
-    orderRow(blocks.slice(), back).forEach((b, i) => {
-      b.animate(
-        [{ transform: `translateX(${enterSign * off}px)` }, { transform: 'translateX(0)' }],
-        { duration: ENTER_MS, delay: i * STEP, easing: 'cubic-bezier(.32, .72, .28, 1)', fill: 'backwards' }
-      );
-    });
+/* Смена экрана, режима, недели: все блоки растворяются, экран
+   перестраивается, новые блоки проявляются каскадом (anim.js) */
+async function runBlockSwap(dir, apply) {
+  const collect = () => {
+    const rows = collectRowBlocks();
+    return [...rows.top, ...collectMidBlocks(), ...rows.bottom];
   };
-  /* После перерисовки снимаем анимации ухода. Сетка недели строится
-     заново и старые узлы исчезают вместе со своими анимациями, но
-     панели Timeline и канбана — ОДНИ И ТЕ ЖЕ элементы: у них перерисовывается
-     только содержимое. Анимация ухода с fill: forwards оставалась на
-     них висеть, и после въезда панель снова отскакивала за экран —
-     таймлайн «пропадал» при смене режима работы. */
-  async function swapMid(exits) {
-    await apply();
-    (exits || []).forEach(a => a.cancel());
-    enterRow(collectMidBlocks());
-  }
-  async function runRow(blocks, isMid, baseDelay) {
-    if (!blocks.length) {
-      if (isMid) await swapMid();
-      return;
-    }
-    const ordered = orderRow(blocks.slice(), back);
-    const exits = ordered.map((b, i) => b.animate(
-      [{ transform: 'translateX(0)' }, { transform: `translateX(${exitSign * off}px)` }],
-      { duration: EXIT_MS, delay: baseDelay + i * STEP, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' }
-    ));
-    await Promise.all(exits.map(a => a.finished.catch(() => {})));
-    if (isMid) {
-      await swapMid(exits);
-    } else {
-      exits.forEach(a => a.cancel());
-      enterRow(blocks);
-    }
-  }
-  await Promise.all([
-    runRow(rows.top, false, 0),
-    runRow(collectMidBlocks(), true, ROW_STEP),
-    runRow(rows.bottom, false, 2 * ROW_STEP),
-  ]);
+  await screenSwap(collect, apply);
+  revealTitles();
+}
+function revealTitles() {
+  document.querySelectorAll('#app .kb-board-title, #app .hm-hero-head h2, #app .hm-hello b, #app .fin-head h2, #app .kb-title').forEach((el, i) => {
+    if (el.offsetParent) revealText(el, 60 + i * 40);
+  });
 }
 let _modeBlobInitialized = false;
 /* ── Цвет блоба: покадровая rAF-интерполяция RGB в JS ── */
@@ -1199,7 +1162,9 @@ function renderNotesPanelSync() {
   setWeekStart(state.weekStart);
   renderNotesPanel(panel);
 }
-export function renderAll() {
+/* Перерисовка «на месте» с движением (anim.morph); сама отрисовка — ниже */
+export function renderAll() { morph(document.getElementById('app'), () => renderAllNow()); }
+function renderAllNow() {
   closeCellMenu();
   collapseRevealed();
   document.documentElement.dataset.mode = state.mode;

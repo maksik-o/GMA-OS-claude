@@ -6,6 +6,7 @@ import { openSheet } from './sheet.js';
 import { openDay } from './week.js';
 import { dbGetKV, dbSetKV } from './db.js';
 import { openSearch } from './search.js';
+import { morph, countUp } from './anim.js';
 import * as tm from './timer.js';
 import { kbNotes } from './kb.js';
 import { curMonth, monthStats, budgetProgress, moneyShort } from './finance.js';
@@ -137,7 +138,7 @@ function focusHTML(fmap) {
 function soonHTML() {
   const list = upcoming(4);
   const t0 = today();
-  const rows = list.map(it => `<button type="button" class="hm-soon-row" data-task="${it.t.id}">
+  const rows = list.map(it => `<button type="button" class="hm-soon-row" data-id="${it.t.id}" data-task="${it.t.id}">
       <span class="hm-time${it.day === t0 ? ' on' : ''}">${it.day === t0 ? it.start : WEEKDAYS[(parseISO(it.day).getDay() + 6) % 7]}</span>
       <span class="hm-soon-txt"><b>${esc(it.t.title || 'Без названия')}</b><small><i class="hm-dot" style="background:var(--mode-${it.t.mode})"></i>${esc(modeLabel(it.t.mode))} · ${it.start}–${it.end}</small></span>
     </button>`).join('');
@@ -170,7 +171,7 @@ function heroHTML(st) {
       const live = !done && nm >= it.s && nm < it.e;
       const w = 100 / lanes;
       const short = it.e - it.s < 100 ? ' short' : '';
-      return `<button type="button" class="hm-ev${short}${done ? ' done' : ''}${live ? ' live' : ''}" data-task="${it.t.id}" style="--mc:var(--mode-${it.t.mode});top:${pos(it.s)}%;height:${(Math.max(it.e - it.s, 30) / span * 100).toFixed(2)}%;left:${(it.lane * w).toFixed(2)}%;width:calc(${w.toFixed(2)}% - 6px)">
+      return `<button type="button" class="hm-ev${short}${done ? ' done' : ''}${live ? ' live' : ''}" data-id="${it.t.id}" data-task="${it.t.id}" style="--mc:var(--mode-${it.t.mode});top:${pos(it.s)}%;height:${(Math.max(it.e - it.s, 30) / span * 100).toFixed(2)}%;left:${(it.lane * w).toFixed(2)}%;width:calc(${w.toFixed(2)}% - 6px)">
         <b>${esc(it.t.title || 'Без названия')}</b><small>${it.start} – ${it.end}${live ? ' · идёт сейчас' : ''}</small></button>`;
     }).join('');
     const loose = st.list.filter(t => !plansForDay(t, d).length);
@@ -179,12 +180,12 @@ function heroHTML(st) {
       <div class="hm-tl-area">${lines.join('')}${evs}${nm >= h0 * 60 && nm <= h1 * 60 ? `<i class="hm-now" style="top:${pos(nm)}%"></i>` : ''}
         ${items.length ? '' : '<p class="hm-empty hm-tl-empty">На сегодня нет задач со временем</p>'}</div>
     </div>
-    ${loose.length ? `<div class="hm-loose"><small>Без времени:</small>${loose.slice(0, 8).map(t => `<button type="button" class="hm-chip${isDone(t) ? ' done' : ''}" data-task="${t.id}" style="--mc:var(--mode-${t.mode})">${esc(t.title || 'Без названия')}</button>`).join('')}${loose.length > 8 ? `<small>+${loose.length - 8}</small>` : ''}</div>` : ''}`;
+    ${loose.length ? `<div class="hm-loose"><small>Без времени:</small>${loose.slice(0, 8).map(t => `<button type="button" class="hm-chip${isDone(t) ? ' done' : ''}" data-id="${t.id}" data-task="${t.id}" style="--mc:var(--mode-${t.mode})">${esc(t.title || 'Без названия')}</button>`).join('')}${loose.length > 8 ? `<small>+${loose.length - 8}</small>` : ''}</div>` : ''}`;
   } else {
     const list = st.list.slice().sort((a, b) => (isDoneOn(a, d) - isDoneOn(b, d)) || (a.priority - b.priority));
     body = `<div class="hm-list">${list.map(t => {
       const dn = isDoneOn(t, d);
-      return `<div class="hm-row${dn ? ' done' : ''}" style="--mc:var(--mode-${t.mode})">
+      return `<div class="hm-row${dn ? ' done' : ''}" data-id="${t.id}" style="--mc:var(--mode-${t.mode})">
         <button type="button" class="hm-check" data-toggle="${t.id}" aria-label="${dn ? 'Вернуть' : 'Выполнить'}">${dn ? '✓' : ''}</button>
         <button type="button" class="hm-row-t" data-task="${t.id}">${esc(t.title || 'Без названия')}</button>
         <small>${esc(modeLabel(t.mode))}</small></div>`;
@@ -193,12 +194,12 @@ function heroHTML(st) {
   return `<section class="hm-hero glass hm-card" data-hm="hero">${HANDLE('hero')}
     <div class="hm-hero-head">
       <h2>Сегодня</h2>
-      <div class="hm-seg" role="group" aria-label="Режим">${MODES.map(m => `<button type="button" data-mode="${m.id}" aria-pressed="${state.mode === m.id}">${esc(m.short || m.label)}</button>`).join('')}</div>
+      <div class="hm-seg" role="group" aria-label="Режим">${MODES.map(m => `<button type="button" data-mode="${m.id}" aria-pressed="${state.mode === m.id}">${state.mode === m.id ? '<i class="seg-ind" data-flip="hm-mode"></i>' : ''}${esc(m.short || m.label)}</button>`).join('')}</div>
       <span class="hm-flex"></span>
       <small class="hm-prog-t">${st.done} из ${st.total}</small><i class="hm-prog"><u style="width:${pct}%"></u></i>
       <div class="hm-seg" role="group" aria-label="Вид">
-        <button type="button" data-tab="list" aria-pressed="${homeTab === 'list'}">Список</button>
-        <button type="button" data-tab="timeline" aria-pressed="${homeTab === 'timeline'}">Таймлайн</button>
+        <button type="button" data-tab="list" aria-pressed="${homeTab === 'list'}">${homeTab === 'list' ? '<i class="seg-ind" data-flip="hm-tab"></i>' : ''}Список</button>
+        <button type="button" data-tab="timeline" aria-pressed="${homeTab === 'timeline'}">${homeTab === 'timeline' ? '<i class="seg-ind" data-flip="hm-tab"></i>' : ''}Таймлайн</button>
       </div>
     </div>
     ${body}
@@ -249,6 +250,14 @@ function quickHTML() {
   </div>`;
 }
 
+/* Вход на экран: данные дорастают, числа докручиваются */
+export function homeEntered() {
+  const el = _host;
+  if (!el) return;
+  el.classList.add('m-enter');
+  setTimeout(() => el.classList.remove('m-enter'), 1300);
+  el.querySelectorAll('.hm-tile b, .hm-chart .hm-head b, .hm-prog-t').forEach(n => countUp(n));
+}
 export function renderHomeView(el) {
   if (!el) return;
   _host = el;
@@ -264,7 +273,7 @@ export function renderHomeView(el) {
   if (!el.dataset.bound) bind(el);
   /* Линия «сейчас» и минуты фокуса — раз в минуту, пока экран открыт */
   clearInterval(_tick);
-  _tick = setInterval(() => { if (!el.hidden && el.isConnected) renderHomeView(el); else clearInterval(_tick); }, 60000);
+  _tick = setInterval(() => { if (!el.hidden && el.isConnected) morph(el, () => renderHomeView(el)); else clearInterval(_tick); }, 60000);
 }
 
 function bind(el) {
@@ -274,7 +283,7 @@ function bind(el) {
     if (!b || !el.contains(b)) return;
     if (b.dataset.go) return go(b.dataset.go);
     if (b.dataset.mode) return setMode(b.dataset.mode);
-    if (b.dataset.tab) { homeTab = b.dataset.tab; return renderHomeView(el); }
+    if (b.dataset.tab) { homeTab = b.dataset.tab; return morph(el, () => renderHomeView(el)); }
     if (b.dataset.day) return openDay(b.dataset.day);
     if (b.dataset.toggle) {
       const t = getTask(b.dataset.toggle);
@@ -304,7 +313,7 @@ export function homeInit() {
     const next = { left: clean('left'), main: clean('main') };
     PANELS.forEach(id => { if (!seen.has(id)) (DEFAULT_LAYOUT.left.includes(id) ? next.left : next.main).push(id); });
     layout = next;
-    if (_host && !_host.hidden && state.view === 'home') renderHomeView(_host);
+    if (_host && !_host.hidden && state.view === 'home') morph(_host, () => renderHomeView(_host));
   }).catch(() => {});
   document.addEventListener('pointerdown', e => {
     const h = e.target.closest('.hm-handle[data-hmh]');
@@ -320,7 +329,7 @@ export function homeInit() {
     const key = a ? a.taskId + (a.paused ? ':p' : '') : '';
     if (key === timerKey) return;
     timerKey = key;
-    if (_host && !_host.hidden && state.view === 'home') renderHomeView(_host);
+    if (_host && !_host.hidden && state.view === 'home') morph(_host, () => renderHomeView(_host));
   });
 }
 

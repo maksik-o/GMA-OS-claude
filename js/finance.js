@@ -7,7 +7,7 @@
 import { dbAll, dbPut, dbBulk } from './db.js';
 import { uid, esc, today, iso, parseISO, addDays, MONTHS, MONTHS_FULL } from './store.js';
 import { readFinanceFile, detectColumns, rowsToTx, fingerprint, toCSV, download } from './finimport.js';
-import { rowBrickSwap, contentFade } from './anim.js';
+import { rowBrickSwap, contentFade, morph } from './anim.js';
 import { ringChart, ringLegend, barChart, gauge, lineChart } from './charts.js';
 import { getPeople } from './contacts.js';
 
@@ -359,7 +359,9 @@ let curM = curMonth();
 let tab = 'dash';
 let _host = null;
 
-export function renderFinanceView(el) {
+/* Перерисовка «на месте» с движением (anim.morph); сама отрисовка — ниже */
+export function renderFinanceView(el) { morph(el, () => renderFinanceViewNow(el)); }
+function renderFinanceViewNow(el) {
   if (!el) return;
   _host = el;
   el.innerHTML = `

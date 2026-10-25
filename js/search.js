@@ -1,3 +1,4 @@
+import { morph } from './anim.js';
 import { visibleTasks, isDone, fmtD, esc, getTagColor, getTask } from './store.js';
 import { openSheet } from './sheet.js';
 import { openDay, closeCellMenu } from './week.js';
@@ -46,7 +47,12 @@ export function closeSearch() {
   }
 }
 
+/* Результаты меняются «на месте»: оставшиеся переезжают, новые проявляются */
 function renderSearchResults() {
+  const box = document.getElementById('searchPanel');
+  morph(box, renderSearchResultsNow);
+}
+function renderSearchResultsNow() {
   const list = $('searchList');
   const tagsWrap = $('searchTags');
   if (!list) return;
