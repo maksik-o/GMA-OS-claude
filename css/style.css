@@ -5130,7 +5130,7 @@ body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
      встаёт по центру между полем и «+», чтобы поле на него не наезжало */
   .bottomnav { transition: left .34s cubic-bezier(.34, 1.4, .5, 1), width .34s cubic-bezier(.34, 1.4, .5, 1); }
   .bottomnav button { padding: 0; }
-  body.kb-trash-open[data-view="kb"]:has(.kb-view.kb-structure) .bottomnav {
+  body.kb-trash-open[data-view="kb"] .bottomnav {
     --side: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
     left: calc((var(--side) + 156px + 10px + 100% - var(--side) - 56px - 10px) / 2);
     width: calc(100% - 2 * var(--side) - 156px - 56px - 20px);
@@ -6566,3 +6566,65 @@ body.sb-mini #sidebar .sb-sec { align-items: stretch !important; }
 body.sb-mini #sidebar { padding: 14px 12px 12px !important; }
 #sidebar .sb-it:hover { background: rgba(255, 255, 255, .05) !important; }
 #sidebar .sb-views .sb-it.on:hover { background: transparent !important; }
+
+/* ══════════ База знаний: доска папок — основное окно (kb.js) ══════════
+   Слева доска (папки, отдельные заметки), справа — панель заметки или
+   графа; без панели доска на всю ширину. Старые панель групп и колонка
+   заметок убраны из разметки. */
+.kb-view, .kb-view.kb-panel-open { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 14px; row-gap: 0; align-items: start; }
+.kb-view.kb-panel-open { grid-template-columns: minmax(0, 1fr) minmax(380px, 46%); }
+.kb-view > .kb-board { display: flex; flex-direction: column; gap: 10px; grid-row: 1; grid-column: 1; min-width: 0; min-height: calc(100dvh - 150px); }
+.kb-view > .kb-main { display: none; }
+.kb-view.kb-panel-open > .kb-main {
+  display: flex; grid-row: 1; grid-column: 2; min-width: 0; position: sticky; top: 0;
+  max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain;
+}
+.kb-view.kb-panel-open > .kb-main.kb-main-graph { height: calc(100dvh - 120px); overflow: hidden; }
+.kb-board-head { gap: 12px; }
+.kb-board-head > b { flex: none; }
+.kb-bsearch {
+  flex: 1; max-width: 420px; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; margin-left: auto;
+  border-radius: 12px; background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); color: var(--dim);
+  transition: background .2s, box-shadow .2s;
+}
+.kb-bsearch:focus-within { background: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); }
+.kb-bsearch svg { flex: none; width: 16px; height: 16px; }
+.kb-bsearch .kb-q { flex: 1; min-width: 0; height: 100%; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; outline: none; border-radius: 0 !important; }
+.kb-board-head .kb-to-graph.on { background: color-mix(in srgb, var(--accent) 24%, transparent); color: #fff; }
+/* Шапка заметки: «назад», название, удалить */
+.kb-nhead .kb-title { flex: 1; min-width: 0; }
+.kb-nhead .kf-hbtn svg { width: 17px; height: 17px; }
+.kb-nhead .kb-del:hover { background: color-mix(in srgb, var(--c-skipped, #ef4444) 30%, transparent); }
+.kb-gbar .kb-gclose svg { width: 16px; height: 16px; }
+/* Поиск: найденные заметки */
+.kb-found { display: flex; flex-direction: column; gap: 10px; }
+.kb-found-cap { margin: 2px 4px 0; font-size: 12.5px; font-weight: 700; color: var(--dim); }
+.kb-found-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.kb-found-it {
+  display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass)); box-shadow: var(--shadow), var(--inner-glow);
+}
+.kb-found-g { align-self: flex-start; margin: 0 4px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700;
+  color: #fff; background: color-mix(in srgb, var(--gc) 45%, transparent); }
+.kb-fold .kb-item.on, .kb-board .kb-item.on { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 70%, transparent); }
+/* Корзина: на компьютере — правее левого меню, иначе её не видно */
+body.has-sidebar .kb-board .btn.danger.kb-trash { left: calc(var(--sb-w) + 30px); }
+body.has-sidebar .kb-board .btn.danger.kb-trash { transition: width .34s cubic-bezier(.34,1.4,.5,1), transform .18s ease, filter .18s, left .38s var(--ease-spring); }
+@media (max-width: 720px) {
+  .kb-view.kb-panel-open { grid-template-columns: minmax(0, 1fr); }
+  .kb-board-head > b { display: none; }
+  .kb-bsearch { max-width: none; margin-left: 0; }
+  .kb-view.kb-panel-open > .kb-main {
+    position: fixed; inset: 0; z-index: 90; max-height: none; border-radius: 0; overflow-y: auto;
+    padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 24px);
+    background: var(--panel-solid);
+  }
+  .kb-view.kb-panel-open > .kb-main.kb-main-graph { height: auto; }
+  .kb-found-list { grid-template-columns: minmax(0, 1fr); }
+}
+/* Телефон: открытая заметка или граф — на весь экран, меню-карусель,
+   «+» и нижнее меню прячутся (панель внутри #app, поверх них не встать) */
+@media (max-width: 720px) {
+  body[data-view="kb"].kb-panel-on .rail, body[data-view="kb"].kb-panel-on #addBtn, body[data-view="kb"].kb-panel-on .bottomnav { visibility: hidden; opacity: 0; pointer-events: none; }
+  body[data-view="kb"].kb-panel-on .rail, body[data-view="kb"].kb-panel-on #addBtn { transition: opacity .2s, visibility 0s .2s; }
+}
