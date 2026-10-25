@@ -260,19 +260,15 @@ const MID_SEL = [
   '#dayPanel',
   '#contactsView .cgroup', '#contactsView .cgroup-new',
   '#financeView .fin-head', '#financeView .fin-body',
-  '#kbView .kb-side', '#kbView .kb-notes', '#kbView .kb-main',
-  /* «Структура» базы знаний: шапка, группы и заметки доски, корзина */
+  '#kbView .kb-main',
+  /* База знаний: шапка, папки и заметки доски, корзина */
   '#kbView .kb-board-head', '#kbView .kb-mcol > [data-bid]', '#kbView .kb-trash',
-  /* Главная: меню, карточки колонки, таймлайн, плитки, график, строка ввода */
-  '#homeView .hm-zone > [data-hm]', '#homeView .hm-quick',
+  /* Главная: карточки колонки, таймлайн, плитки, график */
+  '#homeView .hm-zone > [data-hm]',
 ].join(',');
 function collectMidBlocks() {
   return [...document.querySelectorAll(MID_SEL)].filter(el => el.offsetWidth > 0);
 }
-const orderRow = (blocks, asc) => blocks
-  .map(b => { const r = b.getBoundingClientRect(); return { b, x: r.left + r.width / 2 }; })
-  .sort((a, c) => (asc ? a.x - c.x : c.x - a.x))
-  .map(o => o.b);
 async function switchModeWithAnim(nextId) {
   const order = MODES.map(m => m.id);
   const from = order.indexOf(state.mode);

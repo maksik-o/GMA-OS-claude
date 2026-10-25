@@ -20,7 +20,7 @@ import { init as kbInit, renderKbView, kbSubscribe, newKbNote } from './kb.js';
 import { focusInit } from './focus.js';
 import { widgetsInit, openWidgetsPanel } from './widgets.js';
 import { renderHomeView, homeInit, homeEntered } from './home.js';
-import { morph, enter, isSwapping } from './anim.js';
+import { morph, enter, enterDeep, isSwapping } from './anim.js';
 import { sidebarInit, renderSidebar } from './sidebar.js';
 import { railInit, railSync } from './rail.js';
 import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanban, currentBlock } from './kanban.js';
@@ -619,7 +619,6 @@ function applyView(v) {
   }
   const ab = $('addBtn');
   if (ab) ab.hidden = v === 'finance';
-  document.querySelectorAll('#bottomNav button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
   const ct = $('ctBtn');
   if (ct) ct.classList.toggle('on', v === 'contacts');
   const fb = $('finBtn');
@@ -640,7 +639,7 @@ function applyView(v) {
   if (v === 'contacts' && cv) renderContactsView(cv, state.mode);
   else if (v === 'finance' && fv) renderFinanceView(fv);
   else if (v === 'kb' && kv) renderKbView(kv);
-  else if (v === 'home' && hv) { renderHomeView(hv); if (!isSwapping()) homeEntered(); }
+  else if (v === 'home' && hv) { renderHomeView(hv); if (!isSwapping() && !document.documentElement.classList.contains('booting')) homeEntered(); }
   else renderAll();
   placeWeekNav();
   renderSidebar();
@@ -816,7 +815,6 @@ async function boot() {
   bindNav();
   sidebarInit();   // после bindNav: кнопки шапки уже с подписями
   railInit();      // телефон: меню-карусель слева
-  bindNavHide();
   searchAnchor = $('searchBtn') ? $('searchBtn').nextSibling : null;
   document.addEventListener('grid-rendered', placeWeekNav);
   if (mqMobile.addEventListener) mqMobile.addEventListener('change', placeWeekNav);
@@ -824,11 +822,27 @@ async function boot() {
   bindSync();
   timerInit();
   searchInit();
-  renderAll();
+  /* Запуск всегда с «Главной»: экран собирается невидимым (html.booting),
+     затем всё проявляется одним каскадом */
+  applyView('home');
+  revealApp();
   syncInit();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+}
+function revealApp() {
+  requestAnimationFrame(() => {
+    document.documentElement.classList.remove('booting');
+    const shown = el => el && el.offsetWidth > 0;
+    const frame = [document.querySelector('.topbar'), $('sidebar'), document.querySelector('.rail')].filter(shown);
+    const blocks = [...document.querySelectorAll('#homeView .hm-zone > [data-hm]')].filter(shown);
+    enter(frame, { stagger: 60 });
+    enterDeep(blocks, { delay: 80 });
+    const ab = $('addBtn');
+    if (shown(ab)) ab.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 260, easing: 'cubic-bezier(.32, 1.18, .28, 1)', fill: 'backwards' });
+    setTimeout(homeEntered, 120);   // числа докручиваются, когда экран уже виден
+  });
 }
 function moveDay(dir) { openDay(addDays(dayOpen() ? state.day : today(), dir)); }
 function bindNav() {
@@ -917,20 +931,6 @@ function bindNav() {
       closeCellMenu();
     };
   }
-  document.querySelectorAll('#bottomNav button').forEach(b => {
-    b.onclick = () => setView(b.dataset.view);
-  });
-}
-function bindNavHide() {
-  const app = $('app');
-  const nav = $('bottomNav');
-  if (!app || !nav) return;
-  let t = null;
-  app.addEventListener('scroll', () => {
-    nav.classList.add('hid');
-    clearTimeout(t);
-    t = setTimeout(() => nav.classList.remove('hid'), 180);
-  }, { passive: true });
 }
 /* ── ПК: блок недели и поиск в шапке задач; мобилка — топбар.
    Троеточие меню — ПЕРЕД заголовком панели (14px до заголовка). ── */
