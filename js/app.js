@@ -21,6 +21,7 @@ import { focusInit } from './focus.js';
 import { widgetsInit, openWidgetsPanel } from './widgets.js';
 import { renderHomeView, homeInit } from './home.js';
 import { sidebarInit, renderSidebar } from './sidebar.js';
+import { railInit, railSync } from './rail.js';
 import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanban, currentBlock } from './kanban.js';
 
 const $ = id => document.getElementById(id);
@@ -631,6 +632,7 @@ function applyView(v) {
   else renderAll();
   placeWeekNav();
   renderSidebar();
+  railSync();
 }
 function renderCurrent() {
   renderSidebar();
@@ -783,6 +785,7 @@ async function boot() {
   });
   bindNav();
   sidebarInit();   // после bindNav: кнопки шапки уже с подписями
+  railInit();      // телефон: меню-карусель слева
   bindNavHide();
   searchAnchor = $('searchBtn') ? $('searchBtn').nextSibling : null;
   document.addEventListener('grid-rendered', placeWeekNav);

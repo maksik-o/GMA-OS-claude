@@ -113,6 +113,12 @@ html[data-theme] {
   background: #111214; color: #e6e6e6;
   box-shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset, rgba(255, 255, 255, .12) 0 0 0 1px, rgba(0, 0, 0, .2) 0 -1px 0 0 inset;
 }
+/* Выбранный чип — цвета режима (тёмная «клавиша» выше перебивала его фон,
+   а текст на нём тёмный — выбранный чип становился невидимым) */
+:root[data-theme="coral"] .chip.on { background: var(--accent); box-shadow: rgba(0, 0, 0, .25) 0 2px 4px; }
+:root[data-theme="coral"] .chip.pr1.on { background: var(--p1); }
+:root[data-theme="coral"] .chip.pr2.on { background: var(--p2); }
+:root[data-theme="coral"] .chip.pr3.on { background: var(--p3); }
 :root[data-theme="coral"] .btn:not(.primary) { border-radius: 8px; }
 /* Режимы — сегментированный переключатель, выбранный — плашка цвета режима */
 :root[data-theme="coral"] .modes { background: #111214; box-shadow: rgba(255, 255, 255, .08) 0 0 0 1px inset; }

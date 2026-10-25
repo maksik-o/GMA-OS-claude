@@ -9,14 +9,13 @@ import { limitNote } from './attach.js';
 import { quickStyle, setQuickStyle, renderQuickAlt, QUICK_STYLES } from './quick.js';
 import { skinPanel, BUMP_LEN } from './skin.js';
 import { renderAll } from './week.js';
-import { createCalDrum, calTitle } from './cal.js';
+import { openSched, renderSched } from './edsched.js';
 import * as tm from './timer.js';
 
 const $ = id => document.getElementById(id);
 const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
 const sheet = $('sheet'), editor = $('editor'), daySheet = $('daySheet');
 let editId = null;
-let edDrum = null;
 export const sheetOpen = () =>
   (sheet && sheet.classList.contains('open')) ||
   (editor && editor.classList.contains('open')) ||
@@ -372,52 +371,13 @@ attachDragHandlers(daySheet, daySheet?.querySelector('.grip'), closeDay);
    ряд 2: таймер 50% + подзадачи 50%;
    теги, ссылки — во всю ширину;
    ряд 3: заметки 60% + файлы 40%. ── */
-let editorLaidOut = false;
-function ensureEditorLayout() {
-  if (!editor || editorLaidOut) return;
-  const scroll = editor.querySelector('.ed-scroll');
-  if (!scroll) return;
-  const cardWith = id => { const el = $(id); return el ? el.closest('.ed-card') : null; };
-  const calCard = cardWith('edCal') || cardWith('edDays');
-  const planCard = cardWith('edPlans');
-  const prioCard = cardWith('edPrio');
-  const timeCard = cardWith('edSessions');
-  const subCard = cardWith('edSub');
-  const notesCard = cardWith('edNotes');
-  const filesCard = cardWith('edFiles');
-  if (!calCard || !prioCard) return;
-  const row1 = document.createElement('div');
-  row1.className = 'ed-row ed-row-cal';
-  scroll.insertBefore(row1, planCard || calCard);
-  /* «Планирование» стоит слева от календаря */
-  if (planCard) row1.appendChild(planCard);
-  row1.appendChild(calCard);
-  row1.appendChild(prioCard);
-  if (timeCard && subCard) {
-    const row2 = document.createElement('div');
-    row2.className = 'ed-row ed-row-half';
-    scroll.insertBefore(row2, timeCard);
-    row2.appendChild(timeCard);
-    row2.appendChild(subCard);
-  }
-  if (notesCard && filesCard) {
-    const row3 = document.createElement('div');
-    row3.className = 'ed-row ed-row-notes';
-    scroll.insertBefore(row3, notesCard);
-    row3.appendChild(notesCard);
-    row3.appendChild(filesCard);
-  }
-  const h = calCard.querySelector('h4');
-  if (h) h.textContent = 'Календарь';
-  editorLaidOut = true;
-}
 function openEditor(task) {
   editId = task.id;
   const et = $('edTitle');
   if (et) { et.value = task.title; growEl(et); }
   const en = $('edNotes');
   if (en) { en.value = task.notes || ''; growEl(en); }
-  ensureEditorLayout();
+  openSched(task.id, renderAll);
   renderEditor();
   if (editor) editor.classList.add('open');
   refreshBackdrop();
@@ -472,7 +432,7 @@ function renderEdPlans(t) {
 function renderEditor() {
   const t = getTask(editId);
   if (!t) return;
-  renderEdDays(t);
+  renderSched();
   renderEdPlans(t);
   renderEdPrio(t);
   renderEdType(t);
@@ -481,48 +441,6 @@ function renderEditor() {
   renderEdTags(t);
   renderEdNotesLinks(t);
   renderEdFiles(t);
-}
-/* ── Календарь редактора: барабан как инлайн в липкой шапке,
-   но без полосок под числами; выбранные дни подсвечены.
-   ВАЖНО: #edCal в разметке приходит с hidden — снимаем его ДО постройки
-   барабана, иначе месяцы измеряются нулевой высотой и календарь не виден. ── */
-function renderEdDays(t) {
-  const ec = $('edCal');
-  if (!ec) return;
-  ec.hidden = false;
-  if (!edDrum) {
-    ec.innerHTML =
-      '<div class="cal-head"><span class="cal-title" title="К текущему месяцу"></span></div>' +
-      '<div class="cal-m-week">' + ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((w, i) => `<span class="${i >= 5 ? 'we' : ''}">${w}</span>`).join('') + '</div>' +
-      '<div class="ed-drum"></div>';
-    edDrum = createCalDrum(ec.querySelector('.ed-drum'), {
-      cellH: 28,
-      week: false,
-      markDay: d => (((getTask(editId) || {}).days || {})[d] ? 'on' : ''),
-      onDay: d => {
-        const task = getTask(editId);
-        if (!task) return;
-        const days = { ...(task.days || {}) };
-        if (days[d]) delete days[d];
-        else days[d] = 'todo';
-        updateTask(editId, { days }).then(() => {
-          edDrum.refresh();
-          renderAll();
-        });
-      },
-      onCenter: a => {
-        const ti = ec.querySelector('.cal-title');
-        if (ti) ti.textContent = calTitle(a);
-      },
-    });
-    const ti = ec.querySelector('.cal-title');
-    if (ti) {
-      ti.textContent = calTitle(edDrum.currentMonth());
-      ti.onclick = () => { edDrum.goCurrent(); edDrum.refresh(); };
-    }
-  } else {
-    edDrum.refresh();
-  }
 }
 function renderEdPrio(t) {
   const fp = $('edPrio');

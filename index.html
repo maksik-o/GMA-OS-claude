@@ -110,34 +110,39 @@
   <div id="qAlt" class="q-alt"></div>
 </form>
 
-<div id="editor" class="editor">
+<div id="editor" class="editor ed-v2" role="dialog" aria-label="Задача">
   <header class="ed-head">
-    <span class="ed-title">Задача</span>
+    <div class="edh-main">
+      <span class="edh-eyebrow" id="edEyebrow">Задача</span>
+      <textarea id="edTitle" class="f-title edh-title" rows="1" maxlength="400" placeholder="Название задачи"></textarea>
+    </div>
+    <div class="edh-actions">
+      <button id="edDelete" class="btn edh-del" type="button" title="Удалить задачу" aria-label="Удалить задачу">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </button>
+      <button id="edConfirm" class="btn primary edh-save" type="button" title="Готово">Готово</button>
+    </div>
   </header>
   <div class="ed-scroll">
-    <div class="ed-card">
-      <h4>Название</h4>
-      <textarea id="edTitle" class="f-title" rows="1" maxlength="400" placeholder="Название задачи"></textarea>
-    </div>
-    <div class="ed-card ed-plan-card">
-      <h4>Планирование</h4>
-      <div id="edPlans" class="plan-list"></div>
-      <button type="button" id="edPlanAdd" class="btn mini">＋ Строка плана</button>
-    </div>
-    <div class="ed-card">
-      <h4>Дни</h4>
-      <div class="q-days" id="edDays"></div>
-      <div class="q-row2">
-        <button type="button" id="edNoDate" class="q-sq">Без даты</button>
-        <button type="button" id="edCustom" class="q-sq">Календарь</button>
+    <section class="ed-sched" aria-label="Расписание">
+      <div class="eds-left">
+        <div class="eds-tabs" id="edFreq" role="group" aria-label="Повтор"></div>
+        <div class="eds-opts" id="edFreqOpts"></div>
+        <div class="eds-clock" id="edClock"></div>
       </div>
-      <div id="edCal" class="q-cal" hidden></div>
-    </div>
+      <div class="eds-right">
+        <p class="eds-sum" id="edSummary"></p>
+        <div class="eds-cal-wrap">
+          <div class="eds-cal" id="edMonth"></div>
+          <div class="eds-next" id="edNext"></div>
+        </div>
+      </div>
+      <div class="eds-foot" id="edFoot"></div>
+    </section>
+    <div class="ed-more">
     <div class="ed-card">
       <h4>Приоритет</h4>
       <div class="chip-row" id="edPrio"></div>
-    </div>
-    <div class="ed-card">
       <h4>Тип</h4>
       <div class="chip-row" id="edType"></div>
     </div>
@@ -150,17 +155,11 @@
       </div>
     </div>
     <div class="ed-card">
-      <h4>Потраченное время</h4>
-      <div class="time-sessions" id="edSessions"></div>
-    </div>
-    <div class="ed-card">
       <h4>Теги</h4>
       <div class="chip-row" id="edTags"></div>
       <div class="chip-row" style="margin-top: 8px;">
         <input id="edTagInput" class="chip-input" type="text" placeholder="+ тег">
       </div>
-    </div>
-    <div class="ed-card">
       <h4>Ссылки</h4>
       <div class="chip-row" id="edLinks"></div>
     </div>
@@ -172,13 +171,16 @@
       <h4>Файлы</h4>
       <div id="edFiles"></div>
     </div>
-  </div>
-  <div class="ed-actions">
-    <button id="edDelete" class="btn danger ed-fab-del" type="button" title="Удалить задачу" aria-label="Удалить задачу">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-    </button>
-    <span class="spacer"></span>
-    <button id="edConfirm" class="btn primary ed-btn-equal" type="button" title="Сохранить" aria-label="Сохранить">✓</button>
+    <div class="ed-card">
+      <h4>Потраченное время</h4>
+      <div class="time-sessions" id="edSessions"></div>
+    </div>
+    <div class="ed-card ed-plan-card">
+      <h4>Окна по дням</h4>
+      <div id="edPlans" class="plan-list"></div>
+      <button type="button" id="edPlanAdd" class="btn mini">＋ Своё время на день</button>
+    </div>
+    </div>
   </div>
 </div>
 
