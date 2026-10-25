@@ -193,12 +193,11 @@ const dropFile = f => (f.src ? deleteAttachment(f) : dbDel(FILES, f.id)).catch((
      без перерисовки. */
 let curGroup = '';     // '' — все
 const LOOSE = '__none';   // заметки без группы (в т.ч. с удалённой группой)
-const openGroups = new Set();
 let curNote = null;
-let notesOpen = false;      // колонка заметок выбранной группы: скрыта, пока группу не выбрали
 let query = '';
 let _host = null;
-let view = 'note';         // 'note' | 'graph'
+let view = 'note';         // что в панели справа: 'note' | 'graph'
+let panel = false;         // панель справа (заметка или граф) открыта
 let graphScope = 'all';    // 'all' | 'local'
 let graphDepth = 1;
 let hideOrphans = false;
@@ -267,57 +266,48 @@ async function setLink(aId, bId, on) {
 export function renderKbView(el) { morph(el, () => renderKbViewNow(el)); }
 function renderKbViewNow(el) {
   if (!el) return;
-  if (_host !== el || !el.querySelector(':scope > .kb-side')) buildShell(el);
+  if (_host !== el || !el.querySelector(':scope > .kb-board')) buildShell(el);
   _host = el;
   if (curNote && !kbItem(curNote)) curNote = null;
-  renderSide();
+  renderBoard();
   renderMain();
 }
 
+/* Окно базы знаний — доска папок. Шапка (название, поиск, граф) живёт
+   отдельно от перерисовываемого тела, чтобы поле поиска не теряло фокус.
+   Заметка и граф открываются в панели справа (на телефоне — поверх). */
 function buildShell(el) {
   el.innerHTML = `
-    <aside class="kb-side">
-      <div class="kb-search"><input class="kb-q" type="search" placeholder="Поиск по базе" value="${esc(query)}"></div>
-      <div class="kb-tools">
-        <button type="button" class="btn mini kb-tool kb-to-graph" title="Граф связей между заметками">◉ Граф</button>
-        <button type="button" class="btn mini kb-tool kb-to-struct" title="Структура: группы колонками, заметки раскладываются перетаскиванием">▦ Структура</button>
-      </div>
-      <div class="kb-groups"></div>
-    </aside>
-    <section class="kb-notes" aria-label="Заметки группы">
-      <div class="kb-notes-in">
-        <header class="kb-notes-head"><button type="button" class="kb-notes-back" title="К группам" aria-label="К группам">‹</button><span class="kb-notes-dot"></span><b class="kb-notes-title"></b><span class="kb-notes-n"></span></header>
-        <div class="kb-list"></div>
-        <button type="button" class="kb-notes-grip" title="Свернуть список заметок" aria-label="Свернуть список заметок"></button>
-      </div>
+    <section class="kb-board" data-drop="${LOOSE}" aria-label="База знаний">
+      <header class="kb-board-head"><b>База знаний</b>
+        <label class="kb-bsearch">${ICON_SEARCH}<input class="kb-q" type="search" placeholder="Поиск по заметкам" value="${esc(query)}"></label>
+        <button type="button" class="btn mini kb-to-graph" title="Граф связей между заметками">◉ Граф</button>
+      </header>
+      <div class="kb-board-body"></div>
+      <div class="btn danger kb-trash" aria-hidden="true">${TRASH_SVG}<span>Удалить</span></div>
     </section>
-    <main class="kb-main"></main>
-    <section class="kb-board" data-drop="${LOOSE}" aria-label="Структура базы знаний"></section>`;
-  const side = el.querySelector('.kb-side');
-  const qi = side.querySelector('.kb-q');
-  qi.oninput = () => { query = qi.value; if (query.trim()) notesOpen = true; renderSide(); };
+    <main class="kb-main"></main>`;
+  panel = false;
+  const boardNode = el.querySelector('.kb-board');
+  const qi = boardNode.querySelector('.kb-q');
+  qi.oninput = () => { query = qi.value; renderBoard(); };
   qi.onkeydown = e => {
+    if (e.key === 'Escape') { qi.value = ''; query = ''; renderBoard(); return; }
     if (e.key !== 'Enter') return;
-    const first = el.querySelector('.kb-list .kb-item');
+    const first = boardNode.querySelector('.kb-board-body .kb-item');
     if (first) openNote(first.dataset.id);
   };
-  side.addEventListener('click', onSideClick);
-  el.querySelector('.kb-notes').addEventListener('click', onSideClick);
-  bindNotesGrip(el);
-  bindNoteDrag(el, el);
-  bindGroupDrag(side);
-  el.querySelector('.kb-board').addEventListener('click', onBoardClick);
-  bindBoardDrag(el.querySelector('.kb-board'));
-  /* Название новой группы: сохраняем по Enter или когда поле теряет фокус */
-  const boardNode = el.querySelector('.kb-board');
+  boardNode.addEventListener('click', onBoardClick);
+  bindBoardDrag(boardNode);
+  /* Название новой папки: сохраняем по Enter или когда поле теряет фокус */
   const saveName = async inp => {
     const v = inp.value.trim();
     if (inp._saved) return;
     const g = rawItem(inp.dataset.gid);
-    if (!v) { if (g && g.name) renderBoard(false, true); return; }   // переименование отменено
+    if (!v) { if (g && g.name) renderBoard(true); return; }   // переименование отменено
     inp._saved = true;
     if (freshId === inp.dataset.gid) freshId = null;
-    if (g && g.name === v) { renderBoard(false, true); return; }
+    if (g && g.name === v) { renderBoard(true); return; }
     await kbSave('group', { name: v }, inp.dataset.gid);
   };
   boardNode.addEventListener('keydown', e => {
@@ -328,97 +318,67 @@ function buildShell(el) {
   boardNode.addEventListener('focusout', e => { if (e.target.classList.contains('kb-bcol-input')) saveName(e.target); });
 }
 
-/* Ручка колонки заметок: тап — свернуть, свайп влево — колонка едет
-   за пальцем и уезжает, если протянули достаточно далеко. */
-function bindNotesGrip(el) {
-  const grip = el.querySelector('.kb-notes-grip');
-  const panel = el.querySelector('.kb-notes-in');
-  let sx = 0, dx = 0, pid = null, moved = false;
-  grip.addEventListener('pointerdown', e => {
-    pid = e.pointerId; sx = e.clientX; dx = 0; moved = false;
-    try { grip.setPointerCapture(pid); } catch {}
-  });
-  grip.addEventListener('pointermove', e => {
-    if (e.pointerId !== pid) return;
-    dx = Math.min(0, e.clientX - sx);
-    if (!moved && dx > -6) return;
-    moved = true;
-    panel.style.transition = 'none';
-    panel.style.transform = `translateX(${dx}px)`;
-  });
-  const end = e => {
-    if (e.pointerId !== pid) return;
-    pid = null;
-    panel.style.transition = '';
-    panel.style.transform = '';
-    /* Тап или достаточно длинный свайп — сворачиваем; короткий — пружиним назад */
-    if (!moved || dx < -50) { notesOpen = false; renderSide(); }
-  };
-  grip.addEventListener('pointerup', end);
-  grip.addEventListener('pointercancel', end);
-}
-
-/* На телефоне основная область стоит под списком — подкручиваем к ней */
-function revealMain() {
-  if (!_host || !matchMedia('(max-width: 720px)').matches) return;
+/* ── Панель справа ──
+   Открывается — доска сужается, папки плавно переезжают в новые
+   столбцы (FLIP), панель выезжает справа. Закрывается — наоборот. */
+let panelBusy = false;
+const isPhone = () => matchMedia('(max-width: 720px)').matches;
+async function setPanel(open) {
+  if (!_host) return;
   const main = _host.querySelector('.kb-main');
-  if (main) main.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  const board = _host.querySelector('.kb-board');
+  const was = _host.classList.contains('kb-panel-open');
+  panel = open;
+  if (was === open || panelBusy) { if (open) renderMain(); return; }
+  panelBusy = true;
+  try {
+    if (!open) {
+      flushEditor();
+      acClose();
+      if (!reduceMotion()) await main.animate(
+        [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: isPhone() ? 'translateX(40%)' : 'translateX(32px)' }],
+        { duration: 220, easing: EASE_IN, fill: 'forwards' }).finished.catch(() => {});
+    }
+    const snaps = snapBoard(board);
+    _host.classList.toggle('kb-panel-open', open);
+    document.body.classList.toggle('kb-panel-on', open);
+    if (open) renderMain();
+    else {
+      editing = null;
+      if (graph) { graph.destroy(); graph = null; }
+      main.dataset.key = '';
+      main.innerHTML = '';
+      main.getAnimations().forEach(a => a.cancel());
+    }
+    if (!isPhone()) { layoutBoard(board); boardW = board.offsetWidth; flipBoard(board, snaps, 460); }
+    if (open && !reduceMotion()) main.animate(
+      [{ opacity: 0, transform: isPhone() ? 'translateX(40%)' : 'translateX(32px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 440, easing: EASE });
+  } finally { panelBusy = false; }
+  if (!open) renderBoard();   // снять подсветку открытой заметки
 }
 
 function openNote(id, focusEditor) {
   flushEditor();
   curNote = id;
   view = 'note';
-  renderKbView(_host);
-  revealMain();
+  if (!panel) setPanel(true); else renderMain();
+  renderBoard();
   if (focusEditor && _host) {
     const t = _host.querySelector('.kb-title');
     if (t) t.focus();
   }
 }
+function closeNote() { curNote = null; setPanel(false); }
+function toggleGraph() {
+  flushEditor();
+  if (panel && view === 'graph') { if (curNote) { view = 'note'; renderMain(); } else setPanel(false); return; }
+  graphScope = 'all';
+  view = 'graph';
+  if (!panel) setPanel(true); else renderMain();
+}
 
 let dragGuard = 0;   // после перетаскивания браузер шлёт click — его пропускаем
-function onSideClick(e) {
-  if (Date.now() - dragGuard < 250) return;
-  const t = e.target;
-  if (t.closest('.kb-to-graph')) {
-    flushEditor();
-    if (view === 'structure') { setStructure(false); return; }
-    /* Окно заметки уезжает вправо, на его место выезжает граф (и обратно) */
-    swapMainAnimated(() => {
-      view = view === 'graph' ? 'note' : 'graph';
-      renderKbView(_host);
-      if (view === 'graph') revealMain();
-    });
-    return;
-  }
-  if (t.closest('.kb-to-struct')) { setStructure(view !== 'structure'); return; }
-  if (t.closest('.kb-notes-back')) { notesOpen = false; renderSide(); return; }
-  if (t.closest('.kb-notes-grip')) return;   // сворачивает обработчик ручки (тап и свайп)
-  if (t.closest('.kb-g-new')) { openGroupSheet(null, _host); return; }
-  const item = t.closest('.kb-item');
-  if (item) { openNote(item.dataset.id); return; }
-  const g = t.closest('.kb-g[data-g]');
-  if (!g) return;
-  const gid = g.dataset.g;
-  if (t.classList.contains('kb-g-caret')) {
-    if (openGroups.has(gid)) openGroups.delete(gid);
-    else openGroups.add(gid);
-    renderSide();
-    return;
-  }
-  /* И карандаш, и сам кружок ведут в одно окно: там же меняется
-     и название, и цвет. */
-  if (t.classList.contains('kb-g-edit') || t.classList.contains('kb-g-dot')) {
-    if (gid && gid !== LOOSE) openGroupSheet(gid, _host);
-    return;
-  }
-  /* Повторный тап по открытой группе прячет колонку заметок */
-  if (curGroup === gid && notesOpen) notesOpen = false;
-  else { curGroup = gid; notesOpen = true; }
-  renderSide();
-  if (view === 'graph') renderMain();
-}
 
 /* Порядок «свежие сверху», но открытая заметка держит место, пока её
    правят: иначе она прыгала бы в начало списка на первой же букве. */
@@ -450,60 +410,6 @@ function groupBranch(gid, groups = kbGroups()) {
   return ids;
 }
 
-function renderSide() {
-  if (!_host) return;
-  const side = _host.querySelector('.kb-side');
-  const groups = kbGroups();
-  const known = new Set(groups.map(g => g.id));
-  const allNotes = kbNotes().sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
-  const q = query.trim().toLowerCase();
-  let notes = allNotes;
-  if (curGroup && curGroup !== LOOSE && !known.has(curGroup)) curGroup = '';
-  const isLoose = n => !n.groupId || !known.has(n.groupId);
-  if (curGroup === LOOSE) notes = notes.filter(isLoose);
-  else if (curGroup) { const br = groupBranch(curGroup, groups); notes = notes.filter(n => br.has(n.groupId)); }
-  const looseN = allNotes.filter(isLoose).length;
-  if (q) notes = notes.filter(n => (titleOf(n) + ' ' + plain(n.html)).toLowerCase().includes(q));
-  const countIn = gid => { const br = groupBranch(gid, groups); return allNotes.filter(n => br.has(n.groupId)).length; };
-
-  const row = (g, depth) => {
-    const kids = childGroups(g.id, groups);
-    const open = openGroups.has(g.id);
-    return `<div class="kb-gwrap${open ? ' open' : ''}" data-drop="${g.id}" style="--depth:${depth}">
-      <button type="button" class="kb-g${curGroup === g.id ? ' on' : ''}" data-g="${g.id}" style="--gc:${g.color || '#94a3b8'}">
-        <span class="kb-g-caret${kids.length ? (open ? ' open' : '') : ' none'}" title="${open ? 'Свернуть подгруппы' : 'Показать подгруппы'}"></span>
-        <span class="kb-g-dot"></span><span class="kb-g-name">${esc(g.name || 'Без названия')}</span>
-        <span class="kb-g-n">${countIn(g.id)}</span>
-        <span class="kb-g-edit" title="Изменить или добавить подгруппу">✎</span></button>
-      ${open && kids.length ? `<div class="kb-sub">${kids.map(k => row(k, depth + 1)).join('')}</div>` : ''}
-    </div>`;
-  };
-  /* Корни — группы без родителя или с удалённым родителем */
-  const roots = groups.filter(g => !g.parentId || !known.has(g.parentId));
-
-  side.querySelector('.kb-to-graph').classList.toggle('on', view === 'graph');
-  side.querySelector('.kb-to-struct').classList.toggle('on', view === 'structure');
-  setHTML(side.querySelector('.kb-groups'), `
-    <button type="button" class="kb-g${curGroup === '' ? ' on' : ''}" data-g="" style="--gc:var(--dim)">
-      <span class="kb-g-caret none"></span>
-      <span class="kb-g-dot"></span><span class="kb-g-name">Все заметки</span><span class="kb-g-n">${allNotes.length}</span></button>
-    ${roots.map(g => row(g, 0)).join('')}
-    ${looseN ? `<div class="kb-gwrap kb-loose-row" data-drop="${LOOSE}" style="--depth:0">
-      <button type="button" class="kb-g${curGroup === LOOSE ? ' on' : ''}" data-g="${LOOSE}" style="--gc:#94a3b8">
-        <span class="kb-g-caret none"></span><span class="kb-g-dot"></span><span class="kb-g-name">Без группы</span><span class="kb-g-n">${looseN}</span></button></div>` : ''}
-    <button type="button" class="kb-g-new">＋ Группа</button>`);
-
-  /* Колонка заметок выбранной группы */
-  const col = _host.querySelector('.kb-notes');
-  const cg = curGroup ? groups.find(g => g.id === curGroup) : null;
-  col.querySelector('.kb-notes-title').textContent = q ? 'Поиск' : curGroup === LOOSE ? 'Без группы' : cg ? (cg.name || 'Без названия') : 'Все заметки';
-  col.querySelector('.kb-notes-n').textContent = notes.length;
-  col.style.setProperty('--gc', q ? 'var(--accent)' : cg ? (cg.color || '#94a3b8') : 'var(--dim)');
-  setHTML(col.querySelector('.kb-list'), notes.length
-    ? notes.map(itemHTML).join('')
-    : `<p class="empty">${q ? 'Ничего не найдено' : 'В группе пока нет заметок — кнопка «+» внизу создаст новую'}</p>`);
-  _host.classList.toggle('kb-notes-open', notesOpen);
-}
 
 /* Миниатюра открытой заметки — прямо при наборе, без перерисовки */
 function updateThumb() {
@@ -511,7 +417,7 @@ function updateThumb() {
   const title = editing.title.value.trim();
   const text = plain(editing.ed.innerHTML);
   const label = title || text.slice(0, 40) || 'Без названия';
-  _host.querySelectorAll(`.kb-list [data-id="${CSS.escape(editing.id)}"]`).forEach(node => {
+  _host.querySelectorAll(`.kb-board [data-id="${CSS.escape(editing.id)}"]`).forEach(node => {
     const b = node.querySelector('b'), i = node.querySelector('i');
     if (b) b.textContent = label;
     if (i) i.textContent = text.slice(0, 70) || 'Пусто';
@@ -521,7 +427,9 @@ function updateThumb() {
 /* ── Основная область ── */
 function renderMain() {
   if (!_host) return;
-  if (view === 'structure') { renderBoard(false); return; }
+  const gb = _host.querySelector('.kb-to-graph');
+  if (gb) gb.classList.toggle('on', panel && view === 'graph');
+  if (!panel) return;
   const main = _host.querySelector('.kb-main');
   const note = curNote ? kbItem(curNote) : null;
   const key = view === 'graph' ? 'graph' : note ? 'note:' + note.id : 'blank';
@@ -534,12 +442,8 @@ function renderMain() {
   }
   main.classList.toggle('kb-main-graph', view === 'graph');
   if (view === 'graph') { fresh ? buildGraph(main) : updateGraph(main); return; }
-  if (!note) {
-    if (fresh) main.innerHTML = `<div class="kb-blank">
-      <b>База знаний</b>
-      <span>Выберите заметку слева или создайте новую. Заметки можно раскладывать по группам,
-      связывать между собой — кнопкой «Связать» или прямо в тексте через <code>[[</code> — и смотреть связи на графе.</span>
-    </div>`;
+  if (!note) {   // заметку удалили (здесь или на другом устройстве) — панель закрывается
+    if (!panelBusy) setTimeout(closeNote, 0);
     return;
   }
   if (fresh) buildNote(main, note);
@@ -547,15 +451,16 @@ function renderMain() {
 }
 
 function groupOptions(n) {
-  return `<option value="">Без группы</option>
-    ${kbGroups().map(g => `<option value="${g.id}"${n.groupId === g.id ? ' selected' : ''}>${esc(g.name)}</option>`).join('')}`;
+  return `<option value="">Без папки</option>
+    ${flatGroups().map(({ g, depth }) => `<option value="${g.id}"${n.groupId === g.id ? ' selected' : ''}>${'\u2003'.repeat(depth)}${esc(g.name || 'Новая папка')}</option>`).join('')}`;
 }
 
 function buildNote(main, n) {
   main.innerHTML = `
     <header class="kb-nhead">
+      <button type="button" class="kf-hbtn kb-pclose" title="Закрыть заметку" aria-label="Закрыть заметку">${ICON_BACK}</button>
       <input class="kb-title" type="text" maxlength="120" placeholder="Название заметки" value="${esc(n.title || '')}">
-      <button type="button" class="icon-btn kb-del" title="Удалить заметку">✕</button>
+      <button type="button" class="kf-hbtn kb-del" title="Удалить заметку" aria-label="Удалить заметку">${TRASH_SVG}</button>
     </header>
     <div class="kb-meta">
       <select class="kb-group-sel">${groupOptions(n)}</select>
@@ -683,9 +588,9 @@ function bindNote(main, n) {
       : 'Удалить заметку вместе с вложениями?')) return;
     editing = null;
     await kbRemove(n.id);
-    curNote = null;
-    renderKbView(_host);
+    closeNote();
   };
+  main.querySelector('.kb-pclose').onclick = closeNote;
   const file = main.querySelector('.kb-file');
   file.onchange = async () => {
     flushEditor();
@@ -701,8 +606,7 @@ function bindNote(main, n) {
     flushEditor();
     graphScope = 'local';
     view = 'graph';
-    renderKbView(_host);
-    revealMain();
+    renderMain();
   };
   /* Нижняя часть перерисовывается, поэтому слушаем делегированием */
   main.querySelector('.kb-extra').addEventListener('click', e => {
@@ -947,7 +851,7 @@ function buildGraph(main) {
       <label class="kb-gorph"><input type="checkbox"${hideOrphans ? ' checked' : ''}> Без одиночных</label>
       <span class="spacer"></span>
       <button type="button" class="btn mini kb-gfit" title="Вписать в экран">⤢</button>
-      <button type="button" class="btn mini kb-gclose" title="Вернуться к заметке">✕</button>
+      <button type="button" class="kf-hbtn kb-gclose" title="Закрыть граф" aria-label="Закрыть граф"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="kb-graph-wrap">
       <canvas class="kb-graph"></canvas>
@@ -965,7 +869,7 @@ function buildGraph(main) {
   main.querySelector('.kb-gdepth select').onchange = e => { graphDepth = +e.target.value; updateGraph(main, true); };
   main.querySelector('.kb-gorph input').onchange = e => { hideOrphans = e.target.checked; updateGraph(main, true); };
   main.querySelector('.kb-gfit').onclick = () => graph && graph.fit();
-  main.querySelector('.kb-gclose').onclick = () => { view = 'note'; renderKbView(_host); };
+  main.querySelector('.kb-gclose').onclick = toggleGraph;
   updateGraph(main, true);
 }
 
@@ -987,213 +891,18 @@ function updateGraph(main, refit) {
   const used = new Set(nodes.map(n => kbItem(n.id)).filter(Boolean).map(n => n.groupId || ''));
   setHTML(main.querySelector('.kb-legend'), kbGroups().filter(g => used.has(g.id))
     .map(g => `<span><i style="--lc:${g.color}" class="kbl-dot"></i>${esc(g.name)}</span>`).join('') +
-    (used.has('') ? '<span><i style="--lc:var(--dim)" class="kbl-dot"></i>Без группы</span>' : ''));
+    (used.has('') ? '<span><i style="--lc:var(--dim)" class="kbl-dot"></i>Без папки</span>' : ''));
   graph.setData(nodes, links, curNote);
   if (refit) graph.autoFit();
 }
 
-/* ── Окно группы ── */
-function openGroupSheet(id, host, parentPreset = '') {
-  const g = id ? kbItem(id) : null;
-  const all = kbGroups();
-  /* Родителем нельзя выбрать саму группу и её же подгруппы — иначе цикл */
-  const banned = id ? groupBranch(id, all) : new Set();
-  const parentNow = g ? (g.parentId || '') : parentPreset;
-  const depthOf = gr => { let d = 0, p = gr.parentId; const seen = new Set(); while (p && !seen.has(p)) { seen.add(p); d++; p = (all.find(x => x.id === p) || {}).parentId; } return d; };
-  const g0 = g ? kbGroups().find(x => x.id === g.id) || g : null;
-  const resolved = c => {
-    if (!c || !String(c).startsWith('var(')) return c;
-    const v = getComputedStyle(document.documentElement).getPropertyValue(String(c).slice(4, -1)).trim();
-    return v || '#94a3b8';
-  };
-  const color = resolved((g0 && g0.color)) || PALETTE[kbGroups().length % PALETTE.length];
-  const ov = document.createElement('div');
-  ov.className = 'notes-list-overlay';
-  ov.innerHTML = `<div class="notes-list-modal glass kb-gsheet">
-    <header class="notes-list-head"><h3>${g ? 'Группа' : 'Новая группа'}</h3>
-      <button type="button" class="notes-list-close">✕</button></header>
-    <div class="fin-form">
-      <label class="fin-field"><span>Название</span>
-        <input class="fin-in kg-name" type="text" maxlength="40" value="${g0 ? esc(g0.name) : ''}" placeholder="Например, Проекты"></label>
-      <div class="fin-field"><span>Цвет</span>
-        <div class="kg-colors">${PALETTE.map(c =>
-          `<button type="button" class="kg-dot${c.toLowerCase() === String(color).toLowerCase() ? ' on' : ''}" data-c="${c}" style="--c:${c}"></button>`).join('')}
-          <input class="kg-custom" type="color" value="${color}" title="Свой цвет"></div></div>
-      <label class="fin-field"><span>Внутри группы</span>
-        <select class="fin-in kg-parent">
-          <option value="">— верхний уровень —</option>
-          ${all.filter(x => !banned.has(x.id)).map(x => `<option value="${x.id}"${x.id === parentNow ? ' selected' : ''}>${'  '.repeat(depthOf(x))}${esc(x.name)}</option>`).join('')}
-        </select></label>
-    </div>
-    <div class="ne-actions">
-      ${g && !['kb-work', 'kb-home', 'kb-study'].includes(g.id)
-        ? '<button type="button" class="btn danger kg-del">Удалить</button>' : ''}
-      ${g ? '<button type="button" class="btn kg-sub">＋ Подгруппа</button>' : ''}
-      <span class="spacer"></span>
-      <button type="button" class="btn primary kg-save">Сохранить</button>
-    </div></div>`;
-  document.body.appendChild(ov);
-  const close = () => fadeRemove(ov);
-  ov.querySelector('.notes-list-close').onclick = close;
-  ov.onclick = e => { if (e.target === ov) close(); };
-  let picked = color;
-  const custom = ov.querySelector('.kg-custom');
-  ov.querySelectorAll('.kg-dot').forEach(d => d.onclick = () => {
-    picked = d.dataset.c;
-    custom.value = picked;
-    ov.querySelectorAll('.kg-dot').forEach(x => x.classList.toggle('on', x === d));
-  });
-  custom.oninput = () => {
-    picked = custom.value;
-    ov.querySelectorAll('.kg-dot').forEach(x => x.classList.remove('on'));
-  };
-  const nameEl = ov.querySelector('.kg-name');
-  ov.querySelector('.kg-save').onclick = async () => {
-    const name = nameEl.value.trim();
-    if (!name) { nameEl.focus(); return; }
-    const patch = { name: name.slice(0, 40), color: picked, order: g ? g.order : kbGroups().length,
-      parentId: ov.querySelector('.kg-parent').value };
-    if (id && MODE_OF_GROUP[id]) {
-      const mode = MODES.find(x => x.id === MODE_OF_GROUP[id]) || {};
-      patch.customName = name !== mode.label;
-      patch.customColor = !String(picked).startsWith('var(');
-    }
-    const saved = await kbSave('group', patch, id);
-    if (!id) { curGroup = saved.id; notesOpen = true; }
-    if (patch.parentId) openGroups.add(patch.parentId);   // показать новую подгруппу в дереве
-    close();
-    renderKbView(host);
-  };
-  const del = ov.querySelector('.kg-del');
-  if (del) del.onclick = async () => {
-    if (!confirm('Удалить группу? Её заметки и подгруппы перейдут на уровень выше.')) return;
-    await kbRemove(id);
-    if (curGroup === id) curGroup = '';
-    close();
-    renderKbView(host);
-  };
-  const sub = ov.querySelector('.kg-sub');
-  if (sub) sub.onclick = () => { close(); openGroupSheet(null, host, id); };
-  setTimeout(() => nameEl.focus(), 60);
-}
 
-/* ── Перенос заметки в группу ──
-   Pointer-события, а не нативный drag-and-drop: на iOS он в вебе не
-   работает. Тянем карточку из списка, группа под курсором
-   подсвечивается, отпустили — заметка сменила группу. Слушатель
-   один, делегированием на панели: список перерисовывается, а
-   привязка остаётся. */
-function bindNoteDrag(el, side) {
-  let src = null, ghost = null, over = null, started = false, sx = 0, sy = 0, gx = 0, gy = 0, board = null, slot = null;
-  const dropAt = (x, y) => {
-    const n = document.elementFromPoint(x, y);
-    return n ? n.closest('[data-drop]') : null;
-  };
-  const clearOver = () => { if (over) over.classList.remove('kb-drop-over'); over = null; };
-  const move = e => {
-    if (!src) return;
-    if (!started) {
-      if (Math.abs(e.clientX - sx) < 7 && Math.abs(e.clientY - sy) < 7) return;
-      started = true;
-      const r = src.getBoundingClientRect();
-      gx = sx - r.left;
-      gy = sy - r.top;
-      /* Тянем миниатюру самой заметки — так, как она нарисована в колонке */
-      ghost = src.cloneNode(true);
-      ghost.classList.remove('on', 'dragging');
-      ghost.classList.add('kb-drag-card');
-      ghost.style.width = r.width + 'px';
-      ghost.style.height = r.height + 'px';
-      document.body.appendChild(ghost);
-      src.classList.add('dragging');
-      document.body.classList.add('kb-dragging');
-      try { navigator.vibrate(8); } catch {}
-    }
-    const inTrash = trackTrash(e.clientX, e.clientY);
-    /* над корзиной миниатюра сжимается к курсору — поле «Удалить» видно */
-    ghost.style.transformOrigin = `${gx}px ${gy}px`;
-    ghost.style.transform = `translate(${e.clientX - gx}px, ${e.clientY - gy}px) rotate(2deg)${inTrash ? ' scale(.35)' : ''}`;
-    ghost.classList.toggle('kb-to-trash', inTrash);
-    if (view === 'structure' && board) {
-      /* на доске: место между элементами или середина группы */
-      slot = inTrash ? null : slotAt(board, e.clientX, e.clientY, null, true);
-      showSlot(board, slot);
-      return;
-    }
-    const d = inTrash ? null : dropAt(e.clientX, e.clientY);
-    if (d !== over) { clearOver(); if (d) { over = d; d.classList.add('kb-drop-over'); } }
-  };
-  const up = async e => {
-    document.removeEventListener('pointermove', move);
-    document.removeEventListener('pointerup', up);
-    document.removeEventListener('pointercancel', up);
-    document.removeEventListener('touchmove', block);
-    document.body.classList.remove('kb-dragging');
-    const ghostRect = ghost ? ghost.getBoundingClientRect() : null;
-    if (ghost) { ghost.remove(); ghost = null; }
-    if (src) src.classList.remove('dragging');
-    const toTrash = started && trackTrash(e.clientX, e.clientY);
-    resetTrash();
-    if (started && board && view === 'structure' && !toTrash) {
-      const sl = slot, node = src;
-      const snaps = snapBoard(board);
-      if (ghostRect) snaps.set(node.dataset.id, ghostRect);
-      dragGuard = Date.now();
-      src = null; started = false; slot = null;
-      if (!sl) { showSlot(board, null); return; }
-      const nid = node.dataset.id;
-      const to = sl.into || '';
-      if (!sl.into) placeInLayout(board, nid, sl);
-      await settleBoard(board, snaps, async () => {
-        const n = kbItem(nid);
-        if (n && (n.groupId || '') !== to) {
-          if (editing && editing.id === nid) flushEditor();
-          await kbSave('note', { groupId: to }, nid);
-        }
-      });
-      return;
-    }
-    const target = started && !toTrash ? dropAt(e.clientX, e.clientY) : null;
-    const gid = target ? target.dataset.drop : null;
-    const node = src;
-    if (started) dragGuard = Date.now();
-    clearOver();
-    src = null;
-    started = false;
-    if (node && toTrash) { await trashNote(node.dataset.id); return; }
-    if (node && gid != null) {
-      const to = gid === LOOSE ? '' : gid;   // на свободное место доски — заметка без группы
-      const n = kbItem(node.dataset.id);
-      if (n && (n.groupId || '') !== to) {
-        if (editing && editing.id === node.dataset.id) flushEditor();
-        await kbSave('note', { groupId: to }, node.dataset.id);
-      }
-    }
-  };
-  const block = e => { if (started && e.cancelable) e.preventDefault(); };
-  side.addEventListener('pointerdown', e => {
-    const node = e.target.closest('.kb-item');
-    if (!node || e.button > 0) return;
-    if (node.closest('.kb-board')) return;   // на доске — свой перенос (bindBoardDrag)
-    board = null;
-    slot = null;
-    src = node;
-    sx = e.clientX;
-    sy = e.clientY;
-    started = false;
-    document.addEventListener('pointermove', move);
-    document.addEventListener('pointerup', up);
-    document.addEventListener('pointercancel', up);
-    document.addEventListener('touchmove', block, { passive: false });
-  });
-}
 
 /* ══════════════ Структура ══════════════
    Колонка заметок и окно заметки каскадом падают вниз, панель групп
    уходит вверх, а группы — в своём порядке — поднимаются колонками.
    Заметки перетаскиваются между колонками (тот же механизм, что и
    перенос заметки на группу: колонка — цель [data-drop]). */
-let structBusy = false;
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 function flatGroups() {
   const groups = kbGroups();
@@ -1220,6 +929,7 @@ function loadOpen() { try { const v = JSON.parse(localStorage.getItem(OPEN_KEY) 
 let openMap = loadOpen();   // id папки на доске → id открытой в её колонке (подпапки)
 const saveOpen = () => { try { localStorage.setItem(OPEN_KEY, JSON.stringify(openMap)); } catch {} };
 const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
 const ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const ICON_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></svg>';
 const ICON_FOLD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>';
@@ -1274,9 +984,22 @@ function colHTML(root, cur, groups, notes) {
       </div>
     </div>`;
 }
-function renderBoard(animate, force) {
+function renderBoard(force) {
   if (!_host) return;
   const board = _host.querySelector('.kb-board');
+  const body = board.querySelector('.kb-board-body');
+  const q = query.trim().toLowerCase();
+  if (q) {   // поиск: найденные заметки списком вместо папок
+    const found = kbNotes().filter(n => (titleOf(n) + ' ' + plain(n.html)).toLowerCase().includes(q))
+      .sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
+    const html = `<div class="kb-found"><p class="kb-found-cap">${found.length ? `Найдено: ${found.length}` : 'Ничего не найдено'}</p>
+      <div class="kb-found-list">${found.map(n => {
+        const g = kbItem(n.groupId);
+        return `<div class="kb-found-it">${g ? `<span class="kb-found-g" style="--gc:${g.color || '#94a3b8'}">${esc(g.name || '')}</span>` : ''}${itemHTML(n)}</div>`;
+      }).join('')}</div></div>`;
+    setHTML(body, html);
+    return;
+  }
   const notes = kbNotes();
   const groups = kbGroups();
   const known = new Set(groups.map(g => g.id));
@@ -1294,18 +1017,13 @@ function renderBoard(animate, force) {
   /* Заметки без папки — отдельными плашками после папок */
   const loose = notes.filter(n => !n.groupId || !known.has(n.groupId))
     .map(n => `<div class="kb-loose" data-i="${i++}" data-bid="${n.id}" data-note="${n.id}" style="--gc:#94a3b8">${itemHTML(n)}</div>`).join('');
-  const html = `<header class="kb-board-head"><b>Структура</b>
-      <span class="kb-board-hint">Нажмите на папку, чтобы открыть. Папки и заметки перетаскиваются в другие папки или на свободное место</span>
-      <button type="button" class="btn mini kb-board-close">✕ Закрыть</button></header>
-    <div class="kb-board-cols" data-drop="${LOOSE}">${items}${loose}${items || loose ? '' : '<p class="empty">Пусто — нажмите «+», чтобы создать папку или заметку</p>'}</div>
-    <div class="btn danger kb-trash" aria-hidden="true">${TRASH_SVG}<span>Удалить</span></div>`;
+  const html = `<div class="kb-board-cols" data-drop="${LOOSE}">${items}${loose}${items || loose ? '' : '<p class="empty">Пусто — нажмите «+», чтобы создать папку или заметку</p>'}</div>`;
   saveOpen();
-  const changed = board._html !== html;
-  setHTML(board, html);
+  const changed = body._html !== html;
+  setHTML(body, html);
   if (changed || force) layoutBoard(board);
   const inp = board.querySelector('.kb-bcol-input');
   if (inp && freshId && inp.dataset.gid === freshId && document.activeElement !== inp) inp.focus();
-  if (animate) cascadeIn([...board.querySelectorAll('.kb-board-head, .kb-fi, .kb-loose')]);
 }
 /* ── Папка раскрывается в колонку на своём месте ──
    Колонка растёт из прямоугольника папки (clip-path), соседи ниже
@@ -1313,7 +1031,7 @@ function renderBoard(animate, force) {
    наоборот: содержимое гаснет, колонка сжимается до размера папки. */
 let foldBusy = false;
 const FOLD_AR = 1.45;   // ширина / высота папки (style.css: .kb-fold)
-function boardEl() { return view === 'structure' && _host ? _host.querySelector('.kb-board') : null; }
+function boardEl() { return _host && !query.trim() ? _host.querySelector('.kb-board') : null; }
 const fiOf = (board, id) => board.querySelector(`.kb-fi[data-root="${CSS.escape(id)}"]`);
 function growFrom(el, fromH, ms = 520) {
   const H = el.offsetHeight;
@@ -1330,7 +1048,7 @@ async function openFolder(id, sub) {
     const fromH = fi ? fi.offsetHeight : 0;
     const snaps = snapBoard(board);
     openMap[id] = sub || id;
-    renderBoard(false, true);
+    renderBoard(true);
     flipBoard(board, snaps, 520);
     const now = fiOf(board, id);
     const col = now && now.querySelector('.kb-fcol');
@@ -1355,7 +1073,7 @@ async function closeFolder(id) {
     }
     const snaps = snapBoard(board);
     delete openMap[id];
-    renderBoard(false, true);
+    renderBoard(true);
     flipBoard(board, snaps, 420);
     const now = fiOf(board, id);
     const papers = now ? [...now.querySelectorAll('.kf-paper')] : [];
@@ -1380,7 +1098,7 @@ async function drillTo(rootId, gid, dir) {
     }
     const snaps = snapBoard(board);
     openMap[rootId] = gid;
-    renderBoard(false, true);
+    renderBoard(true);
     flipBoard(board, snaps, 460);
     const now = fiOf(board, rootId);
     const c2 = now && now.querySelector('.kb-fcol');
@@ -1402,7 +1120,7 @@ async function drillTo(rootId, gid, dir) {
    заметками. */
 const TRASH_NEAR = 110;   // px от корзины, с которых она разворачивается
 function boardTrash() {
-  const t = view === 'structure' && _host && _host.querySelector('.kb-trash');
+  const t = _host && _host.querySelector('.kb-trash');
   return t && t.offsetWidth ? t : null;
 }
 function trackTrash(x, y) {
@@ -1442,7 +1160,7 @@ async function trashGroup(gid, from) {
   }
   await kbRemove(gid);
   if (curGroup === gid) curGroup = '';
-  renderBoard(false);
+  renderBoard();
   if (choice === 'group' && from) flyOut(inside.map(n => n.id), from);
 }
 /* Заметки «вылетают» из удалённой группы и встают на свои места */
@@ -1593,13 +1311,13 @@ async function settleBoard(board, snaps, work) {
   showSlot(board, null);
   board.querySelectorAll('[data-bid]').forEach(el => { el._shift = 0; el.style.transform = ''; });
   if (work) await work();
-  renderBoard(false, true);
+  renderBoard(true);
   flipBoard(board, snaps);
   requestAnimationFrame(() => board.classList.remove('kb-settling'));
 }
 let boardW = 0;
 addEventListener('resize', () => {
-  const board = view === 'structure' && _host && _host.querySelector('.kb-board');
+  const board = _host && _host.isConnected && _host.querySelector('.kb-board');
   if (!board || board.offsetWidth === boardW) return;
   boardW = board.offsetWidth;
   layoutBoard(board);
@@ -1616,16 +1334,11 @@ async function createBoardGroup(parent = '') {
   const order = sibs.reduce((m, g) => Math.max(m, g.order || 0), 0) + 10;
   const g = await kbSave('group', { name: '', color: freeColor(), order, parentId: parent });
   freshId = g.id;
-  renderBoard(false);
+  renderBoard();
 }
 async function createBoardNote(gid = '') {
   const n = await kbSave('note', { title: '', html: '', groupId: gid, files: [], links: [], tags: [] });
-  if (!gid) { renderBoard(false); return; }
-  /* заметка в папке — сразу открыть её на редактирование */
-  curGroup = gid;
-  notesOpen = true;
-  await setStructure(false);
-  openNote(n.id, true);
+  openNote(n.id, true);   // новая заметка сразу открывается в панели
 }
 /* Меню над кнопкой «+»: «+ Группа» / «+ Заметка» */
 let addMenu = null;
@@ -1682,97 +1395,6 @@ function openColorPop(dot) {
     const away = e => { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('pointerdown', away); } };
     document.addEventListener('pointerdown', away);
   }, 0);
-}
-/* Окно заметки растворяется, на его месте проявляется другое (граф) */
-async function swapMainAnimated(apply) {
-  const main = _host && _host.querySelector('.kb-main');
-  if (!main || reduceMotion() || !main.offsetWidth) { apply(); return; }
-  const outs = await exit([main]);
-  apply();
-  outs.forEach(a => a.cancel());
-  const now = _host && _host.querySelector('.kb-main');
-  if (now) enterDeep([now]);
-}
-/* ── Каскад «как кубики» ──
-   Панели группируются в ряды по положению на экране. Въезд — снизу,
-   ряд за рядом (следующий ряд не ждёт весь предыдущий — небольшая
-   задержка на ряд и на место в ряду). Падение — вниз, начиная с
-   нижнего ряда. Сдвиг у всех один и тот же (высота экрана), поэтому
-   панели одной колонки никогда не наезжают друг на друга. */
-function rowsOf(els) {
-  const items = els.map(el => ({ el, r: el.getBoundingClientRect() })).filter(o => o.r.width > 0);
-  items.sort((a, b) => a.r.top - b.r.top || a.r.left - b.r.left);
-  const rows = [];
-  for (const it of items) {
-    const row = rows[rows.length - 1];
-    if (row && Math.abs(it.r.top - row.top) < 24) row.items.push(it);
-    else rows.push({ top: it.r.top, items: [it] });
-  }
-  rows.forEach(r => r.items.sort((a, b) => a.r.left - b.r.left));
-  return rows.map(r => r.items.map(i => i.el));
-}
-function cascadeIn(els) {
-  if (reduceMotion()) return Promise.resolve();
-  const X = innerHeight;
-  const anims = [];
-  rowsOf(els).forEach((row, ri) => row.forEach((el, ci) => anims.push(el.animate(
-    [{ transform: `translateY(${X}px)` }, { transform: 'none' }],
-    { duration: 620, delay: ri * 120 + ci * 55, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' }))));
-  return Promise.all(anims.map(a => a.finished.catch(() => {})));
-}
-async function cascadeOut(els) {
-  if (reduceMotion()) return;
-  const X = innerHeight;
-  const anims = [];
-  rowsOf(els).reverse().forEach((row, ri) => row.forEach((el, ci) => anims.push(el.animate(
-    [{ transform: 'none' }, { transform: `translateY(${X}px)` }],
-    { duration: 480, delay: ri * 100 + ci * 45, easing: 'cubic-bezier(.55,0,.85,.35)', fill: 'forwards' }))));
-  await Promise.all(anims.map(a => a.finished.catch(() => {})));
-  return anims;
-}
-async function setStructure(on) {
-  if (!_host || structBusy) return;
-  structBusy = true;
-  const side = _host.querySelector('.kb-side');
-  const notesEl = _host.querySelector('.kb-notes');
-  const main = _host.querySelector('.kb-main');
-  const board = _host.querySelector('.kb-board');
-  const visible = el => el && el.offsetWidth > 0 && getComputedStyle(el).visibility !== 'hidden';
-  try {
-    if (on) {
-      flushEditor();
-      if (graph) { graph.destroy(); graph = null; main.dataset.key = ''; }
-      /* Все три панели падают вниз — так же, как окно заметки */
-      const falling = [visible(side) ? side : null, notesOpen && visible(notesEl) ? notesEl : null, main].filter(Boolean);
-      const anims = await cascadeOut(falling);
-      view = 'structure';
-      _host.classList.add('kb-structure');
-      (anims || []).forEach(a => a.cancel());
-      renderSide();
-      renderBoard(true);
-    } else {
-      closeAddMenu();
-      /* Шапка падает последней — после всех рядов колонок и поверх них */
-      const items = [...board.querySelectorAll('.kb-fi, .kb-loose')];
-      const head = board.querySelector('.kb-board-head');
-      const nRows = rowsOf(items).length;
-      let headAnim = null;
-      if (head && !reduceMotion()) {
-        head.style.position = 'relative'; head.style.zIndex = '6';
-        headAnim = head.animate([{ transform: 'none' }, { transform: `translateY(${innerHeight}px)` }],
-          { duration: 480, delay: nRows * 100 + 60, easing: 'cubic-bezier(.55,0,.85,.35)', fill: 'forwards' });
-      }
-      const colAnims = await cascadeOut(items);
-      if (headAnim) await headAnim.finished.catch(() => {});
-      const anims = [...(colAnims || []), ...(headAnim ? [headAnim] : [])];
-      view = 'note';
-      _host.classList.remove('kb-structure');
-      board.innerHTML = ''; board._html = '';
-      (anims || []).forEach(a => a.cancel());
-      renderKbView(_host);
-      cascadeIn([notesOpen ? notesEl : side, main].filter(Boolean));
-    }
-  } finally { structBusy = false; }
 }
 /* ── Перенос по доске ──
    Тянуть можно папку (закрытую — целиком, открытую — за шапку),
@@ -1863,7 +1485,7 @@ function bindBoardDrag(board) {
     if (c.trash) {
       done(); showSlot(board, null);
       if (c.kind === 'note') await trashNote(c.id); else await trashGroup(c.id, gr);
-      renderBoard(false, true);
+      renderBoard(true);
       return;
     }
     if (!t) {   // отпустили мимо — всё возвращается на место
@@ -1873,7 +1495,7 @@ function bindBoardDrag(board) {
           { duration: 280, easing: EASE, fill: 'forwards' }).finished.catch(() => {});
       }
       done(); showSlot(board, null);
-      if (c.rootItem) { snaps.set(c.id, gr); renderBoard(false, true); flipBoard(board, snaps); }
+      if (c.rootItem) { snaps.set(c.id, gr); renderBoard(true); flipBoard(board, snaps); }
       return;
     }
     if (t.into) {
@@ -1938,7 +1560,7 @@ function bindBoardDrag(board) {
 }
 async function onBoardClick(e) {
   if (Date.now() - dragGuard < 250) return;
-  if (e.target.closest('.kb-board-close')) { setStructure(false); return; }
+  if (e.target.closest('.kb-to-graph')) { toggleGraph(); return; }
   const dot = e.target.closest('.kb-bcol-dot');
   if (dot) { openColorPop(dot); return; }
   if (e.target.closest('.kb-bcol-input')) return;
@@ -1968,118 +1590,14 @@ async function onBoardClick(e) {
   const item = e.target.closest('.kb-item');
   if (!item) return;
   const id = item.dataset.id;
-  const n = kbItem(id);
-  if (n && n.groupId) curGroup = n.groupId;
-  notesOpen = true;
-  await setStructure(false);
+  if (panel && view === 'note' && curNote === id) { closeNote(); return; }   // повторный клик — закрыть
   openNote(id);
 }
 
-/* ══════════════ Перетаскивание групп ══════════════
-   Тянем группу за строку: верхняя треть строки-цели — поставить перед
-   ней, нижняя — после неё (тот же уровень), середина — вложить в неё
-   подгруппой. На телефоне перетаскивание начинается после короткого
-   удержания, чтобы не мешать прокрутке списка. */
-function bindGroupDrag(side) {
-  let src = null, srcId = '', ghost = null, started = false, sx = 0, sy = 0, holdT = null, target = null, zone = '';
-  const clearMark = () => { side.querySelectorAll('.kb-g.drop-before, .kb-g.drop-after, .kb-g.drop-into').forEach(x => x.classList.remove('drop-before', 'drop-after', 'drop-into')); };
-  const begin = (x, y) => {
-    started = true;
-    ghost = document.createElement('div');
-    ghost.className = 'kb-note-ghost kb-group-ghost';
-    ghost.textContent = (src.querySelector('.kb-g-name') || src).textContent;
-    ghost.style.width = Math.min(220, src.offsetWidth) + 'px';
-    document.body.appendChild(ghost);
-    src.classList.add('dragging');
-    document.body.classList.add('kb-dragging');
-    try { navigator.vibrate(10); } catch {}
-    place(x, y);
-  };
-  const place = (x, y) => {
-    ghost.style.transform = `translate(${x + 10}px, ${y - 14}px)`;
-    clearMark();
-    target = null; zone = '';
-    const el = document.elementFromPoint(x, y);
-    const row = el && el.closest('.kb-g[data-g]');
-    if (!row || !row.dataset.g || row.dataset.g === LOOSE || row.dataset.g === srcId) return;
-    if (groupBranch(srcId).has(row.dataset.g)) return;   // в себя или в свою подгруппу нельзя
-    const r = row.getBoundingClientRect();
-    const f = (y - r.top) / r.height;
-    zone = f < .3 ? 'before' : f > .7 ? 'after' : 'into';
-    target = row.dataset.g;
-    row.classList.add('drop-' + zone);
-  };
-  const move = e => {
-    if (!src) return;
-    if (!started) {
-      const far = Math.abs(e.clientX - sx) > 7 || Math.abs(e.clientY - sy) > 7;
-      if (e.pointerType === 'touch') { if (far) cancel(); return; }   // палец сдвинулся до удержания — это прокрутка
-      if (!far) return;
-      begin(e.clientX, e.clientY);
-    }
-    place(e.clientX, e.clientY);
-  };
-  const block = e => { if (started && e.cancelable) e.preventDefault(); };
-  const cancel = () => {
-    if (holdT) { clearTimeout(holdT); holdT = null; }
-    document.removeEventListener('pointermove', move);
-    document.removeEventListener('pointerup', up);
-    document.removeEventListener('pointercancel', up);
-    document.removeEventListener('touchmove', block);
-    if (ghost) { ghost.remove(); ghost = null; }
-    if (src) src.classList.remove('dragging');
-    document.body.classList.remove('kb-dragging');
-    clearMark();
-    src = null;
-  };
-  const up = async () => {
-    const wasStarted = started, tgt = target, z = zone, id = srcId;
-    if (started) dragGuard = Date.now();
-    started = false;
-    cancel();
-    if (wasStarted && tgt && z) await moveGroup(id, tgt, z);
-  };
-  side.addEventListener('pointerdown', e => {
-    const row = e.target.closest('.kb-g[data-g]');
-    if (!row || !row.dataset.g || row.dataset.g === LOOSE || e.button > 0) return;
-    if (e.target.closest('.kb-g-caret, .kb-g-edit')) return;
-    src = row; srcId = row.dataset.g; sx = e.clientX; sy = e.clientY; started = false;
-    document.addEventListener('pointermove', move);
-    document.addEventListener('pointerup', up);
-    document.addEventListener('pointercancel', up);
-    document.addEventListener('touchmove', block, { passive: false });
-    if (e.pointerType === 'touch') holdT = setTimeout(() => { holdT = null; if (src) begin(sx, sy); }, 380);
-  });
-}
-async function moveGroup(id, targetId, zone) {
-  const groups = kbGroups();
-  const target = groups.find(g => g.id === targetId);
-  if (!target) return;
-  const parent = zone === 'into' ? target.id : (target.parentId || '');
-  const sibs = groups.filter(g => (g.parentId || '') === parent && g.id !== id);
-  let idx = zone === 'into' ? sibs.length : sibs.findIndex(g => g.id === targetId) + (zone === 'after' ? 1 : 0);
-  if (idx < 0) idx = sibs.length;
-  sibs.splice(idx, 0, { id });
-  for (let i = 0; i < sibs.length; i++) {
-    const g = rawItem(sibs[i].id);
-    if (!g) continue;
-    const order = (i + 1) * 10;
-    if (g.order !== order || (g.parentId || '') !== parent) await kbSave('group', { order, parentId: parent }, g.id);
-  }
-  if (zone === 'into') openGroups.add(target.id);
-  renderSide();
-}
 
 /* Кнопка «+» приложения в этом режиме заводит заметку */
-export async function newKbNote(anchor) {
-  if (view === 'structure') { toggleAddMenu(anchor || document.getElementById('addBtn')); return; }
-  flushEditor();
-  const n = await kbSave('note', {
-    title: '', html: '', groupId: curGroup === LOOSE ? '' : (curGroup || (kbGroups()[0] || {}).id || ''),
-    files: [], links: [], tags: [],
-  });
-  notesOpen = true;   // новая заметка видна в колонке своей группы
-  openNote(n.id, true);
+export function newKbNote(anchor) {
+  toggleAddMenu(anchor || document.getElementById('addBtn'));
 }
 
 
