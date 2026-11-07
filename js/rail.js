@@ -19,7 +19,7 @@ import { openSearch } from './search.js';
 
 const mqMobile = matchMedia('(max-width: 720px)');
 const STEP = 46;            // шаг иконок
-const PILL = 104;           // высота пилюли (подпись вертикально)
+const PILL = 128;           // высота пилюли: иконка раздела и подпись вертикально
 const S = 54;               // высота «плеча» изгиба
 const W = 46;               // ширина полосы
 const R = W + 2;            // ширина холста плеча (край экрана — справа)
@@ -47,7 +47,7 @@ const N = ITEMS.length;
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
 const mod = i => ((i % N) + N) % N;
 
-let rail = null, pill = null, label = null, icons = [];
+let rail = null, pill = null, label = null, pico = null, icons = [];
 let cur = 0;          // открытый раздел
 let pos = 0;          // положение карусели (дробное: между разделами)
 let drag = null;
@@ -67,10 +67,11 @@ function build() {
     `<div class="rl-body" style="top:${S - .5}px;height:${BODY + 1}px"></div>` +
     `<svg class="rl-cap rl-cap-b" style="top:${S + BODY}px" width="${R}" height="${S}" viewBox="0 0 ${R} ${S}" aria-hidden="true"><path d="M${R - W} 0C${R - W} ${S * .58} ${R} ${S * .45} ${R} ${S}L${R} 0Z"/></svg>` +
     `<div class="rl-track">${ITEMS.map((it, i) => `<button type="button" class="rl-it" data-i="${i}" aria-label="${it.label}" title="${it.label}">${svg(it.id)}</button>`).join('')}</div>` +
-    `<div class="rl-pill" style="top:${S + BODY / 2 - PILL / 2}px;height:${PILL}px" aria-hidden="true"><span class="rl-lab"></span></div>`;
+    `<div class="rl-pill" style="top:${S + BODY / 2 - PILL / 2}px;height:${PILL}px" aria-hidden="true"><span class="rl-pico"></span><span class="rl-lab"></span></div>`;
   document.body.appendChild(rail);
   pill = rail.querySelector('.rl-pill');
   label = rail.querySelector('.rl-lab');
+  pico = rail.querySelector('.rl-pico');
   icons = [...rail.querySelectorAll('.rl-it')];
   rail.addEventListener('pointerdown', onDown);
   rail.addEventListener('click', e => e.preventDefault());
@@ -125,8 +126,12 @@ function render() {
     const dir = shownLabel < 0 ? 0 : Math.sign(relOf(li, shownLabel)) || 1;
     shownLabel = li;
     label.textContent = ITEMS[li].label;
-    /* подпись сменяется сдвигом в сторону прокрутки */
-    if (dir && label.animate) label.animate([{ transform: `rotate(180deg) translateX(${dir * 14}px)`, opacity: .2 }, { transform: 'rotate(180deg)', opacity: 1 }], { duration: 180, easing: 'ease-out' });
+    pico.innerHTML = svg(ITEMS[li].id);
+    /* иконка и подпись сменяются сдвигом в сторону прокрутки */
+    if (dir && label.animate) {
+      label.animate([{ transform: `rotate(180deg) translateX(${dir * 14}px)`, opacity: .2 }, { transform: 'rotate(180deg)', opacity: 1 }], { duration: 180, easing: 'ease-out' });
+      pico.animate([{ transform: `translateY(${-dir * 10}px)`, opacity: .2 }, { transform: 'none', opacity: 1 }], { duration: 180, easing: 'ease-out' });
+    }
   }
 }
 function viewIndex() { const i = ITEMS.findIndex(x => x.view === state.view); return i < 0 ? cur : i; }
@@ -234,7 +239,7 @@ function collectWrap() {
   /* то, что выпало из списка, — обратно во всю ширину (уже сужённое
      и оставшееся в списке не трогаем, чтобы не мигало) */
   const keepL = new Set(leaves), keepT = new Set(talls);
-  oldL.forEach(el => { if (!keepL.has(el)) { if (el._wm) { el.style.removeProperty('margin-right'); el.style.removeProperty('max-width'); } el._wm = 0; el.classList.remove('rl-wrap'); } });
+  oldL.forEach(el => { if (!keepL.has(el)) { clearTimeout(el._relT); ['margin-right', 'max-width', 'height'].forEach(k => el.style.removeProperty(k)); el._wm = 0; el.classList.remove('rl-wrap'); } });
   oldT.forEach(el => { if (!keepT.has(el)) { el.style.clipPath = ''; el._wn = ''; } });
 }
 function collectInto() {
@@ -243,7 +248,10 @@ function collectInto() {
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) return;
     if (r.height > tallLim && depth < 5) {
-      const kids = [...el.children].filter(c => {
+      /* обёртки без своей коробки (display: contents — колонки «Главной»
+         на телефоне) не блоки: берём их детей */
+      const flat = node => [...node.children].flatMap(c => (!c.hidden && getComputedStyle(c).display === 'contents' ? flat(c) : [c]));
+      const kids = flat(el).filter(c => {
         if (c.hidden || !c.offsetWidth) return false;
         const cs = getComputedStyle(c);
         if (cs.position === 'absolute' || cs.position === 'fixed' || cs.display === 'none') return false;
@@ -267,7 +275,14 @@ function updateWrap() {
     if (band) {
       const r = el.getBoundingClientRect();
       const natR = r.right + applied;
-      if (r.bottom > band.top && r.top < band.bottom) need = Math.max(0, Math.ceil(natR - band.edge));
+      /* зазор: сужённый блок отпускаем чуть позже, чем сужаем, — на границе
+         полосы он не переключается туда-сюда */
+      const pad = applied ? 14 : 0;
+      if (r.bottom > band.top - pad && r.top < band.bottom + pad) need = Math.max(0, Math.ceil(natR - band.edge));
+      /* высота при сужении не прыгает: блок держит свою высоту (папки
+         не укорачиваются и не выпадают из полосы туда-обратно), а если
+         тексту стало тесно — плавно дорастает */
+      if (need && !applied) lockHeight(el, r.height);
     }
     if (need !== applied) {
       el._wm = need;
@@ -275,7 +290,12 @@ function updateWrap() {
         el.style.setProperty('margin-right', need + 'px', 'important');
         /* и для блоков с жёсткой шириной (width: 100%) */
         el.style.setProperty('max-width', `calc(100% - ${need}px)`, 'important');
-      } else { el.style.removeProperty('margin-right'); el.style.removeProperty('max-width'); }
+        requestAnimationFrame(() => growToFit(el));
+      } else {
+        el.style.removeProperty('margin-right');
+        el.style.removeProperty('max-width');
+        releaseHeight(el);
+      }
     }
   }
   for (const el of talls) {
@@ -292,6 +312,34 @@ function updateWrap() {
     }
     if (cp !== (el._wn || '')) { el._wn = cp; el.style.clipPath = cp; }
   }
+}
+function lockHeight(el, h) {
+  clearTimeout(el._relT);
+  el.style.setProperty('height', h + 'px', 'important');
+}
+function growToFit(el) {
+  if (!el._wm) return;
+  /* лишняя строка, которая помещается в нижний отступ блока, его не
+     растит — растём, только если текст вышел бы за край */
+  const slack = Math.max(0, (parseFloat(getComputedStyle(el).paddingBottom) || 0) - 4);
+  const over = el.scrollHeight - el.clientHeight - slack;
+  if (over > 1) el.style.setProperty('height', (el.offsetHeight + over) + 'px', 'important');
+}
+/* расширился — после перехода по ширине плавно к своей высоте */
+function releaseHeight(el) {
+  if (!el.style.getPropertyValue('height')) return;
+  clearTimeout(el._relT);
+  el._relT = setTimeout(() => {
+    if (el._wm) return;
+    const cur = el.offsetHeight;
+    el.style.removeProperty('height');
+    const nat = el.offsetHeight;
+    if (Math.abs(nat - cur) < 2) return;
+    el.style.setProperty('height', cur + 'px', 'important');
+    void el.offsetHeight;
+    el.style.setProperty('height', nat + 'px', 'important');
+    el._relT = setTimeout(() => { if (!el._wm) el.style.removeProperty('height'); }, 380);
+  }, 370);
 }
 function scheduleWrap(recollect) {
   if (recollect) {
