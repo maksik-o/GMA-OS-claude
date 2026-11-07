@@ -1,6 +1,7 @@
 import {
   state, MODES, WEEKDAYS, MONTHS_FULL, DAYS_FULL, today, addDays, mondayOf, parseISO, isoWeek,
-  esc, isDone, plansForDay, hmToMin, setEntry, setMode, setHideDone, getTask, fmtMin,
+  esc, isDone, plansForDay, hmToMin, minToHM, setEntry, setMode, setHideDone, getTask, fmtMin,
+  setTaskPlan, clearTaskPlanDay,
 } from './store.js';
 import { openSheet } from './sheet.js';
 import { openDay } from './week.js';
@@ -158,16 +159,16 @@ function heroHTML(st) {
       const live = !done && nm >= it.s && nm < it.e;
       const w = 100 / lanes;
       const short = it.e - it.s < 100 ? ' short' : '';
-      return `<button type="button" class="hm-ev${short}${done ? ' done' : ''}${live ? ' live' : ''}" data-id="${it.t.id}" data-task="${it.t.id}" style="--mc:var(--mode-${it.t.mode});top:${pos(it.s)}%;height:${(Math.max(it.e - it.s, 30) / span * 100).toFixed(2)}%;left:${(it.lane * w).toFixed(2)}%;width:calc(${w.toFixed(2)}% - 6px)">
-        <b>${esc(it.t.title || 'Без названия')}</b><small>${it.start} – ${it.end}${live ? ' · идёт сейчас' : ''}</small></button>`;
+      return `<button type="button" class="hm-ev${short}${done ? ' done' : ''}${live ? ' live' : ''}" data-id="${it.t.id}" data-task="${it.t.id}" data-s="${it.s}" data-e="${it.e}" style="--mc:var(--mode-${it.t.mode});top:${pos(it.s)}%;height:${(Math.max(it.e - it.s, 30) / span * 100).toFixed(2)}%;left:${(it.lane * w).toFixed(2)}%;width:calc(${w.toFixed(2)}% - 6px)">
+        <i class="hm-ev-h t" aria-hidden="true"></i><b>${esc(it.t.title || 'Без названия')}</b><small>${it.start} – ${it.end}${live ? ' · идёт сейчас' : ''}</small><i class="hm-ev-h b" aria-hidden="true"></i></button>`;
     }).join('');
     const loose = st.list.filter(t => !plansForDay(t, d).length);
     body = `<div class="hm-tl">
       <div class="hm-tl-hours">${hours.join('')}</div>
-      <div class="hm-tl-area">${lines.join('')}${evs}${nm >= h0 * 60 && nm <= h1 * 60 ? `<i class="hm-now" style="top:${pos(nm)}%"></i>` : ''}
+      <div class="hm-tl-area" data-h0="${h0}" data-h1="${h1}">${lines.join('')}${evs}${nm >= h0 * 60 && nm <= h1 * 60 ? `<i class="hm-now" style="top:${pos(nm)}%"></i>` : ''}
         ${items.length ? '' : '<p class="hm-empty hm-tl-empty">На сегодня нет задач со временем</p>'}</div>
     </div>
-    ${loose.length ? `<div class="hm-loose"><small>Без времени:</small>${loose.slice(0, 8).map(t => `<button type="button" class="hm-chip${isDone(t) ? ' done' : ''}" data-id="${t.id}" data-task="${t.id}" style="--mc:var(--mode-${t.mode})">${esc(t.title || 'Без названия')}</button>`).join('')}${loose.length > 8 ? `<small>+${loose.length - 8}</small>` : ''}</div>` : ''}`;
+    <div class="hm-loose"><small>Без времени:</small>${loose.slice(0, 8).map(t => `<button type="button" class="hm-chip${isDone(t) ? ' done' : ''}" data-id="${t.id}" data-task="${t.id}" style="--mc:var(--mode-${t.mode})">${esc(t.title || 'Без названия')}</button>`).join('')}${loose.length > 8 ? `<small>+${loose.length - 8}</small>` : ''}${loose.length ? '' : '<small class="hm-loose-hint">перетащите задачу с поля дня сюда, чтобы убрать время</small>'}</div>`;
   } else {
     const list = st.list.slice().sort((a, b) => (isDoneOn(a, d) - isDoneOn(b, d)) || (a.priority - b.priority));
     body = `<div class="hm-list">${list.map(t => {
@@ -229,7 +230,7 @@ export function homeEntered() {
 export function renderHomeView(el) {
   if (!el) return;
   _host = el;
-  if (_drag) { _pending = true; return; }
+  if (_drag || _tl) { _pending = true; return; }
   const st = todayStats();
   const fmap = focusByDay();
   const parts = {
@@ -249,7 +250,9 @@ export function renderHomeView(el) {
 
 function bind(el) {
   el.dataset.bound = '1';
+  bindTimeline(el);
   el.addEventListener('click', e => {
+    if (Date.now() - _tlGuard < 350) return;   // это был перенос, а не клик
     const b = e.target.closest('button, [role="button"]');
     if (!b || !el.contains(b)) return;
     /* выбор задачи для фокуса — строкой «Сегодня» */
@@ -274,6 +277,154 @@ function bind(el) {
     else if (a === 'focus') { if (tm.getActive()) tm.expandPill(); else fc.enterChoosing(); }
     else if (a === 'settings') document.getElementById('settingsBtn')?.click();
     else if (a === 'sync') document.getElementById('syncBtn')?.click();
+  });
+}
+
+/* ══ Таймлайн «Сегодня»: задачи на поле дня ══
+   Задачу из «Без времени» тянут на поле — она становится блоком на час
+   там, где её отпустили (шаг 15 минут). Блок двигают за середину,
+   растягивают и сжимают за верхний и нижний край, а вытащив за пределы
+   поля — возвращают в «Без времени». Пока тянем — «призрак» над полем,
+   сам блок на месте приглушён; отпустили — призрак встаёт на новое
+   место, блок проявляется под ним. Мышью — сразу со сдвига, пальцем —
+   после короткого удержания (иначе не прокрутить страницу). */
+const SNAP = 15;
+let _tl = null;
+let _tlGuard = 0;
+const snapM = m => Math.round(m / SNAP) * SNAP;
+function tlGeom(area) {
+  const r = area.getBoundingClientRect();
+  return { r, h0: +area.dataset.h0 * 60, h1: +area.dataset.h1 * 60 };
+}
+const yToMin = (g, y) => g.h0 + (y - g.r.top) / g.r.height * (g.h1 - g.h0);
+const minToY = (g, m) => g.r.top + (m - g.h0) / (g.h1 - g.h0) * g.r.height;
+function tlBegin() {
+  const c = _tl;
+  c.started = true;
+  _tlGuard = Date.now();
+  c.area = _host.querySelector('.hm-tl-area');
+  c.loose = _host.querySelector('.hm-loose');
+  if (!c.area) return tlEnd(true);
+  const r = c.src.getBoundingClientRect();
+  if (c.kind === 'chip') c.dur = 60;
+  else { c.s = +c.src.dataset.s; c.e = +c.src.dataset.e; c.dur = c.e - c.s; c.grab = c.sy - r.top; }
+  document.body.classList.add('hm-tl-dragging');
+  try { navigator.vibrate(8); } catch {}
+  if (c.kind === 'top' || c.kind === 'bottom') { c.src.classList.add('hm-ev-resizing'); return; }
+  const gh = document.createElement('div');
+  gh.className = 'hm-tl-ghost';
+  gh.style.setProperty('--mc', c.src.style.getPropertyValue('--mc'));
+  gh.innerHTML = `<b></b><small></small>`;
+  gh.querySelector('b').textContent = c.src.querySelector('b') ? c.src.querySelector('b').textContent : c.src.textContent;
+  Object.assign(gh.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  document.body.appendChild(gh);
+  c.ghost = gh;
+  c.src.classList.add('hm-tl-src');
+  gh.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.04)' }], { duration: 180, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' });
+}
+function tlMove(e) {
+  const c = _tl;
+  if (!c) return;
+  if (!c.started) {
+    const far = Math.abs(e.clientX - c.sx) > 6 || Math.abs(e.clientY - c.sy) > 6;
+    if (c.touch) { if (far) tlEnd(true); return; }   // палец ушёл раньше удержания — это прокрутка
+    if (!far) return;
+    tlBegin();
+    if (!_tl) return;
+  }
+  const g = tlGeom(c.area);
+  if (c.kind === 'top' || c.kind === 'bottom') {
+    const m = snapM(yToMin(g, e.clientY));
+    if (c.kind === 'top') c.ns = Math.max(g.h0, Math.min(c.e - SNAP, m)), c.ne = c.e;
+    else c.ne = Math.min(g.h1, Math.max(c.s + SNAP, m)), c.ns = c.s;
+    c.src.style.top = ((c.ns - g.h0) / (g.h1 - g.h0) * 100).toFixed(2) + '%';
+    c.src.style.height = ((c.ne - c.ns) / (g.h1 - g.h0) * 100).toFixed(2) + '%';
+    const sm = c.src.querySelector('small');
+    if (sm) sm.textContent = `${minToHM(c.ns)} – ${minToHM(c.ne)}`;
+    return;
+  }
+  const inside = e.clientX > g.r.left - 24 && e.clientX < g.r.right + 24 && e.clientY > g.r.top - 24 && e.clientY < g.r.bottom + 24;
+  c.inside = inside;
+  c.ghost.classList.toggle('out', !inside);
+  c.area.classList.toggle('hm-drop-on', inside);
+  if (c.loose) c.loose.classList.toggle('hm-drop-on', !inside && c.kind === 'move');
+  if (inside) {
+    const top = c.kind === 'chip' ? e.clientY - (c.dur / (g.h1 - g.h0) * g.r.height) / 2 : e.clientY - c.grab;
+    c.ns = Math.max(g.h0, Math.min(g.h1 - c.dur, snapM(yToMin(g, top))));
+    const y = minToY(g, c.ns), h = Math.max(24, c.dur / (g.h1 - g.h0) * g.r.height);
+    Object.assign(c.ghost.style, { left: (g.r.left + 2) + 'px', width: (g.r.width - 10) + 'px', top: y + 'px', height: h + 'px' });
+    c.ghost.classList.toggle('short', h < 48);
+    c.ghost.querySelector('small').textContent = `${minToHM(c.ns)} – ${minToHM(c.ns + c.dur)}`;
+  } else {
+    Object.assign(c.ghost.style, { left: (e.clientX - 70) + 'px', top: (e.clientY - 16) + 'px', width: '140px', height: '32px' });
+    c.ghost.querySelector('small').textContent = c.kind === 'move' ? 'без времени' : '';
+  }
+}
+const tlBlock = e => { if (_tl && _tl.started && e.cancelable) e.preventDefault(); };
+async function tlEnd(cancel) {
+  const c = _tl;
+  document.removeEventListener('pointermove', tlMove);
+  document.removeEventListener('pointerup', tlUp);
+  document.removeEventListener('pointercancel', tlCancel);
+  document.removeEventListener('touchmove', tlBlock);
+  if (!c) return;
+  clearTimeout(c.hold);
+  document.body.classList.remove('hm-tl-dragging');
+  if (c.area) c.area.classList.remove('hm-drop-on');
+  if (c.loose) c.loose.classList.remove('hm-drop-on');
+  if (!c.started) { _tl = null; return; }
+  _tlGuard = Date.now();
+  const day = today();
+  let work = null, landed = null;
+  if (!cancel) {
+    if (c.kind === 'top' || c.kind === 'bottom') {
+      if (c.ns != null && (c.ns !== c.s || c.ne !== c.e)) work = () => setTaskPlan(c.id, day, minToHM(c.ns), minToHM(c.ne));
+    } else if (c.inside && c.ns != null) {
+      if (c.kind === 'chip' || c.ns !== c.s) work = () => setTaskPlan(c.id, day, minToHM(c.ns), minToHM(c.ns + c.dur));
+      landed = 'field';
+    } else if (!c.inside && c.kind === 'move') {
+      work = () => clearTaskPlanDay(c.id, day);
+      landed = 'loose';
+    }
+  }
+  if (work) await work();   // перерисовка «Главной» отложена, пока _tl не снят
+  _tl = null;
+  _pending = false;
+  renderHomeView(_host);
+  const gh = c.ghost;
+  if (!gh) return;
+  /* призрак встаёт на новое место блока (или фишки) и гаснет */
+  const sel = landed === 'loose' ? `.hm-loose .hm-chip[data-id="${CSS.escape(c.id)}"]` : landed === 'field' && work ? `.hm-ev[data-id="${CSS.escape(c.id)}"]` : `[data-id="${CSS.escape(c.id)}"]`;
+  const to = _host && _host.querySelector(sel);
+  const tr = to ? to.getBoundingClientRect() : null;
+  const from = gh.getBoundingClientRect();
+  gh.getAnimations().forEach(a => a.cancel());
+  const kf = tr ? [
+    { transform: 'none', opacity: 1 },
+    { transform: `translate(${tr.left - from.left}px, ${tr.top - from.top}px) scale(${tr.width / from.width}, ${tr.height / from.height})`, opacity: 0 },
+  ] : [{ opacity: 1 }, { opacity: 0 }];
+  gh.style.transformOrigin = '0 0';
+  if (to) to.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 60, easing: 'ease', fill: 'backwards' });
+  await gh.animate(kf, { duration: 320, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' }).finished.catch(() => {});
+  gh.remove();
+}
+const tlUp = () => tlEnd(false);
+const tlCancel = () => tlEnd(true);
+function bindTimeline(el) {
+  el.addEventListener('pointerdown', e => {
+    if (e.button > 0 || _tl || fc.isChoosing()) return;
+    const handle = e.target.closest('.hm-ev-h');
+    const ev = e.target.closest('.hm-tl .hm-ev');
+    const chip = e.target.closest('.hm-loose .hm-chip');
+    if (!ev && !chip) return;
+    const src = ev || chip;
+    _tl = { src, id: src.dataset.id, kind: handle && ev ? (handle.classList.contains('t') ? 'top' : 'bottom') : ev ? 'move' : 'chip', sx: e.clientX, sy: e.clientY, started: false, touch: e.pointerType === 'touch' };
+    if (_tl.touch) _tl.hold = setTimeout(() => { if (_tl && !_tl.started) tlBegin(); }, 320);
+    else e.preventDefault();
+    document.addEventListener('pointermove', tlMove);
+    document.addEventListener('pointerup', tlUp);
+    document.addEventListener('pointercancel', tlCancel);
+    document.addEventListener('touchmove', tlBlock, { passive: false });
   });
 }
 

@@ -6,7 +6,7 @@
    «ближайшие пять». Любое изменение сохраняется сразу.
    Даты повторяющейся задачи раскладывает repeat.js в обычные t.days. */
 import { swapContent } from './anim.js';
-import { today, addDays, parseISO, MONTHS, MONTHS_FULL, esc, getTask, updateTask, hmToMin, minToHM } from './store.js';
+import { today, addDays, parseISO, MONTHS, MONTHS_FULL, esc, getTask, updateTask, hmToMin, minToHM, setEntry } from './store.js';
 import {
   FREQS, NTH, DOW_FULL, matches, nextN, applyRepeat, describe, defaultRepeat, relDay, isoDow, fmtDur, plural,
 } from './repeat.js';
@@ -137,6 +137,7 @@ function monthHTML(t, r) {
     if (st === 'done') cls += ' done';
     else if (st === 'skipped') cls += ' miss';
     else if (st === 'postponed') cls += ' moved';   // перенесён дальше — не отменён
+    else if (st === 'started') cls += ' on started';
     else if (st) cls += ' on';
     else if (r && d > addDays(t0, 0) && matches(r, d)) cls += ' proj';   // за горизонтом — проекция правила
     if (d === t0) cls += ' today';
@@ -145,7 +146,7 @@ function monthHTML(t, r) {
   }
   return `<div class="eds-mhead"><button type="button" data-mon="-1" aria-label="Прошлый месяц">‹</button><b>${MON_NOM[m]} ${y}</b><button type="button" data-mon="1" aria-label="Следующий месяц">›</button></div>
     <div class="eds-mgrid">${WD.map(w => `<span>${w}</span>`).join('')}${cells}</div>
-    <p class="eds-mnote">${r ? 'Нажмите день, чтобы начать повтор с него' : 'Нажмите день, чтобы добавить или убрать'}</p>`;
+    <p class="eds-mnote">Нажмите день, чтобы поставить отметку${r ? ' или начать повтор с него' : ''}</p>`;
 }
 function nextHTML(t, r) {
   const t0 = today();
@@ -163,6 +164,62 @@ function footHTML(t, r) {
   if (!nx) return '';
   const d = parseISO(nx);
   return `<i class="eds-dot"></i>Следующий раз <b>${DOW_FULL[isoDow(nx)].toLowerCase()}, ${d.getDate()} ${MONTHS_FULL[d.getMonth()]}${t.blockStart ? ', ' + t.blockStart : ''}</b> · ${relDay(nx, t0)}${t.blockStart ? ` · ${fmtDur(t.blockMin || 30)}` : ''}`;
+}
+
+/* ── Отметка дня из календаря ──
+   Нажали день — рядом всплывает меню, как у квадрата в неделе:
+   запланировано, начато, выполнено, пропущено или убрать квадрат. У
+   повторяющейся задачи ещё — начать повтор с этого дня. */
+const DAY_ST = [['todo', 'Запланировано'], ['started', 'Начато'], ['done', 'Выполнено'], ['skipped', 'Пропущено'], [null, 'Убрать квадрат']];
+let dayMenu = null;
+function closeDayMenu() {
+  if (!dayMenu) return;
+  const m = dayMenu;
+  dayMenu = null;
+  document.removeEventListener('pointerdown', m._away, true);
+  document.removeEventListener('keydown', m._esc, true);
+  m.classList.remove('open');
+  setTimeout(() => m.remove(), 220);
+}
+function openDayMenu(btn, d) {
+  closeDayMenu();
+  const t = task();
+  if (!t) return;
+  const r = repOf(t);
+  const cur = (t.days || {})[d] || null;
+  const dt = parseISO(d);
+  const m = document.createElement('div');
+  m.className = 'cmenu eds-daymenu';
+  m.setAttribute('role', 'menu');
+  m.innerHTML = `<div class="eds-dm-head">${DOW_FULL[isoDow(d)]}, ${dt.getDate()} ${MONTHS_FULL[dt.getMonth()]}</div>` +
+    DAY_ST.map(([st, l]) => `<button type="button" role="menuitem" data-st="${st || ''}" class="${cur === st ? 'on' : ''}"><i class="eds-dm-sq ${st || 'none'}"></i><span>${l}</span></button>`).join('') +
+    (r ? `<button type="button" role="menuitem" data-start="1"><i class="eds-dm-sq anchor"></i><span>Начать повтор с этого дня</span></button>` : '');
+  document.body.appendChild(m);
+  const br = btn.getBoundingClientRect();
+  const mw = m.offsetWidth, mh = m.offsetHeight;
+  let x = Math.min(Math.max(8, br.left + br.width / 2 - mw / 2), innerWidth - mw - 8);
+  let y = br.bottom + 8;
+  if (y + mh > innerHeight - 8) y = Math.max(8, br.top - mh - 8);
+  m.style.left = x + 'px';
+  m.style.top = y + 'px';
+  m.style.transformOrigin = `${br.left + br.width / 2 - x}px ${y > br.top ? 0 : mh}px`;
+  requestAnimationFrame(() => m.classList.add('open'));
+  dayMenu = m;
+  m._away = e => { if (!m.contains(e.target)) closeDayMenu(); };
+  m._esc = e => { if (e.key === 'Escape') { e.stopPropagation(); closeDayMenu(); } };
+  setTimeout(() => { document.addEventListener('pointerdown', m._away, true); document.addEventListener('keydown', m._esc, true); }, 0);
+  m.addEventListener('click', async e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    closeDayMenu();
+    const rr = repOf(task());
+    if (b.dataset.start && rr) {
+      return setRepeat({ ...rr, start: d, ...(rr.freq === 'monthly' && rr.mMode !== 'nth' ? { mDay: +d.slice(8) } : {}), ...(rr.freq === 'weekly' && !(rr.days || []).length ? { days: [isoDow(d)] } : {}) });
+    }
+    await setEntry(editId, d, b.dataset.st || null);
+    renderSched();
+    onChange();
+  });
 }
 
 export function renderSched() {
@@ -326,13 +383,7 @@ function bind() {
       cursor = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
       return renderSched();
     }
-    if (b.dataset.day) {
-      const d = b.dataset.day;
-      if (r) return setRepeat({ ...r, start: d, ...(r.freq === 'monthly' && r.mMode !== 'nth' ? { mDay: +d.slice(8) } : {}), ...(r.freq === 'weekly' && !(r.days || []).length ? { days: [isoDow(d)] } : {}) });
-      const days = { ...(t.days || {}) };
-      if (days[d]) delete days[d]; else days[d] = 'todo';
-      return save({ days });
-    }
+    if (b.dataset.day) return openDayMenu(b, b.dataset.day);
     if (b.dataset.half) {
       if (!t.blockStart) return save({ blockStart: b.dataset.half === 'pm' ? '15:00' : '09:00', blockMin: t.blockMin || 30 });
       let m = hmToMin(t.blockStart);

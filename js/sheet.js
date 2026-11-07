@@ -1,5 +1,5 @@
 import {
-  today, TYPE_LABEL, PRIORITY_LABEL,
+  today, TYPE_LABEL, PRIORITY_LABEL, MODES,
   getTagsDict, getTagColor, addTagsToDict, updateTask, removeTask, getTask,
   addSubtask, toggleSubtask, delSubtask,
   esc, MONTHS, taskPlans, setTaskPlan, removeTaskPlan, hmToMin, minToHM,
@@ -447,6 +447,7 @@ function renderEditor() {
   renderEdPlans(t);
   renderEdPrio(t);
   renderEdType(t);
+  renderEdMode(t);
   renderEdSub(t);
   renderEdTime(t);
   renderEdTags(t);
@@ -475,6 +476,24 @@ function renderEdType(t) {
       renderEditor();
       renderAll();
     }));
+  }
+}
+/* Режим задачи: Работа / Дом / Учёба — кнопки с точкой цвета режима,
+   выбранная залита этим цветом */
+function renderEdMode(t) {
+  const box = $('edMode');
+  if (!box) return;
+  box.innerHTML = '';
+  for (const m of MODES.filter(x => x.id !== 'all')) {
+    const b = mkChip(m.label, t.mode === m.id, 'ed-mode-chip', async () => {
+      if (getTask(editId)?.mode === m.id) return;
+      await updateTask(editId, { mode: m.id });
+      renderEditor();
+      renderAll();
+    });
+    b.style.setProperty('--mc', `var(--mode-${m.id})`);
+    b.setAttribute('aria-pressed', String(t.mode === m.id));
+    box.appendChild(b);
   }
 }
 function renderEdSub(t) {

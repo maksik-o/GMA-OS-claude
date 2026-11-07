@@ -739,16 +739,23 @@ export function plansFromSessions(t) {
 export function taskPlans(t) {
   if (!t) return [];
   const out = new Map();
+  const none = new Set();   // дни, которые вернули в «без времени»
   for (const p of plansFromSessions(t)) out.set(p.date, p);
   for (const p of (t.plans || [])) {
-    if (!p || !p.date || !p.start) continue;
+    if (!p || !p.date) continue;
+    if (p.none) {
+      const auto = out.get(p.date);
+      if (!auto || String(p.at || '') >= String(auto.at)) { out.delete(p.date); none.add(p.date); }
+      continue;
+    }
+    if (!p.start) continue;
     const auto = out.get(p.date);
     const manual = { ...p, auto: false, at: p.at || '' };
     if (!auto || String(manual.at) >= String(auto.at)) out.set(p.date, manual);
   }
   if (t.blockStart) {
     for (const d of Object.keys(t.days || {})) {
-      if (out.has(d)) continue;
+      if (out.has(d) || none.has(d)) continue;
       const s = hmToMin(t.blockStart);
       out.set(d, { date: d, start: minToHM(s), end: minToHM(s + (t.blockMin || 30)), auto: true, at: '' });
     }
@@ -763,6 +770,16 @@ export async function setTaskPlan(taskId, date, start, end) {
   if (!t) return;
   const plans = (t.plans || []).filter(p => p && p.date !== date);
   plans.push({ date, start, end, at: new Date().toISOString() });
+  plans.sort((a, b) => a.date.localeCompare(b.date));
+  await updateTask(taskId, { plans });
+}
+/* «Без времени» на этот день: перекрывает и окно по умолчанию
+   (blockStart), и время из таймера — пока его не сменят снова */
+export async function clearTaskPlanDay(taskId, date) {
+  const t = getTask(taskId);
+  if (!t) return;
+  const plans = (t.plans || []).filter(p => p && p.date !== date);
+  plans.push({ date, none: true, at: new Date().toISOString() });
   plans.sort((a, b) => a.date.localeCompare(b.date));
   await updateTask(taskId, { plans });
 }

@@ -82,10 +82,14 @@
   <section id="contactsView" class="contacts-view glass" hidden></section>
   <section id="financeView" class="finance-view" hidden></section>
   <section id="kbView" class="kb-view" hidden></section>
-<div id="dockBottom" class="dock">
-  <section id="notesPanel" class="notes-panel dock-panel glass"></section>
-  <section id="focusPanel" class="focus-panel dock-panel glass"></section>
+  <div id="dockBottom" class="dock">
+    <section id="notesPanel" class="notes-panel dock-panel glass"></section>
+    <section id="focusPanel" class="focus-panel dock-panel glass"></section>
+  </div>
 </div>
+<!-- Всё ниже — поверх #app (у него свой слой z-index: 1): кнопка «+»,
+     затемнение, панели, редактор, меню. Раньше #app не был закрыт, они
+     оказывались внутри его слоя и уходили под левое меню. -->
 
 <button id="addBtn" class="fab" type="button" title="Добавить задачу">+</button>
 <div id="backdrop" class="backdrop"></div>
@@ -125,21 +129,15 @@
       <div class="eds-foot" id="edFoot"></div>
     </section>
     <div class="ed-more">
-    <div class="ed-card">
+    <!-- Порядок — по важности: приоритет, теги, режим; заметки и
+         подзадачи; файлы, время и окна по дням -->
+    <div class="ed-card ed-c-prio">
       <h4>Приоритет</h4>
       <div class="chip-row" id="edPrio"></div>
       <h4>Тип</h4>
       <div class="chip-row" id="edType"></div>
     </div>
-    <div class="ed-card">
-      <h4>Подзадачи</h4>
-      <div id="edSub"></div>
-      <div class="chip-row" style="margin-top: 8px;">
-        <input id="edSubInput" class="chip-input" type="text" placeholder="+ подзадача">
-        <button id="edSubAdd" class="btn mini" type="button">＋</button>
-      </div>
-    </div>
-    <div class="ed-card">
+    <div class="ed-card ed-c-tags">
       <h4>Теги</h4>
       <div class="chip-row" id="edTags"></div>
       <div class="chip-row" style="margin-top: 8px;">
@@ -148,9 +146,21 @@
       <h4>Ссылки</h4>
       <div class="chip-row" id="edLinks"></div>
     </div>
+    <div class="ed-card ed-c-mode">
+      <h4>Режим</h4>
+      <div class="ed-modes" id="edMode" role="group" aria-label="Режим задачи"></div>
+    </div>
     <div class="ed-card notes-card">
       <h4>Заметки</h4>
       <textarea id="edNotes" class="f-title notes-area" rows="3" placeholder="Заметки, ссылки, идеи…"></textarea>
+    </div>
+    <div class="ed-card ed-c-sub">
+      <h4>Подзадачи</h4>
+      <div id="edSub"></div>
+      <div class="chip-row" style="margin-top: 8px;">
+        <input id="edSubInput" class="chip-input" type="text" placeholder="+ подзадача">
+        <button id="edSubAdd" class="btn mini" type="button">＋</button>
+      </div>
     </div>
     <div class="ed-card">
       <h4>Файлы</h4>
