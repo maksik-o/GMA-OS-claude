@@ -1,29 +1,26 @@
-/* ══════════════ МЕНЮ-КАРУСЕЛЬ (iPhone) ══════════════
-   Короткая полоса у правого края, на середине высоты экрана. Края экрана
-   плавно изгибаются вокруг неё «плечами». Фон — абсолютно чёрный (#000):
-   на OLED эти пиксели выключены.
+/* ══════════════ МЕНЮ (iPhone) ══════════════
+   Полоса у правого края на середине высоты экрана, все разделы списком.
+   Края экрана плавно изгибаются вокруг неё «плечами»; фон — абсолютно
+   чёрный (#000), на OLED эти пиксели выключены.
 
-   В центре — пилюля открытого раздела с подписью; над ней иконка
-   предыдущего раздела, под ней — следующего, дальние гаснут. Разделы
-   закольцованы. Коснулся полосы и ведёшь пальцем — сквозь неподвижную
-   пилюлю проезжают иконки, подпись в ней меняется на раздел, который
-   сейчас в пилюле; отпустил — раздел, на котором остановился, и
-   открывается, пилюля остаётся на нём (не откатывается к прежнему).
-   Тап по соседней иконке — шаг к ней.
+   Открытый раздел — в пилюле «Огонь» с иконкой и подписью; пилюля
+   по размеру содержимого и переезжает на выбранный пункт, соседние
+   пункты плавно расступаются.
 
-   Контент не лежит под полосой: блоки, которые по высоте подходят к
-   ней, плавно сужаются, а высокие стеклянные панели получают в правом
-   крае плавную выемку — «обтекают» меню; отошли — снова во всю ширину. */
+   Меню убирается само: стоит прокрутить экран, тапнуть или провести
+   пальцем по панелям — оно с анимацией уезжает вправо, у края остаётся
+   тонкий язычок. Вызвать — свайп от правого края влево (или тап по
+   язычку): меню выезжает справа, а блоки, которым оно мешает, плавно
+   сужаются и обтекают его. Пока меню спрятано, всё во всю ширину. */
 import { state, hapticLight } from './store.js';
 import { openSearch } from './search.js';
 
 const mqMobile = matchMedia('(max-width: 720px)');
-const STEP = 46;            // шаг иконок
-const PILL = 128;           // высота пилюли: иконка раздела и подпись вертикально
+const STEP = 46;            // высота пункта
 const S = 54;               // высота «плеча» изгиба
 const W = 46;               // ширина полосы
 const R = W + 2;            // ширина холста плеча (край экрана — справа)
-const BODY = PILL + 4 * STEP - 26;   // видно пилюлю и по две иконки с каждой стороны
+const PAD = 8;              // запас внутри тела над первым и под последним пунктом
 const ICON = {
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   week: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L6.8 5M3.5 12l1.2 1.2 2.1-2.2M3.5 18l1.2 1.2 2.1-2.2"/>',
@@ -43,96 +40,75 @@ const ITEMS = [
   { id: 'search', label: 'Поиск', act: () => openSearch() },
   { id: 'settings', label: 'Настройки', act: () => document.getElementById('settingsBtn')?.click() },
 ];
-const N = ITEMS.length;
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
-const mod = i => ((i % N) + N) % N;
 
-let rail = null, pill = null, label = null, pico = null, icons = [];
-let cur = 0;          // открытый раздел
-let pos = 0;          // положение карусели (дробное: между разделами)
-let drag = null;
-let anim = 0;
+let rail = null, pill = null, label = null, pico = null, icons = [], capB = null, body = null, tab = null, meas = null;
+let cur = 0;          // раздел в пилюле
 let navTarget = null; // раздел, к которому идём: пока экран меняется, пилюля не откатывается
-let shownLabel = -1;
+let shown = true;
 
 function build() {
   if (rail) return;
   rail = document.createElement('nav');
   rail.className = 'rail';
   rail.setAttribute('aria-label', 'Разделы');
-  rail.style.height = (2 * S + BODY) + 'px';
   /* плечи: изгиб от края экрана (справа) внутрь и обратно */
   rail.innerHTML =
     `<svg class="rl-cap rl-cap-t" width="${R}" height="${S}" viewBox="0 0 ${R} ${S}" aria-hidden="true"><path d="M${R} 0C${R} ${S * .55} ${R - W} ${S * .42} ${R - W} ${S}L${R} ${S}Z"/></svg>` +
-    `<div class="rl-body" style="top:${S - .5}px;height:${BODY + 1}px"></div>` +
-    `<svg class="rl-cap rl-cap-b" style="top:${S + BODY}px" width="${R}" height="${S}" viewBox="0 0 ${R} ${S}" aria-hidden="true"><path d="M${R - W} 0C${R - W} ${S * .58} ${R} ${S * .45} ${R} ${S}L${R} 0Z"/></svg>` +
-    `<div class="rl-track">${ITEMS.map((it, i) => `<button type="button" class="rl-it" data-i="${i}" aria-label="${it.label}" title="${it.label}">${svg(it.id)}</button>`).join('')}</div>` +
-    `<div class="rl-pill" style="top:${S + BODY / 2 - PILL / 2}px;height:${PILL}px" aria-hidden="true"><span class="rl-pico"></span><span class="rl-lab"></span></div>`;
+    `<div class="rl-body" style="top:${S - .5}px"></div>` +
+    `<svg class="rl-cap rl-cap-b" width="${R}" height="${S}" viewBox="0 0 ${R} ${S}" aria-hidden="true"><path d="M${R - W} 0C${R - W} ${S * .58} ${R} ${S * .45} ${R} ${S}L${R} 0Z"/></svg>` +
+    `<div class="rl-pill" aria-hidden="true"><span class="rl-pico"></span><span class="rl-lab"></span></div>` +
+    ITEMS.map((it, i) => `<button type="button" class="rl-it" data-i="${i}" aria-label="${it.label}" title="${it.label}">${svg(it.id)}</button>`).join('') +
+    `<span class="rl-lab rl-meas" aria-hidden="true"></span>`;
   document.body.appendChild(rail);
+  tab = document.createElement('button');
+  tab.type = 'button';
+  tab.className = 'rail-tab';
+  tab.setAttribute('aria-label', 'Показать меню');
+  document.body.appendChild(tab);
+  capB = rail.querySelector('.rl-cap-b');
+  body = rail.querySelector('.rl-body');
   pill = rail.querySelector('.rl-pill');
-  label = rail.querySelector('.rl-lab');
-  pico = rail.querySelector('.rl-pico');
+  label = pill.querySelector('.rl-lab');
+  pico = pill.querySelector('.rl-pico');
+  meas = rail.querySelector('.rl-meas');
   icons = [...rail.querySelectorAll('.rl-it')];
-  rail.addEventListener('pointerdown', onDown);
-  rail.addEventListener('click', e => e.preventDefault());
-  /* клавиатура: обычные кнопки */
-  rail.addEventListener('keydown', e => {
+  rail.addEventListener('click', e => {
     const b = e.target.closest('.rl-it');
-    if (b && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); spinTo(+b.dataset.i); }
+    if (b) choose(+b.dataset.i);
   });
-  addEventListener('resize', place);
+  tab.addEventListener('click', () => setShown(true));
+  addEventListener('resize', () => layout());
+  bindAutoHide();
   bindWrap();
 }
 
-/* По центру экрана по высоте */
-function place() {
+/* ── Раскладка: пилюля по содержимому, пункты расступаются ── */
+const pillH = i => {
+  meas.textContent = ITEMS[i].label;
+  return Math.ceil(11 + 18 + 8 + meas.offsetHeight + 14);   // отступ, иконка, зазор, подпись, отступ
+};
+function layout() {
   if (!rail || !mqMobile.matches) return;
-  const h = 2 * S + BODY;
-  rail.style.transform = `translateY(${Math.round((innerHeight - h) / 2)}px)`;
-  scheduleWrap(true);
-}
-
-/* ── Карусель ── */
-const CY = () => S + BODY / 2;                       // центр пилюли в координатах полосы
-/* смещение иконки от центра для относительного индекса k (дробного):
-   вплотную к пилюле — на полпилюли, дальше — по шагу */
-function offsetOf(k) {
-  const a = Math.abs(k), s = Math.sign(k);
-  const near = PILL / 2 + STEP / 2 - 4;
-  return a <= 1 ? k * near : s * (near + (a - 1) * STEP);
-}
-/* относительный индекс раздела i при положении p — ближайший по кругу */
-function relOf(i, p) {
-  let k = i - p;
-  k -= Math.round(k / N) * N;
-  return k;
-}
-function render() {
-  const cy = CY();
+  const ph = pillH(cur);
+  const hs = ITEMS.map((_, i) => (i === cur ? ph + 6 : STEP));
+  const bodyH = PAD * 2 + hs.reduce((a, b) => a + b, 0);
+  const h = 2 * S + bodyH;
+  let y = S + PAD;
   icons.forEach((b, i) => {
-    const k = relOf(i, pos);
-    const a = Math.abs(k);
-    const y = cy + offsetOf(k) - STEP / 2;
-    /* под пилюлей иконку не видно — там подпись; к краям гаснут */
-    const op = a < .55 ? 0 : a < 1 ? (a - .55) / .45 : Math.max(0, 1 - (a - 1) * .62);
-    const sc = a < 1 ? .85 + .15 * a : Math.max(.7, 1 - (a - 1) * .18);
-    b.style.transform = `translate(-50%, ${y.toFixed(1)}px) scale(${sc.toFixed(3)})`;
-    b.style.opacity = op.toFixed(3);
-    b.style.pointerEvents = op > .3 ? '' : 'none';
-    b.tabIndex = op > .3 ? 0 : -1;
+    const mid = y + hs[i] / 2;
+    b.style.transform = `translate(-50%, ${(mid - STEP / 2).toFixed(1)}px)`;
+    b.classList.toggle('under', i === cur);
+    if (i === cur) { pill.style.transform = `translateY(${(mid - ph / 2).toFixed(1)}px)`; pill.style.height = ph + 'px'; }
+    y += hs[i];
   });
-  const li = mod(Math.round(pos));
-  if (li !== shownLabel) {
-    const dir = shownLabel < 0 ? 0 : Math.sign(relOf(li, shownLabel)) || 1;
-    shownLabel = li;
-    label.textContent = ITEMS[li].label;
-    pico.innerHTML = svg(ITEMS[li].id);
-    /* иконка и подпись сменяются сдвигом в сторону прокрутки */
-    if (dir && label.animate) {
-      label.animate([{ transform: `rotate(180deg) translateX(${dir * 14}px)`, opacity: .2 }, { transform: 'rotate(180deg)', opacity: 1 }], { duration: 180, easing: 'ease-out' });
-      pico.animate([{ transform: `translateY(${-dir * 10}px)`, opacity: .2 }, { transform: 'none', opacity: 1 }], { duration: 180, easing: 'ease-out' });
-    }
-  }
+  body.style.height = (bodyH + 1) + 'px';
+  capB.style.transform = `translateY(${S + bodyH}px)`;
+  rail.style.height = h + 'px';
+  rail.style.top = Math.round((innerHeight - h) / 2) + 'px';
+  tab.style.top = Math.round(innerHeight / 2 - 28) + 'px';
+  if (label.textContent !== ITEMS[cur].label) { label.textContent = ITEMS[cur].label; pico.innerHTML = svg(ITEMS[cur].id); }
+  scheduleWrap(true);
 }
 function viewIndex() { const i = ITEMS.findIndex(x => x.view === state.view); return i < 0 ? cur : i; }
 function sync() {
@@ -143,81 +119,54 @@ function sync() {
     else return;
   }
   const i = viewIndex();
-  if (drag) return;
-  if (i !== cur || Math.abs(pos - cur) > .001) { cur = i; spinPos(nearest(i)); }
+  if (i !== cur) { cur = i; layout(); }
 }
-/* ближайшее к текущему положению «вхождение» раздела i на кольце */
-const nearest = i => pos + relOf(i, pos);
-function spinPos(to, done) {
-  cancelAnimationFrame(anim);
-  const from = pos, t0 = performance.now(), dur = Math.min(420, 180 + Math.abs(to - from) * 90);
-  if (Math.abs(to - from) < .001 || matchMedia('(prefers-reduced-motion: reduce)').matches) { pos = to; render(); if (done) done(); return; }
-  const step = now => {
-    const p = Math.min(1, (now - t0) / dur);
-    const e = 1 - Math.pow(1 - p, 3);
-    pos = from + (to - from) * e;
-    render();
-    if (p < 1) anim = requestAnimationFrame(step);
-    else if (done) done();
-  };
-  anim = requestAnimationFrame(step);
-}
-function spinTo(i) { spinPos(nearest(i), () => choose(i)); }
 function choose(i) {
-  const it = ITEMS[mod(i)];
-  if (it.act) {
-    /* поиск и настройки — действие, а карусель возвращается к открытому разделу */
-    it.act();
-    setTimeout(() => spinPos(nearest(cur)), 260);
-    return;
-  }
-  cur = mod(i);
+  const it = ITEMS[i];
+  hapticLight();
+  if (it.act) { it.act(); return; }   // поиск и настройки — действие, пилюля остаётся на разделе
+  if (i !== cur) { cur = i; layout(); }
   if (state.view !== it.view) {
-    navTarget = { i: cur, t: Date.now() };
+    navTarget = { i, t: Date.now() };
     const sh = document.getElementById('sheet');
     if (sh && sh.classList.contains('open')) document.getElementById('backdrop')?.click();
     document.dispatchEvent(new CustomEvent('go-view', { detail: it.view }));
   }
 }
 
-function onDown(e) {
-  if (e.button > 0) return;
-  e.preventDefault();
-  cancelAnimationFrame(anim);
-  drag = { sy: e.clientY, p0: pos, moved: false, idx: mod(Math.round(pos)), tap: e.target.closest('.rl-it') };
-  rail.classList.add('held');
-  hapticLight();
-  try { rail.setPointerCapture(e.pointerId); } catch (_) {}
-  const move = ev => {
-    const dy = ev.clientY - drag.sy;
-    if (Math.abs(dy) > 5) drag.moved = true;
-    if (!drag.moved) return;
-    /* палец вверх — снизу въезжают следующие разделы */
-    pos = drag.p0 - dy / STEP;
-    const idx = mod(Math.round(pos));
-    if (idx !== drag.idx) { drag.idx = idx; hapticLight(); }
-    render();
-  };
-  const up = () => {
-    rail.removeEventListener('pointermove', move);
-    rail.removeEventListener('pointerup', up);
-    rail.removeEventListener('pointercancel', up);
-    rail.classList.remove('held');
-    const d = drag;
-    drag = null;
-    if (!d.moved) {
-      if (d.tap) spinTo(+d.tap.dataset.i);   // тап по соседней иконке
-      else render();
-      return;
-    }
-    /* магнит: доезжаем до раздела, на котором остановились, — и он открыт */
-    const target = Math.round(pos);
-    spinPos(target, () => choose(target));
-  };
-  rail.addEventListener('pointermove', move);
-  rail.addEventListener('pointerup', up);
-  rail.addEventListener('pointercancel', up);
+/* ── Показать / спрятать ── */
+function setShown(on) {
+  if (!rail || on === shown) return;
+  shown = on;
+  rail.classList.toggle('rl-hidden', !on);
+  tab.classList.toggle('on', !on);
+  wrapOn = on;
+  scheduleWrap(true);   // спрятано — блоки во всю ширину, показано — обтекают
+  if (on) hapticLight();
 }
+function bindAutoHide() {
+  const app = document.getElementById('app');
+  /* прокрутка экрана — меню уезжает */
+  if (app) app.addEventListener('scroll', () => { if (shown && !swipe) setShown(false); }, { passive: true });
+  /* тап или жест по панелям — тоже */
+  document.addEventListener('pointerdown', e => {
+    if (!mqMobile.matches) return;
+    const edge = e.clientX > innerWidth - 24;
+    if (edge && !shown) { swipe = { x: e.clientX, y: e.clientY, id: e.pointerId }; return; }
+    if (shown && !rail.contains(e.target) && e.target !== tab) setShown(false);
+  }, true);
+  /* свайп от правого края влево — меню выезжает */
+  document.addEventListener('pointermove', e => {
+    if (!swipe || e.pointerId !== swipe.id) return;
+    const dx = swipe.x - e.clientX, dy = Math.abs(e.clientY - swipe.y);
+    if (dx > 26 && dx > dy * 1.4) { swipe = null; setShown(true); }
+    else if (dy > 40) swipe = null;
+  }, true);
+  const end = () => { swipe = null; };
+  document.addEventListener('pointerup', end, true);
+  document.addEventListener('pointercancel', end, true);
+}
+let swipe = null;
 
 /* ══ Обтекание ══
    Блоки экрана во всю ширину. Те, что по высоте попадают в полосу меню,
@@ -243,7 +192,7 @@ function collectWrap() {
   oldT.forEach(el => { if (!keepT.has(el)) { el.style.clipPath = ''; el._wn = ''; } });
 }
 function collectInto() {
-  const tallLim = (2 * S + BODY) * .9;
+  const tallLim = rail.offsetHeight * .9;
   const visit = (el, depth) => {
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) return;
@@ -368,8 +317,8 @@ function bindWrap() {
 function apply() {
   const on = mqMobile.matches;
   document.body.classList.toggle('has-rail', on);
-  wrapOn = on;
-  if (on) { build(); place(); sync(); shownLabel = -1; render(); }
+  wrapOn = on && shown;
+  if (on) { build(); cur = viewIndex(); layout(); }
   else scheduleWrap(true);
 }
 export function railSync() { if (mqMobile.matches) { sync(); scheduleWrap(true); } }
