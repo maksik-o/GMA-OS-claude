@@ -98,6 +98,9 @@ function updateYields(rowEl, x, me) {
     }
   }
 }
+/* Правый отступ панели: на телефоне его держит меню-карусель (rail.js,
+   «обтекание», с !important) — не затираем */
+const setMR = (k, v) => { if (k.style.getPropertyPriority('margin-right') !== 'important') k.style.marginRight = v; };
 /* ── Раскладка дока: группы по align, заметки тянутся ── */
 function applyDockLayout() {
   const top = $('dockTop'), bottom = $('dockBottom');
@@ -125,23 +128,23 @@ function applyDockLayout() {
         if (a === 'stretch') {
           k.style.flex = '1 1 320px';
           k.style.marginLeft = '0';
-          k.style.marginRight = '0';
+          setMR(k, '0');
         } else if (a === 'custom') {
           k.style.flex = 'none';
           k.style.marginLeft = ((dockState[idOf(k)] || {}).x || 0) + 'px';
-          k.style.marginRight = 'auto';
+          setMR(k, 'auto');
         } else if (a === 'left') {
           k.style.flex = 'none';
           k.style.marginLeft = '0';
-          k.style.marginRight = last ? 'auto' : '0';
+          setMR(k, last ? 'auto' : '0');
         } else if (a === 'right') {
           k.style.flex = 'none';
           k.style.marginLeft = first ? 'auto' : '0';
-          k.style.marginRight = '0';
+          setMR(k, '0');
         } else { /* center */
           k.style.flex = 'none';
           k.style.marginLeft = first ? 'auto' : '0';
-          k.style.marginRight = last ? 'auto' : '0';
+          setMR(k, last ? 'auto' : '0');
         }
       });
       i = j + 1;
