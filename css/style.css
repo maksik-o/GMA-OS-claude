@@ -6063,14 +6063,16 @@ body.has-sidebar :is(.tpill, .editor, .toast) { margin-left: calc((var(--sb-w) +
 .eds-foot b { color: var(--text); font-weight: 600; }
 .eds-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
-.ed-v2 .ed-more { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+/* Единая сетка: в каждом ряду карточки одной высоты — без пустот */
+.ed-v2 .ed-more { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
 .ed-v2 .ed-more .ed-card { margin: 0; padding: 14px; border-radius: 16px; background: rgba(255, 255, 255, .035); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
 .ed-v2 .ed-more .ed-card h4 + .chip-row + h4 { margin-top: 14px; }
 .ed-v2 .ed-more .notes-card { grid-column: span 2; }
 
 @media (max-width: 1000px) {
   .ed-sched { grid-template-columns: minmax(0, 1fr); }
-  .ed-v2 .ed-more { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ed-v2 .ed-more { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: dense; }
+  .ed-v2 .ed-more .ed-plan-card { grid-column: span 2; }
 }
 @media (max-width: 720px) {
   #editor.ed-v2 { width: auto; max-height: none; border-radius: 22px 22px 0 0; }
@@ -6094,7 +6096,7 @@ body.has-sidebar :is(.tpill, .editor, .toast) { margin-left: calc((var(--sb-w) +
   .eds-big { font-size: 40px; }
   .eds-clock { gap: 14px; padding: 14px; }
   .ed-v2 .ed-more { grid-template-columns: minmax(0, 1fr); }
-  .ed-v2 .ed-more .notes-card { grid-column: auto; }
+  .ed-v2 .ed-more .notes-card, .ed-v2 .ed-more .ed-plan-card { grid-column: auto; }
 }
 .eds-none { color: color-mix(in srgb, var(--text) 30%, transparent); letter-spacing: .04em; }
 
@@ -6365,3 +6367,98 @@ html.booting #app > *, html.booting #addBtn, html.booting #sidebar, html.booting
 /* выбор задачи для фокуса: подходящие строки «Сегодня» мигают */
 #homeView.focus-choosing :is(.hm-row, .hm-ev, .hm-chip):not(.done) { animation: chooseblink 1s ease-in-out infinite; cursor: pointer; }
 #homeView.focus-choosing :is(.hm-row, .hm-ev, .hm-chip).done { opacity: .45; }
+
+/* Редактор задачи: режим Работа / Дом / Учёба */
+.ed-modes { display: flex; flex-direction: column; gap: 8px; }
+.ed-v2 .chip.ed-mode-chip {
+  display: flex; align-items: center; gap: 10px; width: 100%; justify-content: flex-start;
+  padding: 9px 12px; border-radius: 12px; font-weight: 700;
+  transition: background .25s var(--m-ease, ease), color .25s, box-shadow .25s;
+}
+.ed-v2 .chip.ed-mode-chip::before { content: ''; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--mc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mc) 22%, transparent); }
+:root[data-theme] .ed-v2 .chip.ed-mode-chip.on, .ed-v2 .chip.ed-mode-chip.on { background: color-mix(in srgb, var(--mc) 22%, #111214); color: #fff; box-shadow: inset 0 0 0 1.5px var(--mc); }
+@media (max-width: 720px) {
+  .ed-modes { flex-direction: row; flex-wrap: wrap; }
+  .ed-v2 .chip.ed-mode-chip { width: auto; }
+}
+
+/* Редактор задачи: отметка дня в календаре (edsched.js) */
+.cmenu.eds-daymenu { z-index: 70; width: 230px; }
+.eds-dm-head { padding: 8px 10px 6px; font-size: 12px; font-weight: 800; color: var(--dim); text-transform: none; }
+.eds-dm-sq { flex: none; width: 16px; height: 16px; border-radius: 5px; box-sizing: border-box; }
+.eds-dm-sq.todo { border: 2px solid var(--c-todo, #8a8b90); }
+.eds-dm-sq.started { background: linear-gradient(135deg, var(--c-started, #f59e0b) 50%, transparent 50%); border: 2px solid var(--c-started, #f59e0b); }
+.eds-dm-sq.done { background: var(--c-done, #22c55e); }
+.eds-dm-sq.skipped { background: var(--c-skipped, #ef4444); }
+.eds-dm-sq.none { border: 2px dashed rgba(255, 255, 255, .3); }
+.eds-dm-sq.anchor { border-radius: 50%; border: 2px solid var(--accent); }
+.eds-mgrid button.on.started { background: linear-gradient(135deg, var(--accent) 50%, color-mix(in srgb, var(--accent) 30%, transparent) 50%); }
+
+/* «Главная» → «Сегодня»: перенос задач на поле дня (home.js, bindTimeline) */
+.hm-tl .hm-ev { cursor: grab; touch-action: pan-y; }
+.hm-ev-h { position: absolute; left: 0; right: 0; height: 9px; cursor: ns-resize; z-index: 1; }
+.hm-ev-h.t { top: 0; } .hm-ev-h.b { bottom: 0; }
+.hm-ev-h::after { content: ''; position: absolute; left: 50%; width: 26px; height: 3px; margin-left: -13px; border-radius: 2px; background: var(--mc); opacity: 0; transition: opacity .2s; }
+.hm-ev-h.t::after { top: 3px; } .hm-ev-h.b::after { bottom: 3px; }
+@media (hover: hover) { .hm-ev:hover .hm-ev-h::after { opacity: .8; } }
+.hm-ev.hm-ev-resizing { z-index: 3; transition: none !important; box-shadow: 0 0 0 1.5px var(--mc), 0 10px 26px rgba(0, 0, 0, .35); }
+.hm-ev.hm-ev-resizing .hm-ev-h::after { opacity: 1; }
+.hm-loose .hm-chip { cursor: grab; touch-action: pan-y; }
+.hm-tl-src { opacity: .28 !important; }
+.hm-tl-ghost {
+  position: fixed; z-index: 80; pointer-events: none; box-sizing: border-box;
+  display: flex; flex-direction: column; justify-content: center; gap: 2px; overflow: hidden;
+  padding: 4px 10px; border-radius: 10px; color: #fff; font: 700 12.5px/1.25 var(--font-ui);
+  background: color-mix(in srgb, var(--mc, var(--accent)) 30%, #16171a);
+  border-left: 3px solid var(--mc, var(--accent));
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .45), 0 0 0 1px color-mix(in srgb, var(--mc, var(--accent)) 45%, transparent);
+  transition: left .16s cubic-bezier(.22, 1, .36, 1), top .12s cubic-bezier(.22, 1, .36, 1), width .2s cubic-bezier(.22, 1, .36, 1), height .2s cubic-bezier(.22, 1, .36, 1), border-radius .2s;
+}
+.hm-tl-ghost b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-tl-ghost small { font-size: 11px; font-weight: 700; opacity: .8; white-space: nowrap; flex: none; }
+.hm-tl-ghost.short, .hm-tl-ghost.out { flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; }
+.hm-tl-ghost.out { border-radius: 999px; border-left-width: 0; }
+.hm-tl-area { border-radius: 12px; transition: background .2s, box-shadow .2s; }
+.hm-tl-area.hm-drop-on { background: color-mix(in srgb, var(--accent) 6%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 28%, transparent); }
+.hm-loose { min-height: 30px; border-radius: 14px; padding: 2px 6px; margin-left: -6px; transition: background .2s, box-shadow .2s; }
+.hm-loose.hm-drop-on { background: color-mix(in srgb, var(--accent) 8%, transparent); outline: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: -1px; }
+.hm-loose-hint { opacity: .55; }
+body.hm-tl-dragging, body.hm-tl-dragging * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
+
+/* Заметка: блоки панели не сжимаются — длинный текст раньше вылезал
+   из своего блока и наезжал на нижние (панель прокручивается сама) */
+.kb-view.kb-panel-open > .kb-main > * { flex-shrink: 0; }
+.kb-view.kb-panel-open > .kb-main .kb-edit-wrap { flex: none; }
+/* Связи — сразу под шапкой */
+.kb-linkrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.kb-linkrow:empty { display: none; }
+/* Режим «Связать»: подсказка раскрывается вниз из-под кнопок */
+.kb-linkbar { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .38s var(--m-ease, cubic-bezier(.22,1,.36,1)), opacity .25s, margin .38s; margin-top: calc(var(--sp-2) * -1); }
+.kb-linkbar-in { overflow: hidden; min-height: 0; display: flex; align-items: center; gap: 10px; }
+.kb-main.kb-linking .kb-linkbar { grid-template-rows: 1fr; opacity: 1; margin-top: 0; }
+.kb-main.kb-linking .kb-linkbar-in {
+  padding: 10px 10px 10px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.kb-linkbar-t { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: #fff; }
+.kb-linkbar.ok .kb-linkbar-t { color: var(--c-done, #22c55e); }
+.kb-linkbar.nudge .kb-linkbar-in { animation: kbNudge .42s var(--m-ease, ease); }
+@keyframes kbNudge { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 55% { transform: translateX(4px); } 80% { transform: translateX(-2px); } }
+.kb-link-x svg { width: 15px; height: 15px; }
+.kb-main .btn.kb-link.on { background: var(--accent) !important; color: #0b0b0d !important; }
+/* заметки на доске в режиме «Связать» */
+.kb-view.kb-link-mode .kb-board .kb-item:not(.on) { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 35%, transparent); }
+.kb-board .kb-item { position: relative; overflow: hidden; }
+.kb-board .kb-item.kb-holding::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  transform-origin: left center; animation: kbHold .65s linear forwards;
+}
+.kb-board .kb-item.kb-holding { transform: scale(.98); transition: transform .3s var(--m-ease, ease); }
+@keyframes kbHold { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* открытая заметка — цель, когда над ней несут заметку */
+.kb-main.kb-drop-over { box-shadow: 0 0 0 2px var(--accent), 0 0 0 8px color-mix(in srgb, var(--accent) 18%, transparent) !important; transition: box-shadow .2s; }
+
+/* Левое меню — та же стеклянная кромка, что у панелей */
+#sidebar .sb-bg-edge { stroke: rgba(255, 255, 255, .2) !important; }

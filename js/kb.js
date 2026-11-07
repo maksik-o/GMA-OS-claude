@@ -358,6 +358,7 @@ async function setPanel(open) {
 }
 
 function openNote(id, focusEditor) {
+  setLinkMode(false);
   flushEditor();
   curNote = id;
   view = 'note';
@@ -368,8 +369,69 @@ function openNote(id, focusEditor) {
     if (t) t.focus();
   }
 }
-function closeNote() { curNote = null; setPanel(false); }
+function closeNote() { setLinkMode(false); curNote = null; setPanel(false); }
+
+/* ── Режим «Связать» ──
+   Кнопка «Связать» раскрывает под шапкой заметки строку-подсказку и
+   включает режим: заметку на доске (открыв любую папку или подпапку)
+   удерживают — заливка, как у виджетов, — или перетаскивают на текст
+   открытой заметки, и они связываются. Простой клик по заметке в этом
+   режиме не уводит с открытой — подсказка коротко вспыхивает.
+   Выход: снова «Связать», ✕ в подсказке или Esc. */
+let linkMode = false;
+function linkEsc(e) { if (e.key === 'Escape' && linkMode) { e.stopPropagation(); setLinkMode(false); } }
+function setLinkMode(on) {
+  on = !!on && !!(panel && view === 'note' && curNote);
+  linkMode = on;
+  if (!_host) return;
+  const main = _host.querySelector('.kb-main');
+  if (main) {
+    main.classList.toggle('kb-linking', on);
+    const b = main.querySelector('.kb-link');
+    if (b) { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+  }
+  _host.classList.toggle('kb-link-mode', on);
+  if (on) document.addEventListener('keydown', linkEsc, true);
+  else document.removeEventListener('keydown', linkEsc, true);
+}
+function linkHint(text, ok) {
+  const bar = _host && _host.querySelector('.kb-linkbar');
+  if (!bar) return;
+  const t = bar.querySelector('.kb-linkbar-t');
+  clearTimeout(bar._t);
+  if (text) { t.textContent = text; bar.classList.toggle('ok', !!ok); }
+  bar.classList.remove('nudge'); void bar.offsetWidth; bar.classList.add('nudge');
+  bar._t = setTimeout(() => { t.textContent = 'Удержите или перетащите заметку для связи с текущей заметкой'; bar.classList.remove('ok'); }, 1800);
+}
+/* Связать заметку id с открытой; from — откуда «прилетает» миниатюра */
+async function linkWith(id, from) {
+  const me = curNote && kbItem(curNote);
+  const other = kbItem(id);
+  if (!me || !other || id === curNote) return;
+  dragGuard = Date.now();
+  const main = _host.querySelector('.kb-main');
+  if (from && main && !reduceMotion()) {
+    const r = from.getBoundingClientRect(), to = (main.querySelector('.kb-linkrow') || main).getBoundingClientRect();
+    const g = from.cloneNode(true);
+    g.classList.add('kb-drag-card', 'kb-drag-fold');
+    g.classList.remove('kb-holding', 'dragging', 'on');
+    Object.assign(g.style, { width: r.width + 'px', height: r.height + 'px', transform: `translate(${r.left}px, ${r.top}px)`, transformOrigin: '0 0' });
+    document.body.appendChild(g);
+    await g.animate([
+      { transform: `translate(${r.left}px, ${r.top}px) scale(1)`, opacity: 1 },
+      { transform: `translate(${to.left}px, ${to.top}px) scale(.25)`, opacity: 0 }],
+      { duration: 420, easing: EASE_IN, fill: 'forwards' }).finished.catch(() => {});
+    g.remove();
+  }
+  if ((me.links || []).includes(id)) { linkHint(`«${titleOf(other)}» уже связана`); return; }
+  flushEditor();
+  await setLink(curNote, id, true);
+  linkHint(`Связано с «${titleOf(other)}»`, true);
+  const chip = _host.querySelector(`.kb-linkrow .kb-linkchip[data-id="${CSS.escape(id)}"]`);
+  if (chip) pop(chip);
+}
 function toggleGraph() {
+  setLinkMode(false);
   flushEditor();
   if (panel && view === 'graph') { if (curNote) { view = 'note'; renderMain(); } else setPanel(false); return; }
   graphScope = 'all';
@@ -465,9 +527,15 @@ function buildNote(main, n) {
       <select class="kb-group-sel">${groupOptions(n)}</select>
       ${n.daily ? '<span class="kb-daily-tag">Заметка дня</span>' : ''}
       <label class="kb-attach"${limitNote() ? ` title="${esc(limitNote())}"` : ''}>📎 Файл<input type="file" class="kb-file" hidden multiple></label>
-      <button type="button" class="btn mini kb-link">🔗 Связать</button>
+      <button type="button" class="btn mini kb-link" aria-pressed="false">🔗 Связать</button>
       <button type="button" class="btn mini kb-local-graph" title="Граф вокруг этой заметки">◉ Граф</button>
     </div>
+    <div class="kb-linkbar" aria-live="polite"><div class="kb-linkbar-in">
+      <span class="kb-linkbar-t">Удержите или перетащите заметку для связи с текущей заметкой</span>
+      <button type="button" class="btn mini kb-link-find">Найти по названию</button>
+      <button type="button" class="kf-hbtn kb-link-x" title="Готово" aria-label="Закончить связывание"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div></div>
+    <div class="kb-linkrow"></div>
     <div class="kb-edit-wrap">
       <div class="kb-editor" contenteditable="true" spellcheck="true"
         data-ph="Текст заметки… Наберите [[ чтобы сослаться на другую заметку"></div>
@@ -528,14 +596,12 @@ function renderExtra(main, n) {
   const chip = (l, removable) => `<button type="button" class="kb-linkchip" data-id="${l.id}" style="--lc:${groupColor(l.groupId)}">
     <span class="kbl-dot"></span>${esc(titleOf(l))}${removable ? '<i class="kbl-x" title="Убрать связь">✕</i>' : ''}</button>`;
   const uniq = arr => [...new Map(arr.map(x => [x.id, x])).values()];
+  setHTML(main.querySelector('.kb-linkrow'), links.length ? `<span class="kb-links-cap">Связи</span>${links.map(l => chip(l, true)).join('')}` : '');
   setHTML(main.querySelector('.kb-extra'), `
     ${limitNote() ? `<p class="file-limit">⚠ ${esc(limitNote())}</p>` : ''}
     ${(n.files || []).length ? `<div class="kb-files">${n.files.map(f => `<div class="kb-file-row" data-fid="${f.id}">
       <span class="kbf-name">${esc(f.name)}</span><span class="kbf-size">${fmtSize(f.size)}</span>
       <button type="button" class="kbf-del" title="Открепить">✕</button></div>`).join('')}</div>` : ''}
-    <div class="kb-links"><span class="kb-links-cap">Связи</span>
-      ${links.map(l => chip(l, true)).join('')}
-      <button type="button" class="kb-linkadd">＋ Связать</button></div>
     ${inText.length ? `<div class="kb-links"><span class="kb-links-cap">Ссылки в тексте</span>
       ${uniq(inText).map(l => chip(l, false)).join('')}</div>` : ''}
     ${back.length ? `<div class="kb-links"><span class="kb-links-cap">Упоминается в</span>
@@ -600,7 +666,9 @@ function bindNote(main, n) {
     file.value = '';
   };
   const pick = () => { flushEditor(); openLinkPicker(n.id); };
-  main.querySelector('.kb-link').onclick = pick;
+  main.querySelector('.kb-link').onclick = () => setLinkMode(!linkMode);
+  main.querySelector('.kb-link-find').onclick = pick;
+  main.querySelector('.kb-link-x').onclick = () => setLinkMode(false);
   main.querySelector('.kb-local-graph').onclick = () => {
     flushEditor();
     graphScope = 'local';
@@ -608,9 +676,8 @@ function bindNote(main, n) {
     renderMain();
   };
   /* Нижняя часть перерисовывается, поэтому слушаем делегированием */
-  main.querySelector('.kb-extra').addEventListener('click', e => {
+  const onExtraClick = e => {
     const t = e.target;
-    if (t.closest('.kb-linkadd')) { pick(); return; }
     const row = t.closest('.kb-file-row');
     if (row) {
       const note = kbItem(n.id);
@@ -627,7 +694,9 @@ function bindNote(main, n) {
     if (!c) return;
     if (t.classList.contains('kbl-x')) { flushEditor(); setLink(n.id, c.dataset.id, false); return; }
     openNote(c.dataset.id);
-  });
+  };
+  main.querySelector('.kb-extra').addEventListener('click', onExtraClick);
+  main.querySelector('.kb-linkrow').addEventListener('click', onExtraClick);
 }
 
 /* ── [[ — автодополнение ссылок в тексте ── */
@@ -1206,10 +1275,34 @@ function askGroupDelete() {
    если не помещается нигде — в самый короткий. */
 const BOARD_GAP = 12;
 const LAYOUT_KEY = 'rl_kb_board';
-function loadLayout() {
-  try { const v = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null'); return Array.isArray(v) ? v : []; } catch { return []; }
+/* Раскладка хранится для каждого числа столбцов отдельно: панель
+   заметки или графа сужает доску, и узкая раскладка не должна затирать
+   ту, что пользователь собрал на всю ширину — закрыл панель, и папки
+   встали ровно туда, куда их поставили. */
+function readLayouts() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null');
+    if (Array.isArray(v)) return { [v.length]: v };   // прежний формат — одна раскладка
+    return v && typeof v === 'object' ? v : {};
+  } catch { return {}; }
 }
-function saveLayout(lists) { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(lists)); } catch {} }
+function loadLayout(n) { const v = readLayouts()[n]; return Array.isArray(v) ? v : []; }
+function saveLayout(lists) {
+  const all = readLayouts();
+  all[lists.length] = lists;
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(all)); } catch {}
+}
+/* Порядок для раскладки, которой ещё нет: из самой широкой сохранённой,
+   по строкам слева направо — так соседи остаются соседями */
+function layoutOrder() {
+  const all = readLayouts();
+  const n = Math.max(0, ...Object.keys(all).map(Number).filter(k => Array.isArray(all[k])));
+  const lists = n ? all[n] : [];
+  const rank = new Map();
+  const rows = Math.max(0, ...lists.map(l => (Array.isArray(l) ? l.length : 0)));
+  for (let r = 0; r < rows; r++) lists.forEach(l => { if (Array.isArray(l) && l[r] != null && !rank.has(l[r])) rank.set(l[r], rank.size); });
+  return rank;
+}
 function layoutBoard(board) {
   const wrap = board && board.querySelector('.kb-board-cols');
   if (!wrap || !wrap.offsetWidth) return;
@@ -1225,9 +1318,15 @@ function layoutBoard(board) {
   const hs = new Map(items.map(el => [el.dataset.bid, el.offsetHeight]));
   const lists = cols.map(() => []);
   const placed = new Set();
-  loadLayout().slice(0, n).forEach((ids, c) => (Array.isArray(ids) ? ids : []).forEach(id => {
+  const saved = loadLayout(n);
+  saved.forEach((ids, c) => (Array.isArray(ids) ? ids : []).forEach(id => {
     if (byId.has(id) && !placed.has(id)) { lists[c].push(id); placed.add(id); }
   }));
+  if (!saved.length) {
+    const rank = layoutOrder();
+    const big = rank.size + 1e6;
+    items.sort((a, b) => (rank.has(a.dataset.bid) ? rank.get(a.dataset.bid) : big + +a.dataset.i) - (rank.has(b.dataset.bid) ? rank.get(b.dataset.bid) : big + +b.dataset.i));
+  }
   const limit = innerHeight - wrap.getBoundingClientRect().top - 16;
   const fill = lists.map(l => l.reduce((h, id, k) => h + (k ? BOARD_GAP : 0) + hs.get(id), 0));
   items.forEach(el => {
@@ -1408,6 +1507,8 @@ function bindBoardDrag(board) {
   const ancestorsOk = (gid, into) => !groupBranch(gid).has(into);
   const targetAt = (x, y) => {
     const el = document.elementFromPoint(x, y);
+    /* режим «Связать»: заметку бросают на открытую заметку */
+    if (linkMode && d.kind === 'note') { const m = el && el.closest('.kb-main'); if (m) return { link: true, el: m }; }
     const inCol = el && el.closest('.kb-fcol');
     if (inCol && !(d.rootItem && d.src.contains(inCol))) {
       const t = el.closest('.kb-fold.mini') || inCol;
@@ -1417,6 +1518,7 @@ function bindBoardDrag(board) {
     return sl;
   };
   const valid = t => {
+    if (t && t.link) return d.id !== curNote;
     if (!t || !t.into) return true;
     if (d.kind === 'group') return t.into !== d.id && ancestorsOk(d.id, t.into);
     return true;
@@ -1442,8 +1544,9 @@ function bindBoardDrag(board) {
     if (!d) return;
     if (!d.started) {
       const far = Math.abs(e.clientX - d.sx) > 6 || Math.abs(e.clientY - d.sy) > 6;
-      if (e.pointerType === 'touch') { if (far && d.hold) { clearTimeout(d.hold); d.hold = null; cancel(); } return; }
+      if (e.pointerType === 'touch') { if (far && (d.hold || d.linkHold)) { clearTimeout(d.hold); d.hold = null; cancel(); } return; }
       if (!far) return;
+      if (d.linkHold) { clearTimeout(d.linkHold); d.linkHold = 0; d.linkEl.classList.remove('kb-holding'); }
       begin();
     }
     const inTrash = trackTrash(e.clientX, e.clientY);
@@ -1454,9 +1557,9 @@ function bindBoardDrag(board) {
     let t = inTrash ? null : targetAt(e.clientX, e.clientY);
     if (!valid(t)) t = null;
     d.slot = t;
-    showSlot(board, t && !t.into ? t : null, d.rootItem ? d.id : null);
-    board.querySelectorAll('.kb-drop-over').forEach(x => x.classList.remove('kb-drop-over'));
-    if (t && t.into) t.el.classList.add('kb-drop-over');
+    showSlot(board, t && !t.into && !t.link ? t : null, d.rootItem ? d.id : null);
+    document.querySelectorAll('.kb-drop-over').forEach(x => x.classList.remove('kb-drop-over'));
+    if (t && (t.into || t.link)) t.el.classList.add('kb-drop-over');
   };
   const block = e => { if (d && d.started && e.cancelable) e.preventDefault(); };
   const cancel = () => {
@@ -1465,6 +1568,7 @@ function bindBoardDrag(board) {
     document.removeEventListener('pointercancel', up);
     document.removeEventListener('touchmove', block);
     if (d && d.hold) clearTimeout(d.hold);
+    if (d && d.linkHold) { clearTimeout(d.linkHold); d.linkEl.classList.remove('kb-holding'); }
     d = null;
   };
   const up = async () => {
@@ -1473,7 +1577,7 @@ function bindBoardDrag(board) {
     if (!c || !c.started) return;
     dragGuard = Date.now();
     document.body.classList.remove('kb-dragging');
-    board.querySelectorAll('.kb-drop-over').forEach(x => x.classList.remove('kb-drop-over'));
+    document.querySelectorAll('.kb-drop-over').forEach(x => x.classList.remove('kb-drop-over'));
     resetTrash();
     const gr = c.ghost.getBoundingClientRect();
     const t = c.slot;
@@ -1493,6 +1597,15 @@ function bindBoardDrag(board) {
       }
       done(); showSlot(board, null);
       if (c.rootItem) { snaps.set(c.id, gr); renderBoard(true); flipBoard(board, snaps); }
+      return;
+    }
+    if (t.link) {   // брошена на открытую заметку — связать
+      c.ghost.style.transform = '';
+      const gEl = c.ghost;
+      gEl.remove();
+      done(); showSlot(board, null);
+      const src = c.src.querySelector('.kb-item') || c.src;
+      await linkWith(c.id, src);
       return;
     }
     if (t.into) {
@@ -1547,8 +1660,22 @@ function bindBoardDrag(board) {
     else if (fi && (head || !fi.classList.contains('open'))) { src = fi; kind = 'group'; id = fi.dataset.root; rootItem = true; }
     if (!src) return;
     d = { src, kind, id, rootItem, sx: e.clientX, sy: e.clientY, started: false };
+    /* «Связать»: удержание заметки связывает её с открытой */
+    if (linkMode && kind === 'note' && id !== curNote) {
+      d.linkEl = item;
+      item.classList.add('kb-holding');
+      d.linkHold = setTimeout(() => {
+        if (!d || d.started) return;
+        const el = d.linkEl;
+        d.linkHold = 0;
+        cancel();
+        el.classList.remove('kb-holding');
+        try { navigator.vibrate(12); } catch {}
+        linkWith(id, el);
+      }, 650);
+    }
     if (e.pointerType !== 'touch') e.preventDefault();
-    else d.hold = setTimeout(() => { if (d) { d.hold = null; begin(); } }, 360);
+    else if (!d.linkHold) d.hold = setTimeout(() => { if (d) { d.hold = null; begin(); } }, 360);
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
     document.addEventListener('pointercancel', up);
@@ -1587,6 +1714,7 @@ async function onBoardClick(e) {
   const item = e.target.closest('.kb-item');
   if (!item) return;
   const id = item.dataset.id;
+  if (linkMode) { if (id !== curNote) linkHint(); return; }   // не уводим с открытой заметки
   if (panel && view === 'note' && curNote === id) { closeNote(); return; }   // повторный клик — закрыть
   openNote(id);
 }

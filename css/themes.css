@@ -67,12 +67,15 @@ html[data-theme] {
     radial-gradient(40% 18% at 78% 4%, rgba(255, 99, 99, .22) 0%, transparent 70%);
   --tint: var(--glass);   /* .glass подмешивает --tint 5% — без этого плотная панель была бы на 95% */
   --text: #ffffff; --dim: #9c9c9d; --c-todo: rgba(255, 255, 255, .42);
-  --glass: color-mix(in srgb, #07080a calc(var(--panel-a, 1) * 100%), transparent);
+  /* Стекло: полупрозрачная тёмная панель, сквозь размытие виден фон;
+     плотность — ползунок «Прозрачность панелей» (--panel-a) */
+  --glass: color-mix(in srgb, #14151a calc(var(--panel-a, .6) * 100%), transparent);
   --card: rgba(255, 255, 255, .05);
   --brd: #363739; --panel-solid: #0b0c0e;
-  --shadow: rgba(255, 255, 255, .05) 0 1px 0 0 inset, rgba(255, 255, 255, .14) 0 0 0 1px, rgba(0, 0, 0, .2) 0 -1px 0 0 inset;
+  /* светлая тонкая кромка стекла, блик сверху и мягкая тень под панелью */
+  --shadow: rgba(255, 255, 255, .12) 0 1px 0 0 inset, rgba(255, 255, 255, .2) 0 0 0 1px, rgba(0, 0, 0, .18) 0 -1px 0 0 inset, 0 18px 40px -22px rgba(0, 0, 0, .6);
   --inner-glow: 0 0 0 transparent;
-  --t-bw: 0px; --r-lg: 16px; --r-md: 8px;
+  --t-bw: 0px; --r-lg: 22px; --r-md: 10px;
   --font-ui: "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-head: "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-meta: "JetBrains Mono", ui-monospace, Menlo, monospace;

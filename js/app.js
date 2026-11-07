@@ -34,6 +34,10 @@ const $ = id => document.getElementById(id);
 const THEME = { id: 'coral', surf: 'dark' };
 /* Только тёмные подложки: текст и панели темы рассчитаны на тёмный фон */
 const BG_GRADIENT_PRESETS = [
+  /* под стеклянные панели: «Коралловый закат», «Северное сияние», «Боке» */
+  'radial-gradient(42% 55% at 12% 18%,rgba(255,92,80,.55),transparent 70%),radial-gradient(38% 50% at 88% 85%,rgba(255,150,60,.45),transparent 70%),radial-gradient(50% 45% at 60% 40%,rgba(120,40,120,.35),transparent 75%),radial-gradient(30% 30% at 75% 15%,rgba(255,60,90,.25),transparent 70%),linear-gradient(160deg,#120808,#0b0507 50%,#140a06)',
+  'radial-gradient(60% 35% at 30% 0%,rgba(40,220,170,.45),transparent 70%),radial-gradient(45% 40% at 85% 10%,rgba(120,80,255,.45),transparent 70%),radial-gradient(55% 45% at 50% 100%,rgba(40,90,200,.35),transparent 75%),linear-gradient(180deg,#050b14,#070712)',
+  'radial-gradient(14% 18% at 18% 30%,rgba(255,99,99,.55),transparent 70%),radial-gradient(18% 22% at 80% 22%,rgba(86,194,255,.45),transparent 70%),radial-gradient(16% 20% at 65% 78%,rgba(255,192,98,.45),transparent 70%),radial-gradient(22% 26% at 30% 85%,rgba(140,90,255,.35),transparent 70%),radial-gradient(10% 12% at 48% 48%,rgba(89,212,153,.3),transparent 70%),linear-gradient(160deg,#15161a,#0a0b0d)',
   'linear-gradient(160deg,#0f2027,#203a43,#2c5364)',
   'linear-gradient(160deg,#141e30,#243b55)',
   'linear-gradient(160deg,#0b0f1a,#2a0f1e)',
@@ -48,7 +52,7 @@ const TAG_COLORS = ['#ef4444', '#f59e0b', '#10b981', '#2563eb', '#8b5cf6', '#ec4
 let storedBg = '';
 let storedBgImage = '';
 let storedBgOpacity = 1;      // яркость слоя фона: узор темы или своя картинка
-let panelAlpha = 1;            // прозрачность панелей
+let panelAlpha = 0.6;          // плотность панелей: стекло по умолчанию
 const isDarkHex = c => {
   const m = /^#([0-9a-f]{6})$/i.exec(c || '');
   if (!m) return false;
@@ -63,7 +67,7 @@ function applyPanelAlpha() {
   r.setProperty('--panel-a', v);        // прозрачность панелей (css/themes.css)
   /* Блюр привязан к прозрачности, как было; у плотных панелей он не
      виден, поэтому его не считаем — меньше работы при прокрутке */
-  r.setProperty('--panel-blur-k', v >= 0.99 ? 0 : v);
+  r.setProperty('--panel-blur-k', v >= 0.99 ? 0 : 1.15);   // стекло — сильное размытие при любой прозрачности
   const s = $('panelOpacitySlider');
   if (s) { s.min = 0.1; s.max = 1; s.step = 0.05; s.value = v; }
   const l = $('panelOpacityLabel');
@@ -775,6 +779,9 @@ async function boot() {
   storedBgImage = (await dbGetKV('bgImage')) || '';
   const bo = parseFloat(await dbGetKV('bgLayerOpacity'));
   storedBgOpacity = Number.isFinite(bo) ? bo : 1;
+  /* Стеклянные панели стали оформлением по умолчанию: прежняя «плотность
+     100%» сбрасывается один раз; дальше — как выставит пользователь */
+  if (!(await dbGetKV('glassV1'))) { await dbSetKV('glassV1', 1); await dbSetKV('panelAlpha', panelAlpha); }
   const pa = parseFloat(await dbGetKV('panelAlpha'));
   if (Number.isFinite(pa)) panelAlpha = pa;
   const f = await dbGetKV('fontSize');
