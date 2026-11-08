@@ -72,8 +72,8 @@ html[data-theme] {
   --glass: color-mix(in srgb, #14151a calc(var(--panel-a, .6) * 100%), transparent);
   --card: rgba(255, 255, 255, .05);
   --brd: #363739; --panel-solid: #0b0c0e;
-  /* светлая тонкая кромка стекла, блик сверху и мягкая тень под панелью */
-  --shadow: rgba(255, 255, 255, .12) 0 1px 0 0 inset, rgba(255, 255, 255, .2) 0 0 0 1px, rgba(0, 0, 0, .18) 0 -1px 0 0 inset, 0 18px 40px -22px rgba(0, 0, 0, .6);
+  /* кромка стекла с оттенком режима, блик сверху и мягкая тень под панелью */
+  --shadow: rgba(255, 255, 255, .1) 0 1px 0 0 inset, color-mix(in srgb, var(--accent) 30%, rgba(255, 255, 255, .14)) 0 0 0 1px, rgba(0, 0, 0, .18) 0 -1px 0 0 inset, 0 18px 40px -22px rgba(0, 0, 0, .6);
   --inner-glow: 0 0 0 transparent;
   --t-bw: 0px; --r-lg: 22px; --r-md: 10px;
   --font-ui: "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -92,7 +92,7 @@ html[data-theme] {
 :root[data-theme="coral"] .set-sub, :root[data-theme="coral"] .ed-card h4, :root[data-theme="coral"] .fh-cap,
 :root[data-theme="coral"] .fs-cap, :root[data-theme="coral"] .kb-links-cap, :root[data-theme="coral"] .kb-ac-cap,
 :root[data-theme="coral"] .g-hd {
-  font-family: var(--font-meta); text-transform: uppercase; letter-spacing: .05em; color: #6a6b6c;
+  font-family: var(--font-meta); text-transform: uppercase; letter-spacing: .05em; color: #8d8e91;
 }
 :root[data-theme="coral"] .g-hd b { font-family: var(--font-ui); color: #ffffff; letter-spacing: 0; }
 /* Шапка и нижнее меню — стеклянные полосы поверх холста */
@@ -166,3 +166,22 @@ html[data-theme] {
 .dock-handle:active, .pane-move-handle:active { transform: scale(.92); }
 .week2.swapped .pane-move-handle { left: var(--h-gap) !important; }
 
+
+/* ══ Сдержанный акцент ══
+   Цвет режима — только у главного на экране: пилюля меню, «+», сегодняшний
+   день, отсвет фона и кромка стекла. Заголовки белые, второстепенные
+   кнопки — нейтральное стекло, уголки панелей приглушены. */
+:root[data-theme] .topbar::before, :root[data-theme] :is(.kb-board-title, .kb-title, .ed-title) { color: var(--text); }
+:root[data-theme] :is(.dock-handle, .pane-move-handle) { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.fp-total .fp-total-time { color: var(--text); }
+.hm-link { color: var(--dim) !important; }
+.hm-link:hover { color: var(--text) !important; }
+.fp-play, .home-view .hm-fp .fp-play {
+  background: rgba(255, 255, 255, .14); color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22), inset 0 1px 0 rgba(255, 255, 255, .3), 0 8px 20px rgba(0, 0, 0, .35);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.fp-play svg { fill: currentColor; margin-left: 3px; }
+.seg-ind { background: rgba(255, 255, 255, .16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); }
+.fin-tab.on { background: rgba(255, 255, 255, .16); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); }
+.hm-seg button[aria-pressed="true"], .eds-tabs button[aria-pressed="true"] { color: #fff !important; box-shadow: none !important; }

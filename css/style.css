@@ -1082,7 +1082,7 @@ input[type="color"]:hover { transform: scale(1.05); }
   box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 rgba(255,255,255,.3);
   clip-path: inset(-40px 50% -40px 50% round 999px);
   pointer-events: none;
-  transition: clip-path .55s var(--ease-spring), background var(--dur-mode) var(--ease-mode), box-shadow var(--dur-mode) var(--ease-mode);
+  transition: clip-path var(--t-slow) var(--e-out), background var(--dur-mode) var(--ease-mode);
 }
 .timer-fab svg { width: 18px; height: 18px; fill: currentColor; }
 .timer-fab.open {
@@ -1111,7 +1111,7 @@ input[type="color"]:hover { transform: scale(1.05); }
     0 8px 20px color-mix(in srgb, var(--accent) 45%, transparent),
     0 16px 32px color-mix(in srgb, var(--accent) 28%, transparent),
     inset 0 1px 0 rgba(255,255,255,.30);
-  transition: transform .3s var(--ease-bounce), box-shadow .3s, background var(--dur-mode) var(--ease-mode);
+  transition: transform var(--t-base) var(--e-out), background var(--dur-mode) var(--ease-mode);
 }
 .fab:hover {
   transform: scale(1.06);
@@ -3374,7 +3374,7 @@ body[data-surf="dark"] {
   border-radius: var(--r-lg);
 }
 .pane:hover, .dock-panel:hover { box-shadow: var(--elev-2), var(--inner-glow); }
-.dock-panel { transition: transform .25s var(--ease-spring), opacity .2s ease, box-shadow .25s ease; }
+.dock-panel { transition: transform var(--t-base) var(--e-out), opacity var(--t-fast) var(--e-out); }
 .btn, .icon-btn, .chip, .fin-tab, .fin-type {
   transition: background .16s ease, color .16s ease, transform .12s ease, box-shadow .16s ease;
 }
@@ -4873,13 +4873,27 @@ body {
    только на телефоне: на ПК была та же просвечивающая шапка. */
 .l-head, .m-head, .kb-head, .fin-head,
 body[data-surf] .l-head, body[data-surf] .m-head, body[data-surf] .kb-head, body[data-surf] .fin-head {
-  transition: background-color .2s ease, box-shadow .2s ease;
+  transition: background-color var(--t-base) var(--e-out);
 }
 body[data-surf] .l-head.is-stuck, body[data-surf] .m-head.is-stuck,
 body[data-surf] .kb-head.is-stuck, body[data-surf] .fin-head.is-stuck {
   background: color-mix(in srgb, var(--panel-solid) 90%, var(--tint, transparent));
-  box-shadow: 0 6px 18px rgba(0, 0, 0, .12), 0 1px 0 var(--brd);
+  box-shadow: 0 1px 0 var(--brd);
 }
+/* Шапка отвечает на прокрутку: прилипнув, отбрасывает тень (слой ::before
+   проявляется прозрачностью — тень не анимируется), заголовок чуть
+   уменьшается (transform). */
+:is(.l-head, .m-head, .kb-head, .fin-head)::before {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; z-index: -1;
+  pointer-events: none; border-radius: inherit;
+  box-shadow: 0 10px 24px -6px rgba(0, 0, 0, .55);
+  opacity: 0; transition: opacity var(--t-base) var(--e-out);
+}
+:is(.l-head, .m-head, .kb-head, .fin-head).is-stuck::before { opacity: 1; }
+:is(.l-head, .m-head, .kb-head, .fin-head) :is(.kb-board-title, h2) {
+  transform-origin: left center; transition: transform var(--t-base) var(--e-out);
+}
+:is(.l-head, .m-head, .kb-head, .fin-head).is-stuck :is(.kb-board-title, h2) { transform: scale(.9); }
 .l-head.is-stuck::after, .m-head.is-stuck::after, .kb-head.is-stuck::after, .fin-head.is-stuck::after { display: none; }
 
 @media (max-width: 720px) {
@@ -5987,7 +6001,7 @@ body.has-sidebar :is(.tpill, .editor, .toast) { margin-left: calc((var(--sb-w) +
 .eds-step { display: inline-flex; align-items: center; height: 34px; border-radius: 10px; background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
 .eds-step button { width: 32px; height: 34px; border: 0; background: none; color: var(--text); font-size: 16px; }
 .eds-step b { min-width: 26px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
-.eds-cap { font: 600 10.5px var(--font-meta, var(--font-ui)); letter-spacing: .08em; text-transform: uppercase; color: #6a6b6c; }
+.eds-cap { font: 600 10.5px var(--font-meta, var(--font-ui)); letter-spacing: .08em; text-transform: uppercase; color: #8d8e91; }
 .eds-dows { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .eds-dows button { height: 46px; border: 0; border-radius: 13px; background: rgba(255, 255, 255, .06); color: var(--text); font-size: 13px; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); transition: background-color .2s, transform .15s; }
 .eds-dows button:active { transform: scale(.94); }
@@ -6036,7 +6050,7 @@ body.has-sidebar :is(.tpill, .editor, .toast) { margin-left: calc((var(--sb-w) +
 .eds-mhead b { font: 600 17px var(--font-head); }
 .eds-mhead button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .06); color: var(--text); font-size: 16px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
 .eds-mgrid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 3px; text-align: center; }
-.eds-mgrid span { padding-bottom: 6px; font: 600 10.5px var(--font-meta, var(--font-ui)); color: #6a6b6c; text-transform: uppercase; }
+.eds-mgrid span { padding-bottom: 6px; font: 600 10.5px var(--font-meta, var(--font-ui)); color: #8d8e91; text-transform: uppercase; }
 .eds-mgrid button { width: 36px; height: 36px; margin: auto; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums; transition: background-color .15s, transform .15s; }
 .eds-mgrid button:hover { background: rgba(255, 255, 255, .07); }
 .eds-mgrid button:active { transform: scale(.9); }
@@ -6048,7 +6062,7 @@ body.has-sidebar :is(.tpill, .editor, .toast) { margin-left: calc((var(--sb-w) +
 .eds-mgrid button.today { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .7); }
 .eds-mgrid button.on.today { box-shadow: 0 0 0 2px var(--panel-solid, #0b0c0e), 0 0 0 3.5px var(--accent); }
 .eds-mgrid button.anchor { outline: 1.5px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
-.eds-mnote { margin: 8px 0 0; font-size: 11px; color: #6a6b6c; text-align: center; }
+.eds-mnote { margin: 8px 0 0; font-size: 11px; color: #8d8e91; text-align: center; }
 .eds-next { display: flex; flex-direction: column; gap: 8px; }
 .eds-nrow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 14px; background: rgba(255, 255, 255, .04); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
 .eds-nrow.first { background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 65%, transparent); }
@@ -6113,19 +6127,19 @@ body.has-rail .rail {
   right: env(safe-area-inset-right, 0px); top: 0;
   width: 48px; touch-action: none; -webkit-user-select: none; user-select: none;
   -webkit-touch-callout: none;
-  transition: transform .42s var(--rl-ease), top .42s var(--rl-ease), height .42s var(--rl-ease);
+  transition: transform var(--t-slow) var(--rl-ease), top var(--t-slow) var(--rl-ease), height var(--t-slow) var(--rl-ease);
 }
-body.has-rail .rail.rl-hidden { transform: translateX(calc(100% + 12px)); pointer-events: none; transition: transform .36s cubic-bezier(.4, 0, .2, 1), top .42s var(--rl-ease), height .42s var(--rl-ease); }
+body.has-rail .rail.rl-hidden { transform: translateX(calc(100% + 12px)); pointer-events: none; transition: transform .36s cubic-bezier(.4, 0, .2, 1), top var(--t-slow) var(--rl-ease), height var(--t-slow) var(--rl-ease); }
 .rail .rl-cap, .rail .rl-body { position: absolute; right: 0; }
 .rail .rl-cap { top: 0; overflow: visible; }
 .rail .rl-cap path { fill: #000; }
-.rail .rl-cap-b { transition: transform .42s var(--rl-ease); }
-.rail .rl-body { width: 46px; background: #000; transition: height .42s var(--rl-ease); }
+.rail .rl-cap-b { transition: transform var(--t-slow) var(--rl-ease); }
+.rail .rl-body { width: 46px; background: #000; transition: height var(--t-slow) var(--rl-ease); }
 .rail .rl-it {
   position: absolute; left: 25px; top: 0; width: 40px; height: 46px; padding: 0;
   border: 0; background: none; color: #8e8f94;
   display: grid; place-items: center; cursor: pointer;
-  transition: transform .42s var(--rl-ease), opacity .25s, color .2s;
+  transition: transform var(--t-slow) var(--rl-ease), opacity .25s, color .2s;
 }
 .rail .rl-it svg { width: 21px; height: 21px; }
 .rail .rl-it:active { color: #fff; }
@@ -6138,19 +6152,21 @@ body.has-rail .rail-tab {
 }
 body.has-rail .rail-tab::after {
   content: ''; position: absolute; right: 4px; top: 8px; bottom: 8px; width: 4px; border-radius: 2px;
-  background: linear-gradient(180deg, #ff7a45, #e8401c); box-shadow: 0 0 10px rgba(255, 110, 50, .5);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 78%, #fff), color-mix(in srgb, var(--accent) 80%, #000));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 body.has-rail .rail-tab.on { opacity: .85; pointer-events: auto; }
-/* Пилюля «Огонь»: яркий оранжево-красный, иконка и подпись белые;
-   высота — по содержимому, переезд — переходом transform/height */
+/* Пилюля «Огонь» в цвете режима: светлее сверху, глубже снизу, иконка и
+   подпись белые; высота — по содержимому, переезд — transform/height.
+   Фон и тень не анимируются: смена режима перекрашивает её сразу */
 .rail .rl-pill {
   position: absolute; left: 25px; width: 38px; margin-left: -19px; z-index: 2; pointer-events: none;
   border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
   gap: 8px; padding-top: 11px; box-sizing: border-box; overflow: hidden;
-  background: linear-gradient(180deg, #ff7a45, #e8401c);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -2px 4px rgba(0, 0, 0, .18), 0 6px 18px rgba(232, 64, 28, .35);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 78%, #fff), color-mix(in srgb, var(--accent) 80%, #000));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -2px 4px rgba(0, 0, 0, .18), 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent);
   top: 0;
-  transition: transform .42s var(--rl-ease, ease), height .42s var(--rl-ease, ease), background .25s, box-shadow .25s;
+  transition: transform var(--t-slow) var(--rl-ease, var(--e-out)), height var(--t-slow) var(--rl-ease, var(--e-out));
 }
 .rail .rl-lab {
   display: block; writing-mode: vertical-rl; transform: rotate(180deg);
@@ -6162,7 +6178,7 @@ body.has-rail .rail-tab.on { opacity: .85; pointer-events: auto; }
 /* Телефон: панели дока во всю ширину — без сдвигов раскладки виджетов */
 body.has-rail .dock > .dock-panel { margin-left: 0 !important; }
 /* Обтекание: блоки у полосы плавно сужаются и расширяются обратно */
-body.has-rail .rl-wrap { transition: margin-right .35s var(--m-ease, cubic-bezier(.22, 1, .36, 1)), max-width .35s var(--m-ease, cubic-bezier(.22, 1, .36, 1)), height .35s var(--m-ease, cubic-bezier(.22, 1, .36, 1)); }
+body.has-rail .rl-wrap { transition: margin-right var(--t-slow) var(--e-out), max-width var(--t-slow) var(--e-out), height var(--t-slow) var(--e-out); }
 /* Поиск и настройки на телефоне — в карусели, в шапке их не дублируем */
 body.has-rail .topbar .wn-right > :is(#searchBtn, #settingsBtn) { display: none !important; }
 
@@ -6176,8 +6192,13 @@ body.has-rail .topbar .wn-right > :is(#searchBtn, #settingsBtn) { display: none 
   --ease-spring: var(--m-ease);
   --ease-bounce: var(--m-ease);
   --ease-mode: cubic-bezier(.4, 0, .2, 1);
-  --dur-mode: 380ms;
-  --dur-hover: 220ms;
+  /* Три длительности и две кривые на всё приложение. Появление —
+     замедлением (--e-out), уход — ускорением (--e-in) и в полтора раза
+     быстрее: окно, открытое за --t-slow, закрывается за --t-base */
+  --t-fast: 160ms; --t-base: 280ms; --t-slow: 420ms;
+  --e-out: var(--m-ease); --e-in: var(--m-ease-in);
+  --dur-mode: var(--t-slow);
+  --dur-hover: var(--t-fast);
 }
 @keyframes m-rise { from { opacity: 0; transform: translateY(10px) scale(.985); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
 @keyframes m-drop { from { opacity: 0; transform: translateY(-8px) scale(.985); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
@@ -6190,23 +6211,32 @@ body.has-rail .topbar .wn-right > :is(#searchBtn, #settingsBtn) { display: none 
 @keyframes popup-up { from { opacity: 0; transform: translateY(8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
 @keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
 @keyframes kbMenuIn { from { opacity: 0; transform: translateY(8px) scale(.97); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
-@keyframes fade-in { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: blur(0); } }
-@keyframes qpHelpIn { from { opacity: 0; transform: translateY(6px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
-@keyframes qxpop { from { opacity: 0; transform: scale(.9); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
-@keyframes qxin { from { opacity: 0; transform: translateX(-8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
-@keyframes pillpop { from { opacity: 0; transform: scale(.9); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes qpHelpIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes qxpop { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes qxin { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+@keyframes pillpop { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes status-pop { 0% { transform: scale(1); } 35% { transform: scale(1.18); } 100% { transform: scale(1); } }
-.cmenu.open { animation: pop .32s var(--m-ease); }
+.cmenu.open { animation: pop var(--t-base) var(--e-out); }
 
-/* Окна: проявляются из размытия, уходят растворяясь */
-.editor { transition: opacity .38s var(--m-ease), transform .44s var(--m-ease); }
-.searchpanel { transition: opacity .34s var(--m-ease), transform .4s var(--m-ease); }
-@media (max-width: 720px) { .editor { transition: transform .46s var(--m-ease); } }
-.sheet { transition: transform .46s var(--m-ease), max-height .3s var(--m-ease), visibility 0s linear .46s; }
-.sheet.open { transition: transform .46s var(--m-ease), max-height .3s var(--m-ease), visibility 0s; }
-.drawer { transition: transform .46s var(--m-ease), box-shadow .3s; }
-.backdrop { transition: opacity .34s var(--m-ease); }
-.toast { transition: opacity .3s var(--m-ease), transform .38s var(--m-ease); }
+/* Окна: появляются за --t-slow с замедлением, уходят за --t-base с
+   ускорением (переход берётся из состояния, в которое идём) */
+.editor { transition: opacity var(--t-base) var(--e-in), transform var(--t-base) var(--e-in); }
+.editor.open { transition: opacity var(--t-base) var(--e-out), transform var(--t-slow) var(--e-out); }
+.searchpanel { transition: opacity var(--t-base) var(--e-in), transform var(--t-base) var(--e-in); }
+.searchpanel.open { transition: opacity var(--t-base) var(--e-out), transform var(--t-slow) var(--e-out); }
+@media (max-width: 720px) {
+  .editor { transition: transform var(--t-base) var(--e-in); }
+  .editor.open { transition: transform var(--t-slow) var(--e-out); }
+}
+.sheet { transition: transform var(--t-base) var(--e-in), max-height var(--t-base) var(--e-out), visibility 0s linear var(--t-base); }
+.sheet.open { transition: transform var(--t-slow) var(--e-out), max-height var(--t-base) var(--e-out), visibility 0s; }
+.drawer { transition: transform var(--t-base) var(--e-in); }
+.drawer.open { transition: transform var(--t-slow) var(--e-out); }
+.backdrop { transition: opacity var(--t-fast) var(--e-in); }
+.backdrop.open { transition: opacity var(--t-base) var(--e-out); }
+.toast { transition: opacity var(--t-fast) var(--e-in), transform var(--t-base) var(--e-in); }
+.toast.show { transition: opacity var(--t-base) var(--e-out), transform var(--t-slow) var(--e-out); }
 .anim-ghost-layer { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
 
 /* Переезжающие пилюли-индикаторы в переключателях */
@@ -6239,13 +6269,13 @@ body.sb-mini #sidebar .sb-views .sb-it.on { background: transparent !important; 
 
 /* Переход экрана: новое невидимо до первого кадра появления (anim.js) */
 html.m-hold #app > :not(.topbar):not(#syncAlert):not(#pullIndicator) { opacity: 0 !important; }
-/* Закрытие окон — равномерно и чуть быстрее: кривая «рывок в начале»
-   на обратном ходе гасила окно за первые 100 мс — выглядело мгновенно */
-.editor:not(.open), .searchpanel:not(.open) { transition: opacity .3s cubic-bezier(.4, 0, .2, 1), transform .32s cubic-bezier(.4, 0, .2, 1); }
-.sheet:not(.open) { transition: transform .36s cubic-bezier(.4, 0, .2, 1), max-height .3s ease, visibility 0s linear .36s; }
-.drawer:not(.open) { transition: transform .36s cubic-bezier(.4, 0, .2, 1), box-shadow .3s; }
-.backdrop:not(.open) { transition: opacity .3s cubic-bezier(.4, 0, .2, 1); }
-.toast:not(.show) { transition: opacity .26s cubic-bezier(.4, 0, .2, 1), transform .3s cubic-bezier(.4, 0, .2, 1); }
+/* Закрытие окон — за --t-base с ускорением: в полтора раза быстрее
+   появления, без «рывка в начале» кривой замедления */
+.editor:not(.open), .searchpanel:not(.open) { transition: opacity var(--t-base) var(--e-in), transform var(--t-base) var(--e-in); }
+.sheet:not(.open) { transition: transform var(--t-base) var(--e-in), max-height var(--t-base) var(--e-out), visibility 0s linear var(--t-base); }
+.drawer:not(.open) { transition: transform var(--t-base) var(--e-in); }
+.backdrop:not(.open) { transition: opacity var(--t-base) var(--e-in); }
+.toast:not(.show) { transition: opacity var(--t-fast) var(--e-in), transform var(--t-base) var(--e-in); }
 @media (max-width: 720px) { .editor:not(.open) { transition: transform .36s cubic-bezier(.4, 0, .2, 1); } }
 /* Телефон: редактор уезжает вниз целиком видимым — раньше прозрачность
    обнулялась мгновенно и окно пропадало за кадр */
@@ -6470,3 +6500,10 @@ body.hm-tl-dragging, body.hm-tl-dragging * { cursor: grabbing !important; user-s
 
 /* Левое меню — та же стеклянная кромка, что у панелей */
 #sidebar .sb-bg-edge { stroke: rgba(255, 255, 255, .2) !important; }
+/* Полёт окна из источника (anim.js growFrom/shrinkTo): переходы CSS выключены */
+.m-fly { transition: none !important; }
+/* Награда за выполнение (js/reward.js): кольцо и галочка цвета режима */
+.rw-fx { position: fixed; z-index: 70; pointer-events: none; display: grid; place-items: center; }
+.rw-fx .rw-ring { position: absolute; inset: -2px; border-radius: inherit; border: 2px solid var(--rw); opacity: 0; }
+.rw-fx svg { position: relative; width: 78%; height: 78%; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
+.rw-fx path { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }

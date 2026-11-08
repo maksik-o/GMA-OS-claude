@@ -1,5 +1,5 @@
 import { dbAll, dbPut, dbBulk } from './db.js';
-import { morph, fadeRemove } from './anim.js';
+import { morph, fadeRemove, growFrom, shrinkTo, BASE, EASE, EASE_IN } from './anim.js';
 import { uid, esc, MODES } from './store.js';
 
 const STORE = 'contacts';
@@ -480,6 +480,13 @@ export function openPersonEditor(personId, mode) {
   overlay.className = 'person-editor-backdrop';
   overlay.innerHTML = '<div class="person-editor glass"><header class="ed-head"><span class="ed-title">Человек</span><span class="spacer"></span><button type="button" class="icon-btn pe-cancel" title="Закрыть">✕</button></header><div class="ed-scroll"><textarea name="peName" class="f-title pe-name" rows="1" maxlength="100" placeholder="Имя">' + esc(p.name) + '</textarea><section class="ed-card"><h4>Группа</h4><div class="chip-row pe-group">' + getGroups().map(g => '<button type="button" class="chip' + (p.groupId === g.id ? ' on' : '') + '" data-gid="' + g.id + '">' + esc(g.name) + '</button>').join('') + '</div></section><section class="ed-card"><h4>Контакты</h4><input name="pePhone" class="f-title pe-phone" placeholder="Телефон" value="' + esc(p.phone || '') + '"><input name="peEmail" class="f-title pe-email" placeholder="Email" value="' + esc(p.email || '') + '"><input name="peBirthday" class="f-title pe-birthday" type="date" value="' + (p.birthday || '') + '"></section><section class="ed-card"><h4>Заметка</h4><textarea name="peNote" class="f-title pe-note" rows="2" placeholder="Заметка о человеке...">' + esc(p.note || '') + '</textarea></section></div><div class="ed-actions"><button type="button" class="btn danger pe-delete">Удалить</button><span class="spacer"></span><button type="button" class="btn pe-cancel2">✕</button><button type="button" class="btn primary pe-save">✓</button></div></div>';
   document.body.appendChild(overlay);
+  /* Окно вырастает из карточки человека и сжимается обратно в неё */
+  const pane = overlay.querySelector('.person-editor');
+  const cardOf = () => [...document.querySelectorAll(`.contact-card[data-id="${CSS.escape(personId)}"]`)].find(c => c.getClientRects().length) || null;
+  if (growFrom(pane, cardOf(), () => {})) {
+    pane.style.animation = 'none';
+    overlay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: BASE, easing: EASE });
+  }
   const nameEl = overlay.querySelector('.pe-name');
   nameEl.style.height = 'auto';
   nameEl.style.height = nameEl.scrollHeight + 'px';
@@ -494,8 +501,14 @@ export function openPersonEditor(personId, mode) {
     };
   });
   const close = () => {
-    fadeRemove(overlay);
     editorOpen = false;
+    if (overlay.dataset.closing) return;
+    const card = cardOf();
+    if (!card) { fadeRemove(overlay); return; }
+    overlay.dataset.closing = '1';
+    overlay.style.pointerEvents = 'none';
+    overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BASE, easing: EASE_IN, fill: 'forwards' });
+    shrinkTo(pane, card, () => overlay.remove());
   };
   overlay.querySelectorAll('.pe-cancel, .pe-cancel2').forEach(b => { b.onclick = close; });
   overlay.querySelector('.pe-save').onclick = async () => {

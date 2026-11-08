@@ -13,22 +13,24 @@
    Всё на WAAPI — стили элементов не трогаем, после анимации убирать
    нечего; при «уменьшить движение» анимации выключаются.
    ══════════════════════════════════════════════════════════════════ */
-export const EASE = 'cubic-bezier(.22, 1, .36, 1)';      // плавное замедление
-export const EASE_IN = 'cubic-bezier(.4, 0, 1, 1)';
-export const IN_MS = 440, OUT_MS = 170, STAGGER = 34, MAX_STAGGER = 420;
+/* Токены движения — те же, что --t-fast/--t-base/--t-slow и --e-out/--e-in
+   в CSS. Появление — с замедлением (EASE), уход — с ускорением (EASE_IN)
+   и в полтора раза быстрее появления */
+export const FAST = 160, BASE = 280, SLOW = 420;
+export const EASE = 'cubic-bezier(.22, 1, .36, 1)';      // появление: замедление
+export const EASE_IN = 'cubic-bezier(.4, 0, 1, 1)';      // уход: ускорение
+export const IN_MS = SLOW, OUT_MS = FAST, STAGGER = 34, MAX_STAGGER = 420;
 export const reduced = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const can = el => !!el && !!el.animate && !reduced();
 const visible = el => el && el.isConnected && el.getClientRects().length > 0;
 
-/* Размытие красиво, но дорого: браузер перерисовывает размытый слой
-   каждый кадр, видеокарта его не берёт. Крупные блоки и окна движутся
-   только прозрачностью и сдвигом (их считает видеокарта); лёгкое
-   размытие — у мелких строк и только на компьютере. */
-const LITE = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+/* Анимируются только прозрачность и сдвиг — их считает видеокарта.
+   Размытие, тени и backdrop-filter в движении перерисовываются каждый
+   кадр и на телефоне дают рывки, поэтому в анимациях их нет. */
 const ENTER_FROM = { opacity: 0, transform: 'translateY(12px) scale(.985)' };
 const ENTER_TO = { opacity: 1, transform: 'none' };
-const ROW_FROM = LITE ? { opacity: 0, transform: 'translateY(8px)' } : { opacity: 0, transform: 'translateY(8px)', filter: 'blur(3px)' };
-const ROW_TO = LITE ? { opacity: 1, transform: 'none' } : { opacity: 1, transform: 'none', filter: 'blur(0)' };
+const ROW_FROM = { opacity: 0, transform: 'translateY(8px)' };
+const ROW_TO = { opacity: 1, transform: 'none' };
 
 /* Порядок «сверху вниз, слева направо» */
 function byPosition(nodes) {
@@ -70,7 +72,7 @@ export function enterDeep(blocks, opts) {
   (blocks || []).forEach((b, bi) => {
     if (!visible(b)) return;
     const rows = [...b.querySelectorAll(ROWS)].slice(0, 16);
-    if (rows.length) enter(rows, { delay: 90 + bi * 40, stagger: 26, duration: 380, max: 360, rows: true });
+    if (rows.length) enter(rows, { delay: 90 + bi * 40, stagger: 26, duration: SLOW, max: 360, rows: true });
   });
 }
 
@@ -153,7 +155,7 @@ export function morph(root, render) {
     if (!b) { fresh.push(a.el); continue; }
     const dx = b.r.left - a.r.left, dy = b.r.top - a.r.top;
     if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-      a.el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 420, easing: EASE });
+      a.el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: SLOW, easing: EASE });
     } else if (b.cls !== a.cls && !k.startsWith('f:')) {
       pop(a.el);
       if (/\bdone\b/.test(a.cls) && !/\bdone\b/.test(b.cls)) { a.el.classList.add('m-struck'); setTimeout(() => a.el.classList.remove('m-struck'), 700); }
@@ -180,7 +182,7 @@ function ghosts(list) {
     Object.assign(c.style, { position: 'fixed', left: g.r.left + 'px', top: g.r.top + 'px', width: g.r.width + 'px', height: g.r.height + 'px', margin: '0', pointerEvents: 'none' });
     layer.appendChild(c);
     c.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.97)' }],
-      { duration: 260, easing: EASE_IN, fill: 'forwards' });
+      { duration: BASE, easing: EASE_IN, fill: 'forwards' });
   }
   document.body.appendChild(layer);
   setTimeout(() => layer.remove(), 320);
@@ -188,7 +190,7 @@ function ghosts(list) {
 /* Короткий «щелчок» — элемент сменил состояние */
 export function pop(el) {
   if (!can(el)) return;
-  el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.18)', offset: .35 }, { transform: 'scale(1)' }], { duration: 360, easing: EASE });
+  el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.18)', offset: .35 }, { transform: 'scale(1)' }], { duration: BASE, easing: EASE });
 }
 /* Элемент переезжает со старого места на новое (пилюля-индикатор) */
 export function flipFrom(el, from) {
@@ -199,7 +201,7 @@ export function flipFrom(el, from) {
   const sx = from.width / to.width, sy = from.height / to.height;
   if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01) return;
   el.animate([{ transformOrigin: '0 0', transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` }, { transformOrigin: '0 0', transform: 'none' }],
-    { duration: 460, easing: EASE });
+    { duration: SLOW, easing: EASE });
 }
 /* Содержимое блока сменилось целиком — мягкая подмена */
 export function swapContent(el, render) {
@@ -212,7 +214,7 @@ export function swapContent(el, render) {
     const b = before.get(k);
     if (b) flipFrom(a.el, b.r);
   }
-  el.animate([{ opacity: .3, transform: 'translateY(4px)' }, ENTER_TO], { duration: 300, easing: EASE });
+  el.animate([{ opacity: .3, transform: 'translateY(4px)' }, ENTER_TO], { duration: BASE, easing: EASE });
 }
 
 /* ── Числа докручиваются ── */
@@ -241,7 +243,7 @@ export function countUp(el, opts) {
 export function revealText(el, delay) {
   if (!can(el)) return;
   el.animate([{ clipPath: 'inset(0 100% 0 0)', opacity: .2 }, { clipPath: 'inset(0 0 0 0)', opacity: 1 }],
-    { duration: 560, delay: delay || 0, easing: EASE, fill: 'backwards' });
+    { duration: SLOW, delay: delay || 0, easing: EASE, fill: 'backwards' });
 }
 
 /* ── Совместимость с прежними вызовами ── */
@@ -276,7 +278,7 @@ export function contentFade(render, opts) {
   phase = 'exit';
   const outs = nodes.map(n => n.animate(
     [{ opacity: 1 }, { opacity: 0 }],
-    { duration: 140, easing: EASE_IN, fill: 'forwards' }));
+    { duration: FAST, easing: EASE_IN, fill: 'forwards' }));
   let done = false;
   const go = () => {
     if (done) return;
@@ -286,8 +288,8 @@ export function contentFade(render, opts) {
     outs.forEach(a => a.cancel());
     endPhase(380);
     const now = [...document.querySelectorAll(sel)].filter(visible);
-    now.forEach(n => n.animate([{ opacity: 0, transform: 'translateY(6px)' }, ENTER_TO], { duration: 380, easing: EASE }));
-    now.forEach((n, bi) => { const rows = [...n.querySelectorAll(ROWS)].slice(0, 14); if (rows.length) enter(rows, { delay: 40 + bi * 30, stagger: 22, duration: 340, max: 300, rows: true }); });
+    now.forEach(n => n.animate([{ opacity: 0, transform: 'translateY(6px)' }, ENTER_TO], { duration: BASE, easing: EASE }));
+    now.forEach((n, bi) => { const rows = [...n.querySelectorAll(ROWS)].slice(0, 14); if (rows.length) enter(rows, { delay: 40 + bi * 30, stagger: 22, duration: BASE, max: 300, rows: true }); });
   };
   outs[0].onfinish = go;
   setTimeout(go, 200);
@@ -308,7 +310,7 @@ if (typeof MutationObserver !== 'undefined') {
         if (!freshIds.has(h.dataset.id) || h.dataset.day) continue;
         requestAnimationFrame(() => {
           if (!can(h) || !visible(h)) return;
-          h.animate([{ ...ROW_FROM, boxShadow: '0 0 0 2px var(--accent)' }, { ...ROW_TO, boxShadow: '0 0 0 2px transparent' }], { duration: 700, easing: EASE });
+          h.animate([{ opacity: 0, transform: 'translateY(8px) scale(.98)' }, { opacity: 1, transform: 'scale(1.015)', offset: .6 }, ROW_TO], { duration: SLOW, easing: EASE });
         });
       }
     }
@@ -320,7 +322,7 @@ export function animateGone(id) {
   if (!els.length || !can(els[0])) return Promise.resolve();
   return Promise.all(els.map(el => el.animate(
     [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-10px) scale(.98)' }],
-    { duration: 220, easing: EASE_IN, fill: 'forwards' }).finished.catch(() => {})));
+    { duration: FAST, easing: EASE_IN, fill: 'forwards' }).finished.catch(() => {})));
 }
 
 /* Окно-модалка: подложка гаснет, само окно уходит вниз и растворяется,
@@ -332,7 +334,92 @@ export function fadeRemove(ov) {
   if (!can(ov)) { ov.remove(); return; }
   ov.style.pointerEvents = 'none';
   const panel = ov.firstElementChild;
-  ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' });
-  if (panel) panel.animate([{ transform: 'none' }, { transform: 'translateY(14px) scale(.97)' }], { duration: 260, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' });
+  ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BASE, easing: EASE_IN, fill: 'forwards' });
+  if (panel) panel.animate([{ transform: 'none' }, { transform: 'translateY(14px) scale(.97)' }], { duration: BASE, easing: EASE_IN, fill: 'forwards' });
   setTimeout(() => ov.remove(), 270);
+}
+
+/* ── Общий элемент: окно вырастает из того, по чему нажали, и сжимается
+   обратно в него. Только transform и opacity: окно один раз меряется в
+   конечном положении, а затем движется сдвигом и масштабом от рамки
+   источника. Переходы CSS на время полёта выключены (.m-fly). ── */
+let tapEl = null, tapAt = 0;
+document.addEventListener('pointerdown', e => { tapEl = e.target; tapAt = performance.now(); }, true);
+/* Элемент, по которому только что нажали, — если он подходит под selector */
+export function tapOrigin(selector) {
+  if (!tapEl || !tapEl.isConnected || performance.now() - tapAt > 1500) return null;
+  const el = tapEl.closest && tapEl.closest(selector);
+  return el && visible(el) ? el : null;
+}
+function flyRect(el) {
+  const m = new DOMMatrix(getComputedStyle(el).transform === 'none' ? undefined : getComputedStyle(el).transform);
+  if (Math.abs(m.a - 1) > .001 || Math.abs(m.d - 1) > .001 || m.b || m.c) return null;  // только чистый сдвиг
+  return { r: el.getBoundingClientRect(), mx: m.e, my: m.f };
+}
+function fromTransform(f, o) {
+  const sx = Math.max(.05, o.width / f.r.width), sy = Math.max(.05, o.height / f.r.height);
+  return `translate(${o.left - f.r.left + f.mx}px, ${o.top - f.r.top + f.my}px) scale(${sx}, ${sy})`;
+}
+/* Полёт по готовым рамкам: окно уже стоит на месте; из рамки rect в
+   своё место (flyFrom) или из своего места в rect (flyTo) */
+export function flyFrom(el, rect, duration) {
+  if (!el || !rect || !can(el)) return null;
+  const f = flyRect(el);
+  if (!f || !f.r.width || !f.r.height) return null;
+  return el.animate([
+    { transformOrigin: '0 0', transform: fromTransform(f, rect), opacity: 0 },
+    { transformOrigin: '0 0', opacity: 1, offset: .35 },
+    { transformOrigin: '0 0', transform: `translate(${f.mx}px, ${f.my}px)`, opacity: 1 },
+  ], { duration: duration || SLOW, easing: EASE });
+}
+export function flyTo(el, rect, duration) {
+  if (!el || !rect || !can(el)) return null;
+  const f = flyRect(el);
+  if (!f || !f.r.width || !f.r.height) return null;
+  return el.animate([
+    { transformOrigin: '0 0', transform: `translate(${f.mx}px, ${f.my}px)`, opacity: 1 },
+    { transformOrigin: '0 0', opacity: 1, offset: .6 },
+    { transformOrigin: '0 0', transform: fromTransform(f, rect), opacity: 0 },
+  ], { duration: duration || BASE, easing: EASE_IN, fill: 'forwards' });
+}
+/* Открыть: openFn() ставит окну класс открытия; анимация — от source */
+export function growFrom(el, source, openFn) {
+  if (!el || !source || !can(el) || !visible(source)) { openFn(); return false; }
+  const o = source.getBoundingClientRect();
+  el.classList.add('m-fly');
+  openFn();
+  const f = flyRect(el);
+  if (!f || !f.r.width || !f.r.height) { el.classList.remove('m-fly'); return false; }
+  const a = el.animate([
+    { transformOrigin: '0 0', transform: fromTransform(f, o), opacity: 0 },
+    { transformOrigin: '0 0', opacity: 1, offset: .35 },
+    { transformOrigin: '0 0', transform: `translate(${f.mx}px, ${f.my}px)`, opacity: 1 },
+  ], { duration: SLOW, easing: EASE });
+  const end = () => el.classList.remove('m-fly');
+  a.finished.then(end, end);
+  return true;
+}
+/* Закрыть: окно сжимается в target, затем closeFn() снимает класс открытия
+   (без перехода CSS — окно уже невидимо) */
+export function shrinkTo(el, target, closeFn) {
+  if (!el || !target || !can(el) || !visible(target) || !visible(el)) { closeFn(); return false; }
+  const f = flyRect(el);
+  if (!f || !f.r.width || !f.r.height) { closeFn(); return false; }
+  const o = target.getBoundingClientRect();
+  el.classList.add('m-fly');
+  el.style.pointerEvents = 'none';
+  const a = el.animate([
+    { transformOrigin: '0 0', transform: `translate(${f.mx}px, ${f.my}px)`, opacity: 1 },
+    { transformOrigin: '0 0', opacity: 1, offset: .6 },
+    { transformOrigin: '0 0', transform: fromTransform(f, o), opacity: 0 },
+  ], { duration: BASE, easing: EASE_IN, fill: 'forwards' });
+  const end = () => {
+    closeFn();
+    el.getBoundingClientRect();
+    a.cancel();
+    el.style.pointerEvents = '';
+    requestAnimationFrame(() => el.classList.remove('m-fly'));
+  };
+  a.finished.then(end, () => {});  // отменили (окно открыли снова) — не закрываем
+  return true;
 }
