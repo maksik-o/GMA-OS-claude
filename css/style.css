@@ -128,7 +128,6 @@ body[data-font="l"] { zoom: 1.1; }
   backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   box-shadow: var(--shadow), var(--inner-glow);
 }
-.glass:hover { box-shadow: var(--shadow), var(--inner-glow); }
 /* ── Шапка ── */
 .topbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r-lg); margin-bottom: 12px; min-width: 0; }
 .topbar.contacts-active .modes, .topbar.contacts-active .wn-center { display: none; }
@@ -3373,7 +3372,7 @@ body[data-surf="dark"] {
   box-shadow: var(--elev-1), var(--inner-glow);
   border-radius: var(--r-lg);
 }
-.pane:hover, .dock-panel:hover { box-shadow: var(--elev-2), var(--inner-glow); }
+.pane:hover, .dock-panel:hover, .hm-card:hover { box-shadow: var(--elev-2), var(--inner-glow); }
 .dock-panel { transition: transform var(--t-base) var(--e-out), opacity var(--t-fast) var(--e-out); }
 .btn, .icon-btn, .chip, .fin-tab, .fin-type {
   transition: background .16s ease, color .16s ease, transform .12s ease, box-shadow .16s ease;

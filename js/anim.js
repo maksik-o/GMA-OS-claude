@@ -129,7 +129,7 @@ function snapshot(root) {
   if (all.length > LIMIT) { map.big = true; return map; }
   for (const el of all) {
     const k = keyOf(el);
-    if (map.has(k) || !visible(el)) continue;
+    if (map.has(k) || !visible(el) || el.closest('.anim-ghost-layer')) continue;
     map.set(k, { el, r: el.getBoundingClientRect(), cls: el.getAttribute('class') || '' });
   }
   return map;
@@ -165,7 +165,7 @@ export function morph(root, render) {
   if (fresh.length && fresh.length <= 40) enter(fresh.filter(el => !fresh.some(p => p !== el && p.contains(el))), { stagger: 24, max: 240, rows: true });
   /* ушедшее — растворяется призраком на старом месте */
   const gone = [...before].filter(([k]) => !after.has(k)).map(([, b]) => b).filter(b => b.r.width > 0);
-  if (gone.length && gone.length <= 30) ghosts(gone.filter(g => !gone.some(p => p !== g && p.el.contains(g.el))));
+  if (gone.length && gone.length <= 30) ghosts(gone.filter(g => !gone.some(p => p !== g && p.el.contains(g.el))), root);
   /* флип-индикаторы (переезжающие пилюли) */
   for (const [k, a] of after) {
     if (!k.startsWith('f:')) continue;
@@ -174,17 +174,23 @@ export function morph(root, render) {
     flipFrom(a.el, b.r);
   }
 }
-function ghosts(list) {
+/* Слой призраков кладём внутрь того же блока, где жили элементы: стили,
+   привязанные к предку (.home-view :where(button) и т.п.), действуют и на
+   копии — иначе кнопка-копия получала светлый фон браузера и «вспыхивала».
+   Если у блока есть transform/фильтр, fixed отсчитывается от него —
+   поправка на сдвиг слоя. */
+function ghosts(list, root) {
   const layer = document.createElement('div');
   layer.className = 'anim-ghost-layer';
+  (root && root.isConnected ? root : document.body).appendChild(layer);
+  const o = layer.getBoundingClientRect();
   for (const g of list) {
     const c = g.el.cloneNode(true);
-    Object.assign(c.style, { position: 'fixed', left: g.r.left + 'px', top: g.r.top + 'px', width: g.r.width + 'px', height: g.r.height + 'px', margin: '0', pointerEvents: 'none' });
+    Object.assign(c.style, { position: 'fixed', left: (g.r.left - o.left) + 'px', top: (g.r.top - o.top) + 'px', width: g.r.width + 'px', height: g.r.height + 'px', margin: '0', pointerEvents: 'none' });
     layer.appendChild(c);
     c.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.97)' }],
       { duration: BASE, easing: EASE_IN, fill: 'forwards' });
   }
-  document.body.appendChild(layer);
   setTimeout(() => layer.remove(), 320);
 }
 /* Короткий «щелчок» — элемент сменил состояние */

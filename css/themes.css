@@ -72,8 +72,8 @@ html[data-theme] {
   --glass: color-mix(in srgb, #14151a calc(var(--panel-a, .6) * 100%), transparent);
   --card: rgba(255, 255, 255, .05);
   --brd: #363739; --panel-solid: #0b0c0e;
-  /* кромка стекла с оттенком режима, блик сверху и мягкая тень под панелью */
-  --shadow: rgba(255, 255, 255, .1) 0 1px 0 0 inset, color-mix(in srgb, var(--accent) 30%, rgba(255, 255, 255, .14)) 0 0 0 1px, rgba(0, 0, 0, .18) 0 -1px 0 0 inset, 0 18px 40px -22px rgba(0, 0, 0, .6);
+  /* без обводки: блик сверху и мягкая тень под панелью (как панели задач) */
+  --shadow: rgba(255, 255, 255, .08) 0 1px 0 0 inset, rgba(0, 0, 0, .18) 0 -1px 0 0 inset, 0 18px 40px -22px rgba(0, 0, 0, .6);
   --inner-glow: 0 0 0 transparent;
   --t-bw: 0px; --r-lg: 22px; --r-md: 10px;
   --font-ui: "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -118,6 +118,7 @@ html[data-theme] {
    а текст на нём тёмный — выбранный чип становился невидимым) */
 /* Корзина «Структуры» — красная поверх тёмной клавиши */
 :root[data-theme="coral"] .kb-board .btn.danger.kb-trash {
+  border-radius: 28px;  /* круглая, как «+»: общее правило кнопок давало 8px */
   background: linear-gradient(135deg, #e5484d, #9f1d22); color: #fff;
   box-shadow: 0 8px 20px rgba(229, 72, 77, .35), 0 16px 32px rgba(229, 72, 77, .2), inset 0 1px 0 rgba(255, 255, 255, .3);
 }
@@ -185,3 +186,13 @@ html[data-theme] {
 .seg-ind { background: rgba(255, 255, 255, .16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); }
 .fin-tab.on { background: rgba(255, 255, 255, .16); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); }
 .hm-seg button[aria-pressed="true"], .eds-tabs button[aria-pressed="true"] { color: #fff !important; box-shadow: none !important; }
+
+/* ══ Панель новой задачи ══
+   Плотное тёмное стекло, как панели задач (не серое и не просвечивает
+   меню); внутри — без серых подложек: поле ввода и блок «Дни» лежат
+   прямо на панели, разделены тонкой линией. */
+:root[data-theme] .sheet { background: color-mix(in srgb, #0b0c0e 94%, transparent); }
+.qx-builder .qx-title { background: transparent !important; border-radius: 0; padding-left: 2px; padding-right: 2px;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--text) 10%, transparent); }
+.qx-pop { background: transparent; padding: 10px 2px 4px; border-radius: 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent); }
+.qx-pop .q-day { background: color-mix(in srgb, var(--text) 4%, transparent); }
