@@ -1,8 +1,9 @@
 import {
   state, MODES, WEEKDAYS, MONTHS_FULL, DAYS_FULL, today, addDays, mondayOf, parseISO, isoWeek,
   esc, isDone, plansForDay, hmToMin, minToHM, setEntry, setMode, setHideDone, getTask, fmtMin,
-  setTaskPlan, clearTaskPlanDay,
+  setTaskPlan, clearTaskPlanDay, bigTasks, bigInfo, bigToToday,
 } from './store.js';
+import { waitListHTML, waitCount, waitDueCount } from './wait.js';
 import { openSheet } from './sheet.js';
 import { openDay } from './week.js';
 import { dbGetKV, dbSetKV } from './db.js';
@@ -26,14 +27,17 @@ let _host = null;
 let _tick = 0;
 let _drag = null;          // идёт перетаскивание — перерисовку откладываем
 let _pending = false;
-const PANELS = ['week', 'focus', 'soon', 'hero', 'tiles', 'chart'];
-const DEFAULT_LAYOUT = { left: ['week', 'focus', 'soon'], main: ['hero', 'tiles', 'chart'] };
+/* Вариант Б: всё на одном экране. Плитки стали строкой показателей над
+   «Сегодня», неделя фокуса — частью «Фокусировки»; на освободившемся
+   месте — «Жду» и «Большие». */
+const PANELS = ['week', 'focus', 'soon', 'stats', 'hero', 'wait', 'big'];
+const DEFAULT_LAYOUT = { left: ['week', 'focus', 'soon'], main: ['stats', 'hero', 'wait', 'big'] };
 let layout = DEFAULT_LAYOUT;
 const HANDLE = id => `<svg class="dock-handle hm-handle" data-hmh="${id}" viewBox="0 0 32 32" aria-label="Перетащить" role="img"><path d="M2 22 A20 20 0 0 1 22 2" pathLength="100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>`;
 
 const go = v => document.dispatchEvent(new CustomEvent('go-view', { detail: v }));
 const modeLabel = m => (MODES.find(x => x.id === m) || {}).label || m;
-const inMode = t => !t.deleted && (state.mode === 'all' || t.mode === state.mode);
+const inMode = t => !t.deleted && !t.wait && (state.mode === 'all' || t.mode === state.mode);
 
 const ICO = {
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -120,8 +124,18 @@ function weekHTML() {
 }
 /* Фокус — та же панель, что в доке экрана задач (focus.js): кольцо,
    молния, пауза и стоп. Задачу выбирают в «Сегодня» на этом же экране. */
-function focusHTML() {
-  return `<section class="hm-focus glass hm-card" data-hm="focus">${HANDLE('focus')}<div class="focus-panel hm-fp"></div></section>`;
+function focusHTML(fmap) {
+  return `<section class="hm-focus glass hm-card" data-hm="focus">${HANDLE('focus')}<div class="focus-panel hm-fp"></div>${focusWeekHTML(fmap)}</section>`;
+}
+/* Неделя фокуса — мини-столбики под циферблатом (была отдельной панелью) */
+function focusWeekHTML(fmap) {
+  const ws = mondayOf(today());
+  const t0 = today();
+  const vals = WEEKDAYS.map((w, i) => { const d = addDays(ws, i); return { w, d, v: fmap.get(d) || 0 }; });
+  const max = Math.max(60, ...vals.map(x => x.v));
+  const sum = vals.reduce((a, x) => a + x.v, 0);
+  return `<div class="hm-fweek"><div class="hm-fweek-h"><span>неделя</span><b>${fmtMin(sum)}</b></div>
+    <div class="hm-bars">${vals.map(x => `<div class="hm-bar${x.d === t0 ? ' today' : ''}${x.d > t0 ? ' future' : ''}" title="${x.w}: ${fmtMin(x.v)}"><i style="height:${Math.max(4, x.v / max * 100).toFixed(1)}%"></i><small>${x.w}</small></div>`).join('')}</div></div>`;
 }
 function soonHTML() {
   const list = upcoming(4);
@@ -194,29 +208,45 @@ function heroHTML(st) {
   </section>`;
 }
 const isDoneOn = (t, d) => { const s = (t.days || {})[d]; return s === 'done' || s === 'skipped' ? 1 : 0; };
-function tilesHTML(fmap) {
+/* Строка показателей вместо плиток: те же четыре цифры в одну строку */
+function statsHTML(fmap) {
   const min = fmap.get(today()) || 0;
-  const m = curMonth();
-  const ms = monthStats(m);
+  const ms = monthStats(curMonth());
   const kbN = kbNotes().length;
-  const tile = (ico, on, big, sub, attrs, extra = '') => `<div role="button" tabindex="0" class="hm-tile" ${attrs}>
-      <span class="hm-ico${on ? ' on' : ''}">${svg(ico, 18)}</span><span><b>${big}</b><small>${sub}</small></span>${extra}</div>`;
-  return `<section class="hm-tiles-card glass hm-card hm-half" data-hm="tiles">${HANDLE('tiles')}<div class="hm-tiles">
-    ${tile('focus', min > 0, fmtMin(min), 'фокус сегодня', 'data-act="focus"')}
-    ${tile('kb', false, kbN, 'заметок в базе', 'data-go="kb"')}
-    ${tile('fin', false, moneyShort(ms.expense), 'расходы за месяц', 'data-go="finance"')}
-    ${tile('eye', state.hideDone, state.hideDone ? 'Скрыты' : 'Видны', 'выполненные задачи', 'data-act="hide" role="switch" aria-checked="' + state.hideDone + '"', `<i class="hm-tgl${state.hideDone ? ' on' : ''}"></i>`)}
-  </div></section>`;
+  const st = (big, sub, attrs, extra = '') => `<div role="button" tabindex="0" class="hm-stat" ${attrs}><b>${big}</b><small>${sub}</small>${extra}</div>`;
+  return `<section class="hm-stats glass hm-card" data-hm="stats">${HANDLE('stats')}
+    ${st(fmtMin(min), 'фокус<br>сегодня', 'data-act="focus"')}
+    ${st(kbN, 'заметки<br>в базе', 'data-go="kb"')}
+    ${st(moneyShort(ms.expense), 'расходы<br>за месяц', 'data-go="finance"')}
+    ${st('', 'Выполненные<br>' + (state.hideDone ? 'скрыты' : 'видны'), 'data-act="hide" role="switch" aria-checked="' + state.hideDone + '"', `<i class="hm-tgl${state.hideDone ? ' on' : ''}"></i>`)}
+  </section>`;
 }
-function chartHTML(fmap) {
-  const ws = mondayOf(today());
-  const t0 = today();
-  const vals = WEEKDAYS.map((w, i) => { const d = addDays(ws, i); return { w, d, v: fmap.get(d) || 0 }; });
-  const max = Math.max(60, ...vals.map(x => x.v));
-  const sum = vals.reduce((a, x) => a + x.v, 0);
-  return `<section class="hm-chart glass hm-card hm-half" data-hm="chart">${HANDLE('chart')}
-    <div class="hm-head"><h2>Время фокуса · неделя</h2><b>${fmtMin(sum)}</b></div>
-    <div class="hm-bars">${vals.map(x => `<div class="hm-bar${x.d === t0 ? ' today' : ''}${x.d > t0 ? ' future' : ''}" title="${x.w}: ${fmtMin(x.v)}"><i style="height:${Math.max(4, x.v / max * 100).toFixed(1)}%"></i><small>${x.w}</small></div>`).join('')}</div>
+/* ── «Жду»: задачи, которые ждут чужого действия ── */
+function waitHTML() {
+  const n = waitCount(), due = waitDueCount();
+  return `<section class="hm-wait glass hm-card hm-half" data-hm="wait" data-wait-drop>${HANDLE('wait')}
+    <div class="hm-head"><h2>Жду</h2>${n ? `<span class="hm-cnt">${n}</span>` : ''}${due ? `<span class="hm-due">напомнить: ${due}</span>` : ''}<span class="hm-sub">${n ? 'дольше — выше' : ''}</span></div>
+    <div class="hm-scroll">${waitListHTML({ emptyText: 'Здесь будут задачи, которые ждут чужого действия. В список задач — правый клик по строке → «В ожидание…» или перетащите строку на виджет «Жду».' })}</div>
+  </section>`;
+}
+/* ── «Большие»: делается следующий шаг ── */
+function bigHTML() {
+  const list = bigTasks();
+  const card = t => {
+    const i = bigInfo(t);
+    const pct = i.total ? Math.round(i.done / i.total * 100) : 0;
+    const on = (t.days || {})[today()] === 'todo' || (t.days || {})[today()] === 'started';
+    return `<div class="hm-bg" data-id="${t.id}" style="--mc:var(--mode-${t.mode})"><i class="wt-bar"></i>
+      <div class="hm-bg-top"><button type="button" class="hm-bg-t" data-task="${t.id}">${esc(t.title || 'Без названия')}</button><span class="hm-age${i.age >= 14 ? ' old' : ''}">${i.age} дн</span></div>
+      ${i.total ? `<div class="hm-bg-prog"><i><u style="width:${pct}%"></u></i><b>${i.done} из ${i.total}</b></div>` : ''}
+      <div class="hm-bg-next"><span>дальше</span><b>${i.next ? esc(i.next.text) : i.total ? 'все шаги закрыты' : 'разбейте на шаги'}</b>${i.next || !i.total
+        ? (on ? '<em>на сегодня ✓</em>' : `<button type="button" class="wt-btn" data-bigtoday="${t.id}">На сегодня</button>`) : ''}</div>
+      ${i.idle >= 5 ? `<div class="hm-idle">Не трогали ${i.idle} дн</div>` : ''}
+    </div>`;
+  };
+  return `<section class="hm-big glass hm-card hm-half${list.length ? '' : ' empty'}" data-hm="big">${HANDLE('big')}
+    <div class="hm-head"><h2>Большие</h2>${list.length ? `<span class="hm-cnt">${list.length}</span>` : ''}<span class="hm-sub">${list.length ? 'по шагам' : ''}</span></div>
+    <div class="hm-scroll">${list.map(card).join('') || '<p class="hm-empty">Большая задача — тип «Проект» или значок «слои» в редакторе. Её делают по шагам, а здесь видно следующий.</p>'}</div>
   </section>`;
 }
 /* Вход на экран: данные дорастают, числа докручиваются */
@@ -225,7 +255,7 @@ export function homeEntered() {
   if (!el) return;
   el.classList.add('m-enter');
   setTimeout(() => el.classList.remove('m-enter'), 1300);
-  el.querySelectorAll('.hm-tile b, .hm-chart .hm-head b, .hm-prog-t').forEach(n => countUp(n));
+  el.querySelectorAll('.hm-stat b, .hm-fweek-h b, .hm-prog-t').forEach(n => countUp(n));
 }
 export function renderHomeView(el) {
   if (!el) return;
@@ -234,8 +264,8 @@ export function renderHomeView(el) {
   const st = todayStats();
   const fmap = focusByDay();
   const parts = {
-    week: weekHTML, focus: focusHTML, soon: soonHTML,
-    hero: () => heroHTML(st), tiles: () => tilesHTML(fmap), chart: () => chartHTML(fmap),
+    week: weekHTML, focus: () => focusHTML(fmap), soon: soonHTML,
+    stats: () => statsHTML(fmap), hero: () => heroHTML(st), wait: waitHTML, big: bigHTML,
   };
   const zone = z => `<div class="hm-zone" data-z="${z}">${layout[z].map(id => parts[id]()).join('')}</div>`;
   el.innerHTML = `${zone('left')}${zone('main')}`;
@@ -270,6 +300,7 @@ function bind(el) {
       return;
     }
     if (b.dataset.task) { const t = getTask(b.dataset.task); if (t) openSheet(t); return; }
+    if (b.dataset.bigtoday) { bigToToday(b.dataset.bigtoday); return; }
     const a = b.dataset.act;
     if (a === 'new') openSheet(null);
     else if (a === 'search') openSearch();
@@ -438,7 +469,12 @@ export function homeInit() {
     const seen = new Set();
     const clean = z => (Array.isArray(v[z]) ? v[z] : []).filter(id => PANELS.includes(id) && !seen.has(id) && seen.add(id));
     const next = { left: clean('left'), main: clean('main') };
-    PANELS.forEach(id => { if (!seen.has(id)) (DEFAULT_LAYOUT.left.includes(id) ? next.left : next.main).push(id); });
+    /* новые панели: строка показателей — над «Сегодня», остальные — в конец */
+    PANELS.forEach(id => {
+      if (seen.has(id)) return;
+      if (id === 'stats') next.main.unshift(id);
+      else (DEFAULT_LAYOUT.left.includes(id) ? next.left : next.main).push(id);
+    });
     layout = next;
     if (_host && !_host.hidden && state.view === 'home') morph(_host, () => renderHomeView(_host));
   }).catch(() => {});

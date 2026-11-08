@@ -229,7 +229,9 @@ export function isDone(t) {
   if (vals.some(s => s === 'todo' || s === 'started')) return false;
   return vals.some(s => s === 'done' || s === 'skipped');
 }
-export const visibleTasks = () => state.tasks.filter(t => !t.deleted && (state.mode === 'all' || t.mode === state.mode));
+/* Задачи, ждущие чужого действия (t.wait), из обычных списков убраны:
+   они живут в панели «Жду» и возвращаются кнопкой «Пришло». */
+export const visibleTasks = () => state.tasks.filter(t => !t.deleted && !t.wait && (state.mode === 'all' || t.mode === state.mode));
 export const sortTasks = arr => arr.slice().sort((a, b) => {
   const da = isDone(a), db2 = isDone(b);
   if (da !== db2) return da ? 1 : -1;
@@ -263,12 +265,14 @@ export const getTask = id => state.tasks.find(t => t.id === id);
 export async function createTask(data) {
   const now = new Date().toISOString();
   const t = {
-    id: uid(), title: data.title.trim(), mode: data.mode || (state.mode === 'all' ? 'work' : state.mode),
+    id: data.id || uid(), title: data.title.trim(), mode: data.mode || (state.mode === 'all' ? 'work' : state.mode),
     type: data.type || 'task', priority: data.priority || 2, receivedAt: data.receivedAt || today(),
     days: data.days || {}, blockStart: data.blockStart ?? null, blockMin: data.blockMin || 30,
     spentMin: 0, sessions: [], tags: data.tags || [], notes: '', files: [], subtasks: data.subtasks || [],
     doneAt: null, createdAt: now, updatedAt: now
   };
+  if (data.wait) t.wait = data.wait;
+  if (data.big) t.big = true;
   removeTombstone(t.id);
   markFresh(t.id);             // новая строка проявится с подсветкой
   state.tasks.push(t);
@@ -339,7 +343,7 @@ export async function rolloverDay(force) {
   if (!force && last === t0) return 0;
   let moved = 0;
   for (const t of state.tasks) {
-    if (!t || t.deleted) continue;
+    if (!t || t.deleted || t.wait) continue;   // ожидание — пауза, дни не переносим
     let days = { ...(t.days || {}) };
     let touched = false;
     const rep = t.repeat && t.repeat.freq ? t.repeat : null;
@@ -458,7 +462,7 @@ export async function addSubtask(id, text) {
 export async function toggleSubtask(id, sid) {
   const t = getTask(id);
   if (!t) return;
-  await updateTask(id, { subtasks: (t.subtasks || []).map(s => s.id === sid ? { ...s, done: !s.done } : s) });
+  await updateTask(id, { subtasks: (t.subtasks || []).map(s => s.id === sid ? { ...s, done: !s.done, doneAt: s.done ? null : today() } : s) });
   hapticLight();
 }
 export async function delSubtask(id, sid) {
@@ -791,4 +795,93 @@ export async function removeTaskPlan(taskId, date) {
   const t = getTask(taskId);
   if (!t) return;
   await updateTask(taskId, { plans: (t.plans || []).filter(p => p && p.date !== date) });
+}
+
+/* ══════════════ ЖДУ ══════════════
+   t.wait = { since, personId, who, what, remindAt } — задача ждёт чужого
+   действия и убрана из списков. При возврате интервал ожидания уходит в
+   t.waitLog: в квадратах эти дни рисуются паузой, а не пропуском. */
+const dayDiff = (a, b) => Math.round((parseISO(b) - parseISO(a)) / 864e5);
+export const waitingTasks = () => state.tasks
+  .filter(t => !t.deleted && t.wait && (state.mode === 'all' || t.mode === state.mode))
+  .sort((a, b) => String(a.wait.since).localeCompare(String(b.wait.since)));
+export const waitingAll = () => state.tasks.filter(t => !t.deleted && t.wait);
+export const waitDays = t => t && t.wait ? Math.max(0, dayDiff(t.wait.since, today())) : 0;
+export const remindDue = t => !!(t && t.wait && t.wait.remindAt && t.wait.remindAt <= today());
+export async function sendToWait(id, w) {
+  const t = getTask(id);
+  if (!t) return;
+  await updateTask(id, { wait: {
+    since: (w && w.since) || today(), personId: (w && w.personId) || '', who: ((w && w.who) || '').trim().slice(0, 60),
+    what: ((w && w.what) || '').trim().slice(0, 200), remindAt: (w && w.remindAt) || '',
+  } });
+  hapticMedium();
+}
+/* «Пришло»: задача возвращается в список на сегодня как «Начато»;
+   незакрытые отметки внутри ожидания снимаются — это была пауза */
+export async function returnFromWait(id) {
+  const t = getTask(id);
+  if (!t || !t.wait) return;
+  const d0 = today(), from = t.wait.since || d0;
+  const days = { ...(t.days || {}) };
+  for (const [d, st] of Object.entries(days)) {
+    if (d >= from && d < d0 && (st === 'todo' || st === 'postponed')) delete days[d];
+  }
+  days[d0] = 'started';
+  const log = [...(t.waitLog || []), { from, to: d0, personId: t.wait.personId || '', who: t.wait.who || '', what: t.wait.what || '' }].slice(-20);
+  await updateTask(id, { wait: null, waitLog: log, days, doneAt: null });
+  hapticSuccess();
+}
+export async function snoozeWait(id, n) {
+  const t = getTask(id);
+  if (!t || !t.wait) return;
+  await updateTask(id, { wait: { ...t.wait, remindAt: addDays(today(), n || 3) } });
+}
+/* День внутри прошлого ожидания (для квадратов недели) */
+export const pausedOn = (t, d) => (t.waitLog || []).some(w => d >= w.from && d < w.to);
+
+/* ══════════════ БОЛЬШИЕ ЗАДАЧИ ══════════════
+   Большая — тип «Проект» или отметка t.big. Делается не целиком, а
+   следующим шагом (первая незакрытая подзадача). */
+export const isBig = t => !!t && (t.big === true || t.type === 'project');
+export function bigInfo(t) {
+  const subs = t.subtasks || [];
+  const done = subs.filter(s => s.done).length;
+  const next = subs.find(s => !s.done) || null;
+  const keys = Object.keys(t.days || {}).sort();
+  const start = keys[0] && keys[0] < String(t.createdAt).slice(0, 10) ? keys[0] : String(t.createdAt || today()).slice(0, 10);
+  const touched = [
+    ...Object.entries(t.days || {}).filter(([, s]) => s === 'started' || s === 'done').map(([d]) => d),
+    ...subs.filter(s => s.done && s.doneAt).map(s => s.doneAt),
+  ].filter(d => d <= today()).sort();
+  const last = touched[touched.length - 1] || null;
+  return {
+    total: subs.length, done, next,
+    age: Math.max(0, dayDiff(start, today())),
+    postpones: Object.values(t.days || {}).filter(s => s === 'postponed').length,
+    idle: last ? dayDiff(last, today()) : Math.max(0, dayDiff(start, today())),
+    last,
+  };
+}
+export const bigTasks = () => visibleTasks().filter(t => isBig(t) && !isDone(t))
+  .sort((a, b) => bigInfo(b).age - bigInfo(a).age);
+/* Подсказка «сделать большой»: висит неделю или перенесена трижды */
+export function suggestBig(t) {
+  if (!t || isBig(t) || t.bigAsk === 'no' || isDone(t) || t.wait) return false;
+  const i = bigInfo(t);
+  return i.age >= 7 || i.postpones >= 3;
+}
+export async function setBig(id, on) {
+  const t = getTask(id);
+  if (!t) return;
+  await updateTask(id, on ? { big: true } : { big: false, type: t.type === 'project' ? 'task' : t.type });
+}
+export async function dismissBig(id) { await updateTask(id, { bigAsk: 'no' }); }
+/* «На сегодня»: шаг большой задачи — в работу сегодня */
+export async function bigToToday(id) {
+  const t = getTask(id);
+  if (!t) return;
+  const d0 = today();
+  if ((t.days || {})[d0] === 'todo' || (t.days || {})[d0] === 'started') return;
+  await updateTask(id, { days: { ...(t.days || {}), [d0]: 'todo' }, doneAt: null });
 }

@@ -4,7 +4,9 @@ import {
   tasksForDay, weekRows, getTask, getTagColor, isDone,
   removeTask, setEntry, postponeFrom, setMode,
   toggleSubtask, delSubtask, updateSubtask,
+  isBig, bigInfo, suggestBig, setBig, dismissBig, pausedOn,
 } from './store.js';
+import { openWaitDialog, startLift, hasDropTarget, waitCount, waitDueCount, waitListHTML, wIco, closeMenus } from './wait.js';
 import { openSheet, refreshBackdrop } from './sheet.js';
 import { renderNotesPanel, setWeekStart } from './notes.js';
 import { calTitle, createCalDrum } from './cal.js';
@@ -501,7 +503,7 @@ function mobileHeadHTML(t) {
     days += `<button type="button" class="g-hd${d === t ? ' today' : ''}" data-day="${d}" title="Открыть день">${WEEKDAYS[i]} <b>${+d.slice(8)}</b></button>`;
   }
   return '<div class="m-head-top">' +
-    '<span class="kb-board-title m-title">Running-list</span>' +
+    '<span class="kb-board-title m-title">Running-list</span>' + waitChipHTML() +
     '<div class="m-head-nav"></div>' +
     '</div>' +
     '<div class="m-head-days">' + days + '</div>' +
@@ -609,9 +611,11 @@ function leftRowHTML(tk, t) {
     const d = addDays(state.weekStart, i);
     const st = (tk.days || {})[d];
     const pp = st === 'postponed' ? ((tk.days || {})[addDays(d, 1)] === 'postponed' ? ' pp-dash' : ' pp-arrow') : '';
-    cells += `<button type="button" class="cell ${st ? 'c-' + st : 'none'}${pp}${d === t ? ' tdy' : ''}" data-id="${esc(tk.id)}" data-day="${d}" title="${fmtD(d)}">${tk.receivedAt === d ? '<i class="rd"></i>' : ''}</button>`;
+    /* день внутри прошлого ожидания — пауза, а не пропуск */
+    const wt = !st && tk.waitLog && pausedOn(tk, d);
+    cells += `<button type="button" class="cell ${st ? 'c-' + st : wt ? 'c-wait' : 'none'}${pp}${d === t ? ' tdy' : ''}" data-id="${esc(tk.id)}" data-day="${d}" title="${fmtD(d)}${wt ? ' · ждали' : ''}">${tk.receivedAt === d ? '<i class="rd"></i>' : ''}</button>`;
   }
-  return `<div class="l-row">${cells}</div>`;
+  return `<div class="l-row${isBig(tk) && !isDone(tk) ? ' big' : ''}">${cells}</div>`;
 }
 /* Строка задачи: таймеры и fp-eligible только если установлен виджет «Фокус» */
 function rightRowHTML(tk, t) {
@@ -620,16 +624,118 @@ function rightRowHTML(tk, t) {
   const hasSub = (tk.subtasks || []).length > 0;
   const sub = (hasSub && expandedSub === tk.id) ? subPanelHTML(tk) : '';
   const elig = hasWidget('focus') && Object.values(tk.days || {}).some(s => s === 'todo' || s === 'started');
-  return `<div class="r-row m-${tk.mode}${struck ? ' st-done' : ''}${run}${elig ? ' fp-eligible' : ''}" data-id="${esc(tk.id)}">
+  const big = isBig(tk) && !struck;
+  return `<div class="r-row m-${tk.mode}${struck ? ' st-done' : ''}${run}${elig ? ' fp-eligible' : ''}${big ? ' big' : ''}" data-id="${esc(tk.id)}">
     <button type="button" class="swipe-hint hint-done">✓ Выполнено</button>
     <button type="button" class="swipe-hint hint-move">Перенос на завтра →</button>
     ${indHTML(tk)}
-    <span class="g-title">${esc(tk.title)}</span>
-    <span class="g-meta">${metaHTML(tk)}</span>
+    ${big ? bigBodyHTML(tk) : `<span class="g-title">${esc(tk.title)}</span>
+    <span class="g-meta">${metaHTML(tk)}</span>`}
     <span class="g-sp"></span>
+    ${!big && suggestBig(tk) ? bigAskHTML(tk) : ''}
     ${sub}
   </div>`;
 }
+/* ── Большая задача: следующий шаг, прогресс, возраст ──
+   Отличается формой, а не цветом: строка выше, значок «слои» */
+const LAYERS = '<svg class="big-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-label="Большая задача" role="img"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>';
+const dWord = n => `${n} дн`;
+function bigBodyHTML(tk) {
+  const i = bigInfo(tk);
+  const pct = i.total ? Math.round(i.done / i.total * 100) : 0;
+  return `${LAYERS}<span class="big-body">
+      <span class="big-line"><span class="g-title">${esc(tk.title)}</span>${i.next ? `<span class="big-arrow">→</span><span class="big-next">${esc(i.next.text)}</span>` : i.total ? '' : '<span class="big-hint">разбейте на шаги в редакторе</span>'}</span>
+      ${i.total ? `<span class="big-prog"><i><u style="width:${pct}%"></u></i><b>${i.done} из ${i.total}</b></span>` : ''}
+    </span>
+    <span class="big-age${i.age >= 14 ? ' old' : ''}${i.idle >= 5 ? ' idle' : ''}" title="${i.idle >= 5 ? 'Не трогали ' + i.idle + ' дн' : 'Висит ' + i.age + ' дн'}">${i.idle >= 5 ? 'не трогали ' + dWord(i.idle) : dWord(i.age)}</span>`;
+}
+/* Подсказка: висит неделю или перенесена трижды — сделать большой? */
+function bigAskHTML(tk) {
+  const i = bigInfo(tk);
+  const why = [i.age >= 7 ? `висит ${dWord(i.age)}` : '', i.postpones >= 3 ? `${i.postpones} переноса` : ''].filter(Boolean).join(' · ');
+  return `<span class="big-ask" title="Большую задачу делают по шагам — в списке будет виден следующий шаг">
+    ${LAYERS}<span>${why}</span>
+    <button type="button" class="big-ask-yes" data-bigact="make" data-id="${esc(tk.id)}">Сделать большой</button>
+    <button type="button" class="big-ask-no" data-bigact="no" data-id="${esc(tk.id)}" aria-label="Не сейчас">✕</button>
+  </span>`;
+}
+/* ── Меню строки (правый клик / долгое нажатие) ── */
+function openRowMenu(row, id, x, y) {
+  const tk = getTask(id);
+  if (!tk) return;
+  closeMenus();
+  const m = document.createElement('div');
+  m.className = 'cmenu wt-menu row-menu';
+  m.innerHTML = `<button type="button" data-ra="open">${'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-4-4L4 16z"/></svg>'}<span>Открыть</span></button>
+    <button type="button" data-ra="wait">${wIco('clock', 16)}<span>В ожидание…</span></button>
+    <button type="button" data-ra="big">${LAYERS}<span>${isBig(tk) ? 'Сделать обычной' : 'Сделать большой'}</span></button>
+    <button type="button" data-ra="del" class="ra-del"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>Удалить</span></button>`;
+  document.body.appendChild(m);
+  const mw = 220, mh = m.offsetHeight || 190;
+  m.style.width = mw + 'px';
+  m.style.left = Math.min(Math.max(8, x), innerWidth - mw - 8) + 'px';
+  m.style.top = Math.max(8, y + mh > innerHeight - 8 ? y - mh : y) + 'px';
+  requestAnimationFrame(() => m.classList.add('open'));
+  setTimeout(() => {
+    const close = e => { if (!m.contains(e.target)) { closeMenus(); document.removeEventListener('pointerdown', close, true); } };
+    document.addEventListener('pointerdown', close, true);
+  }, 0);
+  m.querySelectorAll('[data-ra]').forEach(b => b.onclick = async () => {
+    closeMenus();
+    const a = b.dataset.ra;
+    if (a === 'open') openSheet(getTask(id));
+    else if (a === 'wait') openWaitDialog(id, { from: row.isConnected ? row : null });
+    else if (a === 'big') { await setBig(id, !isBig(getTask(id))); renderAll(); }
+    else if (a === 'del' && confirm('Удалить задачу?')) removeTask(id).then(renderAll);
+  });
+}
+/* Кнопки подсказки «Сделать большой» и чип «Жду» — делегирование */
+let bigDelegated = false;
+function bindBigAsk() {
+  if (bigDelegated) return;
+  bigDelegated = true;
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-bigact]');
+    if (b) {
+      e.stopPropagation();
+      const id = b.dataset.id;
+      if (b.dataset.bigact === 'make') {
+        await setBig(id, true);
+        renderAll();
+        const tk = getTask(id);
+        if (tk && !(tk.subtasks || []).length) openSheet(tk);   // сразу разбить на шаги
+      } else { await dismissBig(id); renderAll(); }
+      return;
+    }
+    const chip = e.target.closest('[data-waitpop]');
+    if (chip) { e.stopPropagation(); openWaitPop(chip); }
+  });
+}
+/* Чип «Жду · N» в шапке: всплывающий список ожиданий */
+function openWaitPop(anchor) {
+  if (document.querySelector('.wt-pop')) { closeMenus(); return; }
+  closeMenus();
+  const m = document.createElement('div');
+  m.className = 'wt-menu wt-pop glass';
+  m.innerHTML = `<div class="wt-pop-head"><b>Жду</b><span class="wt-n">${waitCount()}</span></div><div class="wt-pop-body">${waitListHTML()}</div>`;
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect();
+  const mw = Math.min(400, innerWidth - 16);
+  m.style.width = mw + 'px';
+  m.style.left = Math.min(Math.max(8, r.left), innerWidth - mw - 8) + 'px';
+  m.style.top = (r.bottom + 8) + 'px';
+  requestAnimationFrame(() => m.classList.add('open'));
+  setTimeout(() => {
+    const close = e => { if (!m.contains(e.target) && !e.target.closest('.wd-overlay')) { closeMenus(); document.removeEventListener('pointerdown', close, true); } };
+    document.addEventListener('pointerdown', close, true);
+  }, 0);
+}
+const waitChipHTML = () => {
+  const n = waitCount();
+  if (!n) return '';
+  const due = waitDueCount();
+  return `<button type="button" class="wt-chip${due ? ' due' : ''}" data-waitpop title="Задачи, которые ждут чужого действия">${wIco('clock', 13)}<span>Жду · ${n}</span></button>`;
+};
 /* ── Подзадачи: делегирование кликов (не ломается при перерисовке) ── */
 let subDelegated = false;
 function bindSub() {
@@ -709,7 +815,7 @@ function renderGrid() {
     </div>
   </section>
   <section class="pane p-right glass">
-    <div class="r-head"><span class="kb-board-title">Running-list</span><div class="r-nav"></div><div class="r-search"></div></div>
+    <div class="r-head"><span class="kb-board-title">Running-list</span>${waitChipHTML()}<div class="r-nav"></div><div class="r-search"></div></div>
     <div>${rightRows}</div>
     ${rows.length ? '' : empty}
   </section>
@@ -759,9 +865,12 @@ function renderGrid() {
         if (confirm('Удалить задачу?')) {
           removeTask(id).then(renderAll);
         }
-      }
+      },
+      onMenu: (x, y) => openRowMenu(row, id, x, y),
+      onLift: e => startLift(row, id, e),
     });
   });
+  bindBigAsk();
   applyGridSide();
   bindPaneMoveHandle();
   syncRowHeights();
@@ -942,7 +1051,11 @@ function swCommit(row, dir, done) {
 function bindRowGestures(row, acts) {
   let sx = 0, sy = 0, dx = 0, dragging = false, longTimer = null, fired = false, armed = 0;
   row.style.setProperty('--sw', '0');
-  row.addEventListener('contextmenu', e => e.preventDefault());
+  let lastX = 0, lastY = 0;
+  row.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (acts.onMenu && !e.target.closest('.sub-panel')) { if (longTimer) { clearTimeout(longTimer); longTimer = null; } fired = true; acts.onMenu(e.clientX, e.clientY); }
+  });
   row.querySelectorAll('.swipe-hint').forEach(h => {
     h.onclick = e => {
       e.stopPropagation();
@@ -956,8 +1069,10 @@ function bindRowGestures(row, acts) {
     collapseRevealed();
     sx = e.clientX;
     sy = e.clientY;
+    lastX = sx; lastY = sy;
     dx = 0;
     armed = 0;
+    if (e.button === 2) return;      // правая кнопка — меню, без таймера
     dragging = false;
     fired = false;
     longTimer = setTimeout(() => {
@@ -965,7 +1080,7 @@ function bindRowGestures(row, acts) {
       if (!dragging) {
         fired = true;
         try { navigator.vibrate(10); } catch {}
-        acts.onLong();
+        if (acts.onMenu) acts.onMenu(lastX, lastY); else acts.onLong();
       }
     }, 550);
   });
@@ -982,6 +1097,8 @@ function bindRowGestures(row, acts) {
         document.body.classList.add('row-swiping');
       } else if (Math.abs(ddy) > 8) {
         if (longTimer) { clearTimeout(longTimer); longTimer = null; }
+        /* мышью вверх/вниз — строку можно поднять и бросить на «Жду» */
+        if (acts.onLift && e.pointerType === 'mouse' && hasDropTarget()) { fired = true; acts.onLift(e); }
         return;
       }
     }
@@ -1144,7 +1261,8 @@ export function renderDaySheet() {
           if (confirm('Удалить задачу?')) {
             removeTask(id).then(renderAll);
           }
-        }
+        },
+        onMenu: (x, y) => openRowMenu(row, id, x, y),
       });
     });
   }

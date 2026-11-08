@@ -1,6 +1,7 @@
 import { dbAll, dbPut, dbBulk } from './db.js';
 import { morph, fadeRemove, growFrom, shrinkTo, BASE, EASE, EASE_IN } from './anim.js';
-import { uid, esc, MODES } from './store.js';
+import { uid, esc, MODES, getTask, createTask, today, state as tstate, isDone, fmtD } from './store.js';
+import { waitCardHTML, openWaitDialog } from './wait.js';
 
 const STORE = 'contacts';
 const state = { people: [] };
@@ -109,6 +110,35 @@ export async function setPersonGroup(personId, groupId) {
 }
 export const getPerson = id => state.people.find(p => p.id === id);
 
+/* ── Поручения → «Жду» (один раз) ──
+   Незакрытое поручение становится задачей в ожидании от этого человека.
+   Id задачи выводится из id поручения: на двух устройствах миграция
+   даст одну и ту же задачу, а синхронизация их сольёт. Закрытые
+   поручения остаются историей («Готово» в карточке). */
+export async function migrateAssignments(isTombstoned) {
+  let n = 0;
+  for (const p of state.people) {
+    if (p.kind === 'group' || p.deleted || !Array.isArray(p.assignments)) continue;
+    let touched = false;
+    for (const a of p.assignments) {
+      if (a.wTask || a.status === 'done' || a.status === 'skipped') continue;
+      const id = 'asg-' + a.id;
+      if (!getTask(id) && !(isTombstoned && isTombstoned(id))) {
+        await createTask({
+          id, title: a.title || 'Поручение', mode: p.mode && p.mode !== 'all' ? p.mode : 'work', days: {},
+          wait: { since: String(a.createdAt || '').slice(0, 10) || today(), personId: p.id, who: '', what: a.note || '', remindAt: '' },
+        });
+        n++;
+      }
+      a.wTask = id;
+      touched = true;
+    }
+    if (touched) { p.updatedAt = new Date().toISOString(); await dbPut(STORE, p); }
+  }
+  if (n) notify();
+  return n;
+}
+
 export async function addPerson(data) {
   const p = {
     id: uid(), name: (data.name || '').trim(), note: data.note || '', mode: data.mode || 'all',
@@ -208,44 +238,52 @@ function modeColor(m) {
    больше не фильтрует список: распределение идёт по группам, а три
    стандартные группы соответствуют прежним режимам. */
 const initials = n => (n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-const personCardHTML = p => {
-  const act = p.assignments.filter(a => a.status !== 'done');
-  const done = p.assignments.filter(a => a.status === 'done').length;
-  const contacts = [];
-  if (p.phone) contacts.push(`<a class="cc-link" href="tel:${esc(p.phone.replace(/[^+\d]/g, ''))}" title="Позвонить">📞 ${esc(p.phone)}</a>`);
-  if (p.email) contacts.push(`<a class="cc-link" href="mailto:${esc(p.email)}" title="Написать">✉ ${esc(p.email)}</a>`);
-  if (p.birthday) contacts.push(`<span class="cc-link">🎂 ${esc(p.birthday)}</span>`);
-  return `<article class="contact-card" data-id="${p.id}" draggable="true">
-    <div class="cc-grip" title="Перетащите в другую группу">⠿</div>
+/* Карточка человека (по макету): шапка с аватаром и связью, «Жду от…» —
+   ожидания с этим человеком (это и есть поручения), «+ Поручить…» и
+   короткая история «Готово». */
+const ICON = {
+  phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  edit: '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-4-4L4 16z"/>',
+  del: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  cake: '<path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7M12 12V8M12 5.5v.5"/>',
+};
+const ic = (k, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+const waitsOf = pid => tstate.tasks.filter(t => !t.deleted && t.wait && t.wait.personId === pid)
+  .sort((a, b) => String(a.wait.since).localeCompare(String(b.wait.since)));
+function doneOf(p) {
+  const old = (p.assignments || []).filter(a => a.status === 'done' || a.status === 'skipped')
+    .map(a => ({ title: a.title, at: String(a.doneAt || a.createdAt || '').slice(0, 10) }));
+  const back = tstate.tasks.filter(t => !t.deleted && !t.wait && isDone(t) && (t.waitLog || []).some(w => w.personId === p.id))
+    .map(t => ({ title: t.title, at: String(t.doneAt || t.updatedAt || '').slice(0, 10), id: t.id }));
+  return [...old, ...back].sort((a, b) => b.at.localeCompare(a.at));
+}
+const personCardHTML = (p, g) => {
+  const waits = waitsOf(p.id);
+  const done = doneOf(p);
+  const sub = [groupName(g), p.phone, p.birthday ? fmtD(p.birthday) : ''].filter(Boolean).map(esc).join(' · ');
+  return `<article class="contact-card" data-id="${p.id}" draggable="true" style="--pc:${modeColor(p.mode)}">
+    <div class="cc-grip" title="Перетащите в другую группу" aria-hidden="true">⠿</div>
     <header class="cc-head">
-      <div class="cc-av" style="background:${modeColor(p.mode)}">${esc(initials(p.name))}</div>
+      <div class="cc-av" title="Перетащите в другую группу">${esc(initials(p.name))}</div>
       <div class="cc-id">
         <h4 class="cc-name">${esc(p.name)}</h4>
-        <div class="cc-stat">
-          <span class="cc-pill${act.length ? ' hot' : ''}">${act.length} активно</span>
-          <span class="cc-pill dim">${done} выполнено</span>
-        </div>
+        ${sub ? `<div class="cc-sub">${sub}</div>` : ''}
       </div>
       <div class="cc-acts">
-        <button type="button" class="icon-btn contact-edit" title="Редактировать">✎</button>
-        <button type="button" class="icon-btn contact-del" title="Удалить">✕</button>
+        ${p.phone ? `<a class="cc-ib" href="tel:${esc(p.phone.replace(/[^+\d]/g, ''))}" title="Позвонить" aria-label="Позвонить">${ic('phone')}</a>` : ''}
+        ${p.email ? `<a class="cc-ib" href="mailto:${esc(p.email)}" title="Написать" aria-label="Написать">${ic('mail')}</a>` : ''}
+        <button type="button" class="cc-ib contact-edit" title="Редактировать" aria-label="Редактировать">${ic('edit')}</button>
+        <button type="button" class="cc-ib cc-del contact-del" title="Удалить" aria-label="Удалить">${ic('del')}</button>
       </div>
     </header>
-    ${contacts.length ? `<div class="cc-links">${contacts.join('')}</div>` : ''}
     ${p.note ? `<p class="cc-note">${esc(p.note)}</p>` : ''}
-    <div class="cc-tasks">
-      ${p.assignments.length ? p.assignments.map(a => `<div class="assignment-row${a.status === 'done' ? ' a-done' : ''}" data-aid="${a.id}">
-        <button type="button" class="a-status a-${a.status}" title="Статус"></button>
-        <div class="a-body"><div class="a-title${a.status === 'done' ? ' a-done' : ''}">${esc(a.title)}</div>
-        ${a.note ? `<div class="a-note">${esc(a.note)}</div>` : ''}</div>
-        <button type="button" class="a-edit" title="Редактировать">✎</button>
-        <button type="button" class="a-del" title="Удалить">✕</button>
-      </div>`).join('') : '<p class="cc-empty">Поручений нет</p>'}
-    </div>
-    <div class="assignment-add">
-      <input name="newAssTitle" class="f-title new-ass-title" placeholder="＋ новое поручение" maxlength="200">
-      <button type="button" class="btn primary new-ass-btn">＋</button>
-    </div>
+    <div class="cc-sec"><span class="cc-cap">жду</span>${waits.length ? `<span class="cc-n">${waits.length}</span>` : ''}</div>
+    ${waits.map(t => waitCardHTML(t, { noWho: true })).join('')}
+    <button type="button" class="cc-assign" data-assign="${p.id}">+ Поручить…</button>
+    ${done.length ? `<div class="cc-sec"><span class="cc-cap">готово</span></div>
+      <div class="cc-done">${done.slice(0, 3).map(d => `<div class="cc-done-row"><span>${esc(d.title)}</span><small>${d.at ? esc(fmtD(d.at)) : ''}</small></div>`).join('')}
+      ${done.length > 3 ? `<small class="cc-more">и ещё ${done.length - 3}</small>` : ''}</div>` : ''}
   </article>`;
 };
 
@@ -349,7 +387,7 @@ function renderContactsViewNow(container, mode) {
         ${g && !isDefault(g.id) ? `<button type="button" class="icon-btn cg-del" title="Удалить группу">✕</button>` : ''}
         ${g ? `<button type="button" class="icon-btn cg-add" title="Добавить человека">＋</button>` : ''}
       </header>
-      <div class="cgroup-body">${list.length ? list.map(personCardHTML).join('')
+      <div class="cgroup-body">${list.length ? list.map(p => personCardHTML(p, g)).join('')
         : '<p class="cgroup-empty">Пусто — нажмите «＋», чтобы добавить человека</p>'}</div>
     </section>`;
 
@@ -397,39 +435,8 @@ function renderContactsViewNow(container, mode) {
         renderContactsView(container, mode);
       }
     };
-    const addTitle = card.querySelector('.new-ass-title'), addAssBtn = card.querySelector('.new-ass-btn');
-    const doAddAss = async () => {
-      const v = addTitle.value.trim();
-      if (!v) return;
-      await addAssignment(pid, { title: v });
-      renderContactsView(container, mode);
-    };
-    addAssBtn.onclick = doAddAss;
-    addTitle.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); doAddAss(); } };
-    card.querySelectorAll('.assignment-row').forEach(row => {
-      const aid = row.dataset.aid;
-      row.querySelector('.a-status').onclick = async () => {
-        const a = getPerson(pid).assignments.find(x => x.id === aid);
-        const order = ['todo', 'started', 'done', 'skipped'];
-        await updateAssignment(pid, aid, { status: order[(order.indexOf(a.status) + 1) % order.length] });
-        renderContactsView(container, mode);
-      };
-      row.querySelector('.a-edit').onclick = async () => {
-        const a = getPerson(pid).assignments.find(x => x.id === aid);
-        const nt = prompt('Текст поручения:', a.title);
-        if (nt === null) return;
-        const nn = prompt('Заметка:', a.note || '');
-        if (nn === null) return;
-        await updateAssignment(pid, aid, { title: nt.trim() || a.title, note: nn });
-        renderContactsView(container, mode);
-      };
-      row.querySelector('.a-del').onclick = async () => {
-        if (confirm('Удалить поручение?')) {
-          await removeAssignment(pid, aid);
-          renderContactsView(container, mode);
-        }
-      };
-    });
+    const as = card.querySelector('[data-assign]');
+    if (as) as.onclick = () => openWaitDialog(null, { personId: pid, from: as });
   });
 }
 
