@@ -23,6 +23,7 @@ import { renderHomeView, homeInit, homeEntered } from './home.js';
 import { morph, enter, enterDeep, isSwapping } from './anim.js';
 import { sidebarInit, renderSidebar } from './sidebar.js';
 import { railInit, railSync } from './rail.js';
+import { rewardInit } from './reward.js';
 import { kanbanInit, toggleKanbanView, kanbanOpen, kanbanForceClose, renderKanban, currentBlock } from './kanban.js';
 
 const $ = id => document.getElementById(id);
@@ -771,12 +772,19 @@ async function boot() {
   /* данные «Главной» дорастают, когда экран начал проявляться */
   document.addEventListener('screen-entered', () => { if (state.view === 'home') homeEntered(); });
   kanbanInit(); // троеточие видов + панель доски + жесты
+  rewardInit(); // награда за выполнение задачи
   await loadModeColors();
   await hk.loadKeys();
   storedBg = (await dbGetKV('bg')) || '';
   /* Светлая подложка от прежних тем под белым текстом не читается */
   if (storedBg && !BG_PRESETS.includes(storedBg) && !BG_GRADIENT_PRESETS.includes(storedBg) && !isDarkHex(storedBg)) storedBg = '';
   storedBgImage = (await dbGetKV('bgImage')) || '';
+  /* Фон под стекло по умолчанию — «Коралловый закат»: один раз, если
+     пользователь сам ничего не выбирал */
+  if (!(await dbGetKV('bgV1'))) {
+    await dbSetKV('bgV1', 1);
+    if (!storedBg && !storedBgImage) { storedBg = BG_GRADIENT_PRESETS[0]; await dbSetKV('bg', storedBg); }
+  }
   const bo = parseFloat(await dbGetKV('bgLayerOpacity'));
   storedBgOpacity = Number.isFinite(bo) ? bo : 1;
   /* Стеклянные панели стали оформлением по умолчанию: прежняя «плотность

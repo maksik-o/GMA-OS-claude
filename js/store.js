@@ -392,7 +392,11 @@ export async function setEntry(id, day, status) {
   const patch = { days };
   if (done && !t.doneAt) patch.doneAt = new Date().toISOString();
   if (!done && t.doneAt) patch.doneAt = null;
+  /* награда за выполнение (js/reward.js): до и после сохранения */
+  const reward = status === 'done' && (t.days || {})[day] !== 'done';
+  if (reward) document.dispatchEvent(new CustomEvent('task-done-before', { detail: { id, day } }));
   await updateTask(id, patch);
+  if (reward) document.dispatchEvent(new CustomEvent('task-done', { detail: { id, day, mode: t.mode } }));
   if (status === 'done') hapticSuccess();
   else if (status === 'skipped') hapticMedium();
   else if (status) hapticLight();

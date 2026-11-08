@@ -13,6 +13,7 @@ import { skinPanel, BUMP_LEN } from './skin.js';
 const renderAll = () => document.dispatchEvent(new CustomEvent('render-now'));
 import { openSched, renderSched } from './edsched.js';
 import * as tm from './timer.js';
+import { tapOrigin, growFrom, shrinkTo } from './anim.js';
 
 const $ = id => document.getElementById(id);
 const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
@@ -25,7 +26,7 @@ export const sheetOpen = () =>
 export function refreshBackdrop() {
   const backdrop = $('backdrop');
   if (!backdrop) return;
-  const anyOpen = document.querySelector('.sheet.open, .auth.open, .drawer.open, .editor.open, .searchpanel.open');
+  const anyOpen = document.querySelector('.sheet.open, .auth.open, .drawer.open, .editor.open:not(.closing), .searchpanel.open');
   backdrop.classList.toggle('open', !!anyOpen);
 }
 function mkChip(label, on, cls, fn) {
@@ -44,7 +45,7 @@ export function closeSheet() {
     sheet.classList.remove('open', 'drag');
     sheet.style.transform = '';
   }
-  if (editor) editor.classList.remove('open');
+  hideEditor();
   refreshBackdrop();
 }
 export function closeDay() {
@@ -387,11 +388,26 @@ function openEditor(task) {
   if (en) { en.value = task.notes || ''; growEl(en); }
   openSched(task.id, renderAll);
   renderEditor();
-  if (editor) editor.classList.add('open');
+  /* Редактор вырастает из строки задачи, по которой нажали */
+  edOrigin = tapOrigin(taskSel(task.id));
+  if (editor) { editor.getAnimations().forEach(a => a.cancel()); editor.classList.remove('closing', 'm-fly'); editor.style.pointerEvents = ''; growFrom(editor, edOrigin, () => editor.classList.add('open')); }
   refreshBackdrop();
 }
+/* Строка задачи на экране: в списке, на доске, на главной (не квадрат дня) */
+let edOrigin = null;
+const taskSel = id => `[data-id="${CSS.escape(id)}"]:not([data-day]), [data-task="${CSS.escape(id)}"]`;
+function hideEditor() {
+  if (!editor || !editor.classList.contains('open')) return;
+  const id = editId;
+  let to = edOrigin && edOrigin.isConnected ? edOrigin : null;
+  if (!to && id) to = [...document.querySelectorAll(taskSel(id))].find(el => el.getClientRects().length && !editor.contains(el)) || null;
+  edOrigin = null;
+  /* …и сжимается обратно в неё; если строки уже нет — обычный уход */
+  editor.classList.add('closing');  // подложка гаснет сразу, не дожидаясь полёта
+  shrinkTo(editor, to, () => { editor.classList.remove('open', 'closing'); refreshBackdrop(); });
+}
 export function closeEditor() {
-  if (editor) editor.classList.remove('open');
+  hideEditor();
   document.dispatchEvent(new CustomEvent('editor-closed'));
   refreshBackdrop();
   editId = null;

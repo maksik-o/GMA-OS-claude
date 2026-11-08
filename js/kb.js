@@ -10,7 +10,7 @@
    уходят только метаданные — сами файлы остаются на устройстве,
    иначе один вложенный PDF раздул бы полезную нагрузку sync.
    ══════════════════════════════════════════════════════════════════ */
-import { morph, exit, enter, fadeRemove, pop, EASE, EASE_IN } from './anim.js';
+import { morph, exit, enter, fadeRemove, pop, EASE, EASE_IN, tapOrigin, flyFrom, flyTo } from './anim.js';
 import { dbAll, dbPut, dbBulk, dbGet, dbDel } from './db.js';
 import { uid, esc, MODES, safeHtml } from './store.js';
 import { getAllNotes, updateNoteById, deleteNote } from './notes.js';
@@ -322,7 +322,7 @@ function buildShell(el) {
    столбцы (FLIP), панель выезжает справа. Закрывается — наоборот. */
 let panelBusy = false;
 const isPhone = () => matchMedia('(max-width: 720px)').matches;
-async function setPanel(open) {
+async function setPanel(open, fromNote) {
   if (!_host) return;
   const main = _host.querySelector('.kb-main');
   const board = _host.querySelector('.kb-board');
@@ -330,11 +330,16 @@ async function setPanel(open) {
   panel = open;
   if (was === open || panelBusy) { if (open) renderMain(); return; }
   panelBusy = true;
+  /* Заметка вырастает из своей строки в папке и сжимается обратно в неё */
+  const src = open ? tapOrigin('.kb-item, .kb-loose') : noteEl(fromNote || curNote);
+  const srcR = src ? src.getBoundingClientRect() : null;
   try {
     if (!open) {
       flushEditor();
       acClose();
-      if (!reduceMotion()) await main.animate(
+      const shrink = !reduceMotion() && srcR && flyTo(main, srcR);
+      if (shrink) await shrink.finished.catch(() => {});
+      else if (!reduceMotion()) await main.animate(
         [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: isPhone() ? 'translateX(40%)' : 'translateX(32px)' }],
         { duration: 220, easing: EASE_IN, fill: 'forwards' }).finished.catch(() => {});
     }
@@ -350,13 +355,19 @@ async function setPanel(open) {
       main.getAnimations().forEach(a => a.cancel());
     }
     if (!isPhone()) { layoutBoard(board); boardW = board.offsetWidth; flipBoard(board, snaps, 460); }
-    if (open && !reduceMotion()) main.animate(
+    if (open && !reduceMotion() && !(srcR && flyFrom(main, srcR))) main.animate(
       [{ opacity: 0, transform: isPhone() ? 'translateX(40%)' : 'translateX(32px)' }, { opacity: 1, transform: 'none' }],
       { duration: 440, easing: EASE });
   } finally { panelBusy = false; }
   if (!open) renderBoard();   // снять подсветку открытой заметки
 }
 
+/* Строка заметки на доске, если её сейчас видно */
+function noteEl(id) {
+  if (!id || !_host) return null;
+  const q = `.kb-item[data-id="${CSS.escape(id)}"], .kb-loose[data-note="${CSS.escape(id)}"]`;
+  return [..._host.querySelectorAll(q)].find(el => el.getClientRects().length && !el.closest('.kb-main')) || null;
+}
 function openNote(id, focusEditor) {
   setLinkMode(false);
   flushEditor();
@@ -369,7 +380,7 @@ function openNote(id, focusEditor) {
     if (t) t.focus();
   }
 }
-function closeNote() { setLinkMode(false); curNote = null; setPanel(false); }
+function closeNote() { setLinkMode(false); const id = curNote; curNote = null; setPanel(false, id); }
 
 /* ── Режим «Связать» ──
    Кнопка «Связать» раскрывает под шапкой заметки строку-подсказку и
