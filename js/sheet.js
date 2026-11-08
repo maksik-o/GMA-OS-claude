@@ -3,6 +3,7 @@ import {
   getTagsDict, getTagColor, addTagsToDict, updateTask, removeTask, getTask,
   addSubtask, toggleSubtask, delSubtask,
   esc, MONTHS, taskPlans, setTaskPlan, removeTaskPlan, hmToMin, minToHM,
+  isBig, setBig, returnFromWait,
 } from './store.js';
 import { attachFile, openTaskFile, removeTaskFile, fmtSize } from './files.js';
 import { limitNote } from './attach.js';
@@ -14,6 +15,7 @@ const renderAll = () => document.dispatchEvent(new CustomEvent('render-now'));
 import { openSched, renderSched } from './edsched.js';
 import * as tm from './timer.js';
 import { tapOrigin, growFrom, shrinkTo } from './anim.js';
+import { openWaitDialog } from './wait.js';
 
 const $ = id => document.getElementById(id);
 const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
@@ -467,6 +469,13 @@ function renderEditor() {
   renderEdTags(t);
   renderEdNotesLinks(t);
   renderEdFiles(t);
+  renderEdFlags(t);
+}
+/* Кнопки шапки: «Большая» (переключатель) и «Жду» */
+function renderEdFlags(t) {
+  const b = $('edBig'), w = $('edWait');
+  if (b) { b.setAttribute('aria-pressed', String(isBig(t))); b.title = isBig(t) ? 'Большая задача — сделать обычной' : 'Сделать большой: делается по шагам'; }
+  if (w) { w.classList.toggle('on', !!t.wait); w.title = t.wait ? 'Пришло — вернуть в список на сегодня' : 'В ожидание: жду чужого действия'; }
 }
 function renderEdPrio(t) {
   const fp = $('edPrio');
@@ -750,6 +759,19 @@ on('edConfirm', 'click', async () => {
      прямо во время анимации закрытия и порвала её */
   closeEditor();
   if (title !== t.title || notes !== (t.notes || '')) setTimeout(() => updateTask(editId0, { title, notes }), 360);
+});
+on('edBig', 'click', async () => {
+  const t = getTask(editId);
+  if (!t) return;
+  await setBig(t.id, !isBig(t));
+  renderEditor();
+  renderAll();
+});
+on('edWait', 'click', async () => {
+  const t = getTask(editId);
+  if (!t) return;
+  if (t.wait) { await returnFromWait(t.id); renderEditor(); renderAll(); return; }
+  openWaitDialog(t.id, { from: $('edWait'), onDone: () => { closeEditor(); renderAll(); } });
 });
 on('edDelete', 'click', async () => {
   if (editId && confirm('Удалить задачу?')) {

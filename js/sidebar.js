@@ -99,7 +99,7 @@ export function renderSidebar() {
   if (!sb || mqMobile.matches) return;
   const d = today();
   const open = t => { const s = (t.days || {})[d]; return s === 'todo' || s === 'started'; };
-  const live = state.tasks.filter(t => !t.deleted);
+  const live = state.tasks.filter(t => !t.deleted && !t.wait);
   const counts = {
     tasksBtn: live.filter(t => open(t) && (state.mode === 'all' || t.mode === state.mode)).length,
     kbBtn: kbNotes().length,

@@ -4,7 +4,7 @@ import {
   loadModeColors, getModeColors, setModeColor, resetModeColor, resetModeColors,
   subscribe, getTimeAtmosphere, checkDayRollover,
   setModeLabel, resetModeLabel, resetAllModeLabels,
-  rolloverDay, scheduleRollover,
+  rolloverDay, scheduleRollover, getTombstonesFull,
 } from './store.js';
 import { renderAll, shiftWeek, goToday, dayOpen, openDay, closeDay, closeCellMenu, refreshRunning, blockSwap } from './week.js';
 import { openSheet, closeSheet, sheetOpen, refreshBackdrop } from './sheet.js';
@@ -13,7 +13,8 @@ import { searchInit, openSearch, closeSearch, searchOpen } from './search.js';
 import { dbGetKV, dbSetKV } from './db.js';
 import * as hk from './hotkeys.js';
 import { timerInit } from './timer.js';
-import { init as contactsInit, renderContactsView, contactsSubscribe, openNewPersonSheet } from './contacts.js';
+import { init as contactsInit, renderContactsView, contactsSubscribe, openNewPersonSheet, migrateAssignments } from './contacts.js';
+import { bindWaitActions } from './wait.js';
 import { init as notesInit } from './notes.js';
 import { init as financeInit, renderFinanceView, financeSubscribe } from './finance.js';
 import { init as kbInit, renderKbView, kbSubscribe, newKbNote } from './kb.js';
@@ -763,6 +764,8 @@ function renderCurrentNow() {
 async function boot() {
   await init();
   await contactsInit();
+  /* поручения из «Контактов» становятся ожиданиями «Жду» (один раз) */
+  try { await migrateAssignments(id => getTombstonesFull().some(t => t.id === id)); } catch (e) { console.error('[wait] migrate', e); }
   await notesInit();
   await financeInit();
   await kbInit();
@@ -773,6 +776,7 @@ async function boot() {
   document.addEventListener('screen-entered', () => { if (state.view === 'home') homeEntered(); });
   kanbanInit(); // троеточие видов + панель доски + жесты
   rewardInit(); // награда за выполнение задачи
+  bindWaitActions(); // «Пришло», «Напомнить» на карточках ожидания
   await loadModeColors();
   await hk.loadKeys();
   storedBg = (await dbGetKV('bg')) || '';

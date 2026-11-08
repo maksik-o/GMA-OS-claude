@@ -2,6 +2,7 @@ import { state, mondayOf, today } from './store.js';
 import { renderAll, openDay } from './week.js';
 import { calTitle, createCalDrum } from './cal.js';
 import { renderFinanceWidget, financeSubscribe } from './finance.js';
+import { waitListHTML, waitCount } from './wait.js';
 
 const $ = id => document.getElementById(id);
 const WIDGETS_KEY = 'rl_widgets_v1';
@@ -12,6 +13,7 @@ export const WIDGETS = [
   { id: 'focus', label: 'Фокусировка', icon: '🎯' },
   { id: 'calendar', label: 'Календарь', icon: '📅' },
   { id: 'finance', label: 'Финансы', icon: '💰' },
+  { id: 'wait', label: 'Жду', icon: '⏳' },
 ];
 /* Правила расстановки:
    SNAP_EDGE = 50px — магнит к краю страницы и к сторонам блоков;
@@ -25,14 +27,16 @@ let dockState = {
   focus: { row: 'bottom', align: 'right', order: 1 },
   calendar: { row: 'top', align: 'left', order: 0 },
   finance: { row: 'top', align: 'right', order: 1 },
+  wait: { row: 'top', align: 'right', order: 2 },
 };
 let _storage = null, _panel = null, _calDrum = null, _mini = null;
 export const isPlaced = id => (state.widgets || []).includes(id);
 const saveWidgets = () => { try { localStorage.setItem(WIDGETS_KEY, JSON.stringify(state.widgets)); } catch (e) {} };
 const saveDock = () => { try { localStorage.setItem(DOCK_KEY, JSON.stringify(dockState)); } catch (e) {} };
 const idOf = el => el.id === 'notesPanel' ? 'notes' : el.id === 'focusPanel' ? 'focus'
-  : el.id === 'calPanel' ? 'calendar' : el.id === 'finPanel' ? 'finance' : null;
+  : el.id === 'calPanel' ? 'calendar' : el.id === 'finPanel' ? 'finance' : el.id === 'waitPanel' ? 'wait' : null;
 const panelEl = id => id === 'calendar' ? ensureCalPanel()
+  : id === 'wait' ? ensureWaitPanel()
   : id === 'finance' ? ensureFinPanel()
   : $(id === 'notes' ? 'notesPanel' : 'focusPanel');
 /* Заметки ВСЕГДА растянуты на всю доступную длину: сохранённый align игнорируем */
@@ -540,6 +544,26 @@ function ensureFinPanel() {
   renderFinWidget();
   return p;
 }
+/* Виджет «Жду»: список ожиданий и цель для перетаскивания строк задач */
+function ensureWaitPanel() {
+  let p = $('waitPanel');
+  if (p) return p;
+  p = document.createElement('section');
+  p.id = 'waitPanel';
+  p.className = 'dock-panel wait-panel glass';
+  p.setAttribute('data-wait-drop', '');
+  p.innerHTML = `${HANDLE('wait')}<div class="wp-head"><b>Жду</b><span class="wt-n"></span></div><div class="wp-body"></div>`;
+  document.body.appendChild(p);
+  renderWaitWidget();
+  return p;
+}
+export function renderWaitWidget() {
+  const p = $('waitPanel');
+  if (!p) return;
+  const n = waitCount();
+  p.querySelector('.wt-n').textContent = n ? String(n) : '';
+  p.querySelector('.wp-body').innerHTML = waitListHTML({ compact: true });
+}
 export function renderFinWidget() {
   const p = $('finPanel');
   if (!p) return;
@@ -657,11 +681,14 @@ export function widgetsInit() {
   } catch (e) {}
   ensureCalPanel();
   ensureFinPanel();
+  ensureWaitPanel();
   applyDockLayout();
   bindDockDrag();
   /* Полоски у дней в виджете календаря обновляются СРАЗУ
      при любом изменении задач — без тапа по шапке календаря */
   document.addEventListener('grid-rendered', renderCalWidget);
   document.addEventListener('grid-rendered', renderFinWidget);
+  document.addEventListener('grid-rendered', renderWaitWidget);
+  document.addEventListener('wait-changed', renderWaitWidget);
   financeSubscribe(renderFinWidget);
 }
