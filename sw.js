@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'gma-os-' + new URL(self.registration.scope).pathname + '-';
-const CACHE = CACHE_PREFIX + 'v317';
+const CACHE = CACHE_PREFIX + 'v318';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает
@@ -10,9 +10,9 @@ function cacheable(res) {
   return !!res && res.ok && res.status === 200 && res.type !== 'opaque' && res.type !== 'opaqueredirect';
 }
 function putSafe(req, res) {
-  if (!cacheable(res)) return;
+  if (!cacheable(res)) return Promise.resolve();
   const copy = res.clone();
-  caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+  return caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
 }
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/style.css',
@@ -32,7 +32,7 @@ const SHELL = [
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
-    await Promise.allSettled(SHELL.map(u => c.add(u)));
+    await Promise.all(SHELL.map(u => c.add(u)));
     self.skipWaiting();
   })());
 });
@@ -58,36 +58,31 @@ const isNetworkFirst = url =>
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  if (e.request.headers.has('range')) return;   // медиа тянется диапазонами
+  if (e.request.headers.has('range')) return;
+  const lookup = async () => (await caches.open(CACHE)).match(e.request, { ignoreSearch: true });
+  const network = async () => {
+    const res = await fetch(e.request, isNetworkFirst(url) ? { cache: 'no-store' } : {});
+    await putSafe(e.request, res);
+    return res;
+  };
   if (isNetworkFirst(url)) {
-    e.respondWith((async () => {
-      try {
-        const res = await fetch(e.request, { cache: 'no-store' });
-        putSafe(e.request, res);
-        return res;
-      } catch {
-        const hit = await caches.match(e.request, { ignoreSearch: true });
-        return hit || Response.error();
-      }
-    })());
+    e.respondWith(network().catch(async () => (await lookup()) || Response.error()));
     return;
   }
+  // Keep background cache writes alive, and make only one network request on a miss.
+  let finish;
+  e.waitUntil(new Promise(resolve => { finish = resolve; }));
   e.respondWith((async () => {
-    const hit = await caches.match(e.request, { ignoreSearch: true });
-    /* Шрифты, картинки и ролик не меняются (при замене — новое имя
-       файла), поэтому из кэша без фоновой перепроверки: раньше каждый
-       запуск заново качал их по сети */
-    if (hit && IMMUTABLE.test(url.pathname)) return hit;
-    if (navigator.onLine) {
-      fetch(e.request).then(res => putSafe(e.request, res)).catch(() => {});
-    }
-    if (hit) return hit;
     try {
-      const res = await fetch(e.request);
-      putSafe(e.request, res);
-      return res;
-    } catch {
-      return hit || Response.error();
-    }
+      const hit = await lookup();
+      if (hit) {
+        if (IMMUTABLE.test(url.pathname) || !navigator.onLine) { finish(); return hit; }
+        network().catch(() => {}).finally(finish);
+        return hit;
+      }
+      try { return await network(); }
+      catch { return Response.error(); }
+      finally { finish(); }
+    } catch (err) { finish(); throw err; }
   })());
 });

@@ -24,12 +24,11 @@ export async function attachFile(taskId, file) {
     r.onerror = rej;
     r.readAsDataURL(file);
   });
-  try {
+  {
     const out = await apiCall('upload', { payload: { name: file.name, mime: file.type, data } });
     const t = getTask(taskId);
     if (!t) return;
     await updateTask(taskId, { files: [...(t.files || []), out.file] });
-  } finally {
   }
 }
 

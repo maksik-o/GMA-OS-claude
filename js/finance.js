@@ -181,7 +181,7 @@ export async function applyFinanceMerged(list) {
     if (!local || String(r.updatedAt || '') >= String(local.updatedAt || '')) byId.set(r.id, r);
   }
   state.items = [...byId.values()];
-  try { await dbBulk(STORE, state.items); } catch (e) { console.error('[finance] dbBulk:', e); }
+  await dbBulk(STORE, state.items);
   if (await dedupeCategories()) userChange();   // разнести склейку по остальным устройствам
   notify();
 }
@@ -449,7 +449,6 @@ function renderDash(box) {
     : top;
   const year = curM.slice(0, 4);
   const heat = yearHeatmap(year);
-  const heatMax = Math.max(1, ...heat.map(h => h.sum));
   const six = lastMonths(6, curM);
   const accParts = getAccounts().filter(a => !isDebt(a))
     .map((a, i) => ({ id: a.id, name: a.name, color: a.color || PALETTE[i % PALETTE.length], sum: Math.max(0, accountBalance(a.id)) }))

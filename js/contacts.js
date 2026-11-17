@@ -580,7 +580,7 @@ export async function applyContactTombstones(server) {
   // Применяем tombstones к локальным контактам
   const tombSet = new Set(contactTombstones.map(t => t.id));
   state.people = state.people.filter(p => !tombSet.has(p.id));
-  try { await dbBulk(STORE, state.people); } catch {}
+  await dbBulk(STORE, state.people);
   saveContactTombstones();
   notify();
 }
@@ -609,6 +609,7 @@ export async function applyContactsMerged(people) {
     await dbBulk(STORE, state.people);
   } catch (err) {
     console.error('[contacts] dbBulk failed:', err);
+    throw err;
   }
   notify();
 }

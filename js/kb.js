@@ -144,7 +144,7 @@ export async function applyKbMerged(list) {
     if (!local || String(r.updatedAt || '') >= String(local.updatedAt || '')) byId.set(r.id, r);
   }
   state.items = [...byId.values()];
-  try { await dbBulk(STORE, state.items); } catch (e) { console.error('[kb] dbBulk:', e); }
+  await dbBulk(STORE, state.items);
   notify();
 }
 

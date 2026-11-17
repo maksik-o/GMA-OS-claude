@@ -152,7 +152,6 @@ export function createGraph(canvas, { onOpen } = {}) {
 
   /* ── Отрисовка ── */
   const radius = p => 4 + Math.min(10, Math.sqrt(p.deg) * 2.4);
-  const toScreen = p => [p.x * view.k + W / 2 + view.x, p.y * view.k + H / 2 + view.y];
   const toWorld = (sx, sy) => [(sx - W / 2 - view.x) / view.k, (sy - H / 2 - view.y) / view.k];
 
   function draw() {

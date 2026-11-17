@@ -37,8 +37,12 @@ function db() {
 
 function req(promise) {
   return promise.then(r => new Promise((res, rej) => {
-    r.onsuccess = () => res(r.result);
+    // A request may succeed before the transaction is committed.
+    const t = r.transaction;
     r.onerror = () => rej(r.error);
+    t.oncomplete = () => res(r.result);
+    t.onerror = () => rej(t.error || r.error || new Error('Transaction failed'));
+    t.onabort = () => rej(t.error || new Error('Transaction aborted'));
   }));
 }
 

@@ -235,7 +235,7 @@ export async function applyNotesMerged(notes) {
   }
   state.notes = [...byId.values()];
   try { await dbBulk(STORE, state.notes); }
-  catch (err) { console.error('[notes] dbBulk failed:', err); }
+  catch (err) { console.error('[notes] dbBulk failed:', err); throw err; }
   notify();
 }
 
@@ -248,7 +248,7 @@ async function saveNow() {
   if (!_editorEl) return;
   const html = _editorEl.innerHTML;
   const title = firstLineText(_editorEl);
-  if (!title && !_editorEl.textContent.trim()) return;
+  if (!title && !_editorEl.textContent.trim() && !_currentNote) return;
   const n = await ensureNote();
   await updateNote(n.id, { title, html });
 }
