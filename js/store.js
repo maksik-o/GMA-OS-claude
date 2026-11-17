@@ -442,9 +442,8 @@ export async function applyMerged(payload) {
     else if (String(m.updatedAt || '') >= String(local.updatedAt || '')) byId.set(m.id, m);
   }
   const merged = [...byId.values()].filter(t => !t.deleted && !tombSet.has(t.id));
+  await dbBulk('tasks', merged);
   state.tasks = merged;
-  try { await dbBulk('tasks', state.tasks); }
-  catch (err) { console.error('[store] dbBulk failed:', err); }
   notify();
 }
 export async function setMode(m) {

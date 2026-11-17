@@ -63,7 +63,7 @@ export async function dbBulk(store, items) {
     clearReq.onsuccess = () => {
       for (const i of items) {
         try { s.put(i); }
-        catch (err) { rej(err); return; }
+        catch (err) { t.abort(); rej(err); return; }
       }
     };
     t.oncomplete = () => res();

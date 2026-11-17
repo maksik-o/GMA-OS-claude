@@ -1,4 +1,5 @@
-const CACHE = 'rl-v316';
+const CACHE_PREFIX = 'gma-os-' + new URL(self.registration.scope).pathname + '-';
+const CACHE = CACHE_PREFIX + 'v317';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает
@@ -39,7 +40,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
     const ks = await caches.keys();
-    await Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await Promise.all(ks.filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE).map(k => caches.delete(k)));
     await self.clients.claim();
   })());
 });

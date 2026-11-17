@@ -6,6 +6,7 @@ const KEY_KEY = 'rl_device_key';
 const ISSUED_KEYS_STORAGE = 'rl_issued_device_keys'; // список выданных ключей (только у владельца)
 
 let busy = false;
+let pendingSync = false;
 let pushTimer = null;
 let lastError = '';
 /* Предохранитель: после нескольких неудач подряд автосинхронизация
@@ -192,9 +193,10 @@ export function resetSyncWatermarks() {
 /* Пустой пакет отправлять незачем: если ничего не менялось и мы уже
    синхронизировались, раздел просто пропускаем. */
 function isEmptyPayload(part, payload) {
-  if (part === 'tasks') return !payload.tasks.length;
-  if (part === 'notes') return !payload.notes.length;
-  if (part === 'contacts') return !payload.contacts.length;
+  // Tasks always carry tag metadata and deletion markers.
+  if (part === 'tasks') return false;
+  if (part === 'notes') return !payload.notes.length && !payload.noteTombstones.length;
+  if (part === 'contacts') return !payload.contacts.length && !payload.contactTombstones.length;
   if (part === 'finance') return !payload.finance.length;
   if (part === 'kb') return !payload.kb.length;
   return true;
@@ -207,7 +209,8 @@ const human = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' МБ' : Math.round
 
 export async function syncNow(manual) {
   if (manual) fails = 0;
-  if (busy || !configured()) return;
+  if (busy) { pendingSync = true; return; }
+  if (!configured()) return;
   if (!navigator.onLine) { setStatus('offline'); return; }
   if (!signedIn()) { setStatus('auth'); return; }
   busy = true;
@@ -253,6 +256,10 @@ export async function syncNow(manual) {
     else setStatus(navigator.onLine ? 'error' : 'offline');
   } finally {
     busy = false;
+    if (pendingSync) {
+      pendingSync = false;
+      schedule();
+    }
   }
 }
 
