@@ -3575,7 +3575,7 @@ html::before { display: none !important; }
 body::before {
   content: "";
   position: fixed;
-  inset: env(safe-area-inset-top, 0px) 0 0;
+  inset: 0;
   /* Узор темы или своя картинка; яркость — ползунок «Фон» */
   background: var(--bg-layer, var(--bg-mesh, none));
   opacity: var(--bg-image-opacity, 1);
