@@ -106,7 +106,9 @@ html, body { margin: 0; padding: 0; overflow: hidden; }
 body {
   font: 15px/1.45 var(--font-ui);
   color: var(--text);
-  background: transparent;
+  /* Opaque under iOS status-bar material so its safe area cannot blur
+     a webpage or system backdrop through the transparent body. */
+  background: var(--bg);
   min-height: 100dvh;
   -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
   touch-action: manipulation;
