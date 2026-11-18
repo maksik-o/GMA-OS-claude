@@ -196,7 +196,7 @@ function ghosts(list, root) {
 /* Короткий «щелчок» — элемент сменил состояние */
 export function pop(el) {
   if (!can(el)) return;
-  el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.18)', offset: .35 }, { transform: 'scale(1)' }], { duration: BASE, easing: EASE });
+  el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.06)', offset: .35 }, { transform: 'scale(1)' }], { duration: BASE, easing: EASE });
 }
 /* Элемент переезжает со старого места на новое (пилюля-индикатор) */
 export function flipFrom(el, from) {
