@@ -25,7 +25,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   --r-lg: 22px; --r-md: 14px; --rowh: 38px; --headh: 42px;
   --ease-mode: cubic-bezier(.4, 0, .2, 1);
   --ease-spring: cubic-bezier(.32, .72, .28, 1);
-  --ease-bounce: cubic-bezier(.32, 1.18, .28, 1);
+  --ease-bounce: cubic-bezier(.22, 1, .36, 1);
   --dur-mode: 700ms;
   --dur-hover: 260ms;
   --focus-size: 254px;
@@ -466,7 +466,7 @@ body[data-surf="dark"] .l-head, body[data-surf="dark"] .m-head {
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(.92);
-  transition: all .35s var(--ease-bounce);
+  transition: opacity .24s var(--ease-bounce), transform .24s var(--ease-bounce);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
   -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
@@ -623,7 +623,7 @@ body.search-open #app { overflow: hidden; touch-action: none; }
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(.9);
-  transition: all .35s var(--ease-bounce);
+  transition: opacity .24s var(--ease-bounce), transform .24s var(--ease-bounce);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
   -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
@@ -685,7 +685,7 @@ input[type="color"]:hover { transform: scale(1.05); }
   border-radius: 8px;
   border: 0;
   cursor: pointer;
-  transition: all .2s var(--ease-bounce);
+  transition: transform .2s var(--ease-bounce), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
   box-shadow: var(--shadow), var(--inner-glow);
 }
 .bg-preset:hover { transform: scale(1.03); }
@@ -701,7 +701,7 @@ input[type="color"]:hover { transform: scale(1.05); }
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--shadow), var(--inner-glow);
-  transition: all .2s var(--ease-bounce);
+  transition: transform .2s var(--ease-bounce), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 .bg-upload-btn:hover { transform: scale(1.02); }
 .bg-opacity-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
@@ -954,7 +954,7 @@ input[type="color"]:hover { transform: scale(1.05); }
 }
 @keyframes status-pop {
   0%   { transform: scale(1); }
-  50%  { transform: scale(1.2); }
+  50%  { transform: scale(1.06); }
   100% { transform: scale(1); }
 }
 .st-done .status::after { content: ""; position: absolute; left: 8px; top: 4px; width: 6px; height: 11px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(40deg); }
@@ -1033,7 +1033,7 @@ input[type="color"]:hover { transform: scale(1.05); }
   opacity: 0;
   pointer-events: none;
   clip-path: inset(-40px -40px -40px -40px round 999px);
-  transition: all .35s var(--ease-bounce), clip-path .55s var(--ease-spring);
+  transition: opacity .24s var(--ease-spring), transform .24s var(--ease-spring), clip-path .3s var(--ease-spring);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
   -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
@@ -1187,7 +1187,7 @@ input[type="color"]:hover { transform: scale(1.05); }
   align-items: center;
   gap: 1px;
   color: var(--dim);
-  transition: all .2s var(--ease-bounce);
+  transition: transform .2s var(--ease-bounce), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 .q-day:hover { transform: scale(1.04); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .q-day .d-name { font-size: 11px; font-weight: 800; }
@@ -1213,7 +1213,7 @@ input[type="color"]:hover { transform: scale(1.05); }
   border: 0;
   background: var(--card);
   box-shadow: var(--shadow), var(--inner-glow);
-  transition: all .2s var(--ease-bounce);
+  transition: transform .2s var(--ease-bounce), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 .chip:hover { transform: scale(1.04); }
 .chip.on {
@@ -1250,7 +1250,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(.92);
-  transition: all .35s var(--ease-bounce);
+  transition: opacity .24s var(--ease-bounce), transform .24s var(--ease-bounce);
   background: color-mix(in srgb, var(--tint, transparent) 5%, var(--glass));
   -webkit-backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
   backdrop-filter: blur(calc(28px * var(--panel-blur-k, 1))) saturate(1.8);
@@ -1309,7 +1309,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   transform: translate(-50%, 20px);
   opacity: 0;
   pointer-events: none;
-  transition: all .35s var(--ease-bounce);
+  transition: opacity .24s var(--ease-bounce), transform .24s var(--ease-bounce);
   z-index: 45;
   display: flex;
   align-items: center;
@@ -1331,7 +1331,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   background: var(--card);
   font-weight: 700;
   box-shadow: var(--shadow), var(--inner-glow);
-  transition: all .2s var(--ease-bounce);
+  transition: transform .2s var(--ease-bounce), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 .btn:hover { transform: scale(1.03); }
 .btn:active { transform: scale(.96); }
@@ -1386,7 +1386,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   background: transparent;
   margin-top: 2px;
   position: relative;
-  transition: all .2s var(--ease-bounce);
+  transition: transform .2s var(--ease-bounce), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 .a-status:hover { transform: scale(1.08); }
 .a-status.a-todo { border-color: var(--c-todo); }
@@ -1510,7 +1510,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   min-width: 32px; height: 32px; border-radius: 9px; border: 0;
   background: var(--card); font-size: 14px; font-weight: 700;
   box-shadow: var(--shadow), var(--inner-glow);
-  cursor: pointer; transition: all .2s var(--ease-bounce);
+  cursor: pointer; transition: transform .2s var(--ease-bounce), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 .notes-toolbar button:hover { transform: scale(1.06); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
 .notes-toolbar select {
@@ -1576,7 +1576,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   background: var(--card);
   font-size: 18px;
   cursor: pointer;
-  transition: all .2s var(--ease-bounce);
+  transition: transform .2s var(--ease-bounce), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 .notes-list-close:hover { transform: scale(1.08); background: color-mix(in srgb, var(--c-skipped) 12%, transparent); }
 .notes-list-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -1588,7 +1588,7 @@ input.chip.time:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 4
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
-  transition: all .2s var(--ease-bounce);
+  transition: transform .2s var(--ease-bounce), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 .notes-list-tabs .tab:hover { transform: scale(1.04); }
 .notes-list-tabs .tab.active { background: var(--accent-deep); color: #fff; }
@@ -6773,4 +6773,23 @@ body.wt-dragging, body.wt-dragging * { cursor: grabbing !important; user-select:
   .contact-card .cc-acts { gap: 4px; }
   .cc-ib { width: 30px; height: 30px; border-radius: 9px; }
   .contact-card .cc-acts a[href^="mailto"] { display: none; }
+}
+
+/* Устройства без мыши могут оставлять :hover после касания. Не даём этому
+   состоянию удерживать масштаб/сдвиг и создавать ощущение дрожания. */
+@media (hover: none) {
+  :is(
+    .icon-btn, .sync, .cell, .tag-pill, .bg-dot, input[type="color"],
+    .font-btn, .bg-preset, .bg-upload-btn, .mode-setting-row .mode-color-input,
+    .pal-btn, .tc-dot, .kbd, .task, .status, .timer, .tp-btn, .q-day, .chip,
+    .fl-btn, .btn, .contact-card, .a-status, .a-edit, .a-del,
+    .notes-toolbar button, .nc-dot, .notes-list-close, .notes-list-tabs .tab,
+    .note-list-item, .nli-del, .cal-day, .kb-addcol, .kb-arrow,
+    .ed-actions .btn.primary, .kb-bcol-dot, .kf-add, .sheet .qp-tab,
+    .qp-close, .hm-ev
+  ):hover:not(:active),
+  .kb-fold:hover .kf-paper,
+  .kb-fold:hover .kf-front {
+    transform: none;
+  }
 }
