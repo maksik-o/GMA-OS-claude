@@ -2,11 +2,11 @@
 import { state, hapticLight } from './store.js';
 
 const mqMobile = matchMedia('(max-width: 720px)');
-const STEP = 46;            // высота пункта
-const S = 54;               // высота «плеча» изгиба
+const STEP = 38;            // высота пункта
+const S = 32;               // высота «плеча» изгиба
 const W = 46;               // ширина полосы
 const R = W + 2;            // ширина холста плеча (край экрана — справа)
-const PAD = 8;
+const PAD = 4;
 const LABEL_MS = 3000;
 const ICON_HEIGHT = 38;
 const wrap = index => (index % ITEMS.length + ITEMS.length) % ITEMS.length;
@@ -77,7 +77,7 @@ function layout(position = cur, showLabel = expanded, scrolling = false) {
   if (!labelHeights.length) {
     labelHeights = ITEMS.map(item => {
       meas.textContent = item.label;
-      return Math.max(ICON_HEIGHT, meas.offsetHeight + 24);
+      return Math.max(ICON_HEIGHT, meas.offsetHeight + 16);
     });
   }
   const index = wrap(Math.round(position));
@@ -105,10 +105,8 @@ function layout(position = cur, showLabel = expanded, scrolling = false) {
   capB.style.transform = `translateY(${S + bodyH}px)`;
   rail.style.height = (2 * S + bodyH) + 'px';
   pill.style.top = center + 'px';
-  pill.style.transform = 'translateY(-50%)';
+  pill.style.transform = 'translate(-50%, -50%)';
   pill.style.height = ph + 'px';
-  pill.style.justifyContent = 'center';
-  pill.style.paddingTop = '0';
   label.style.display = showLabel ? '' : 'none';
   pico.style.display = showLabel ? 'none' : '';
   const item = ITEMS[index];
