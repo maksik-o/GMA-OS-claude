@@ -987,12 +987,18 @@ function updateMobileDrum() {
     clearTimeout(snapTimer);
     if (touching || !mqMobileWeek.matches || state.view !== 'week') return;
     snapTimer = setTimeout(() => {
+      updateMobileDrum();
       const row = drumRow;
       const head = row?.closest('.p-mobile')?.querySelector('.m-head');
       if (!row?.isConnected || !head?.offsetWidth || document.querySelector('#cellMenu.open')) return;
-      const pin = app.getBoundingClientRect().top + parseFloat(getComputedStyle(head).top);
-      if (!Number.isFinite(pin) || Math.abs(head.getBoundingClientRect().top - pin) > 4) return;
-      const delta = row.getBoundingClientRect().top - drumLift(row) - head.getBoundingClientRect().bottom;
+      const viewport = app.getBoundingClientRect();
+      const edge = head.getBoundingClientRect().bottom;
+      const rect = row.getBoundingClientRect();
+      if (edge <= viewport.top || edge >= viewport.bottom) return;
+      const scale = viewport.height / app.offsetHeight || 1;
+      // Координаты DOMRect учитывают zoom, scrollTop — нет.
+      const delta = (rect.top - edge) / scale - drumLift(row);
+      if (Math.abs(delta) > row.offsetHeight + 12) return;
       const target = Math.max(0, Math.min(app.scrollHeight - app.clientHeight, app.scrollTop + delta));
       if (Math.abs(target - app.scrollTop) > 2) app.scrollTo({ top: target, behavior: reduced() ? 'instant' : 'smooth' });
     }, 135);
