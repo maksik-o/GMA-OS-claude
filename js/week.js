@@ -812,9 +812,15 @@ function startSubEdit(sp) {
 function renderGrid() {
   const t = today();
   const rows = weekRows(state.weekStart);
+  const openTaskId = drumWeek === state.weekStart && drumRow?.classList.contains('sq-open')
+    ? drumRow.dataset.taskId
+    : null;
   const leftRows = rows.map(r => leftRowHTML(r, t)).join('');
   const rightRows = rows.map(r => rightRowHTML(r, t)).join('');
-  const mobileRows = rows.map(r => `<div class="m-task">${rightRowHTML(r, t)}${leftRowHTML(r, t)}</div>`).join('');
+  const mobileRows = rows.map(r => {
+    const open = r.id === openTaskId ? ' drum-current sq-open' : '';
+    return `<div class="m-task${open}" data-task-id="${esc(r.id)}">${rightRowHTML(r, t)}${leftRowHTML(r, t)}</div>`;
+  }).join('');
   const empty = `<p class="empty">Пусто — добавьте задачу (кнопка «＋» или клавиша ${hk.pretty(hk.keyFor('new'))})</p>`;
   $('grid').innerHTML = `<section class="pane p-left glass">
     <div class="l-head">${headHTML(t)}</div>
@@ -833,6 +839,9 @@ function renderGrid() {
       <div class="sq-rows">${mobileRows}</div>
     </div>
   </section>`;
+  clearTimeout(revealTimer);
+  drumRow = $('grid').querySelector('.m-task.drum-current');
+  drumWeek = state.weekStart;
   $('grid').querySelectorAll('.g-hd').forEach(h => {
     h.onclick = () => openDay(h.dataset.day);
   });
@@ -955,7 +964,7 @@ function bindCell(c) {
   c.addEventListener('contextmenu', e => e.preventDefault());
 }
 /* Выбираем первую строку, ещё не ушедшую под шапку. */
-let drumRow = null, revealTimer, snapTimer, drumFrame;
+let drumRow = null, drumWeek, revealTimer, snapTimer, drumFrame;
 // Измеряем исходное положение строки, независимо от анимации подъёма.
 function drumLift(row) {
   return parseFloat(getComputedStyle(row).translate.split(' ')[1]) || 0;
@@ -982,7 +991,7 @@ function updateMobileDrum() {
 (function bindMobileDrum() {
   const app = $('app');
   if (!app) return;
-  let touching = false;
+  let touching = false, scrolledDuringTouch = false;
   function settle() {
     clearTimeout(snapTimer);
     if (touching || !mqMobileWeek.matches || state.view !== 'week') return;
@@ -990,7 +999,7 @@ function updateMobileDrum() {
       updateMobileDrum();
       const row = drumRow;
       const head = row?.closest('.p-mobile')?.querySelector('.m-head');
-      if (!row?.isConnected || !head?.offsetWidth || document.querySelector('#cellMenu.open')) return;
+      if (!row?.isConnected || !head?.classList.contains('is-stuck') || document.querySelector('#cellMenu.open')) return;
       const viewport = app.getBoundingClientRect();
       const edge = head.getBoundingClientRect().bottom;
       const rect = row.getBoundingClientRect();
@@ -1006,12 +1015,17 @@ function updateMobileDrum() {
   app.addEventListener('scroll', () => {
     cancelAnimationFrame(drumFrame);
     drumFrame = requestAnimationFrame(updateMobileDrum);
+    if (touching) scrolledDuringTouch = true;
     settle();
   }, { passive: true });
-  app.addEventListener('touchstart', () => { touching = true; clearTimeout(snapTimer); }, { passive: true });
+  app.addEventListener('touchstart', () => {
+    if (!touching) scrolledDuringTouch = false;
+    touching = true;
+    clearTimeout(snapTimer);
+  }, { passive: true });
   for (const event of ['touchend', 'touchcancel']) app.addEventListener(event, e => {
     touching = e.touches.length > 0;
-    settle();
+    if (!touching && scrolledDuringTouch) settle();
   }, { passive: true });
   window.addEventListener('resize', updateMobileDrum);
 })();
