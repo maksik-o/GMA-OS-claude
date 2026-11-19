@@ -10,7 +10,7 @@ import { openWaitDialog, startLift, hasDropTarget, waitCount, waitDueCount, wait
 import { openSheet, refreshBackdrop } from './sheet.js';
 import { renderNotesPanel, setWeekStart } from './notes.js';
 import { calTitle, createCalDrum } from './cal.js';
-import { contentFade, screenSwap, revealText, morph } from './anim.js';
+import { contentFade, screenSwap, revealText, morph, EASE, EASE_IN, reduced } from './anim.js';
 
 import * as hk from './hotkeys.js';
 import * as tm from './timer.js';
@@ -184,6 +184,28 @@ export function closeCellMenu() {
   const m = document.getElementById('cellMenu');
   if (m) m.classList.remove('open');
 }
+const cellStatusBusy = new Set();
+function animateCellStatus(cell, status) {
+  if (!cell || !cell.animate || reduced()) return Promise.resolve();
+  const style = getComputedStyle(cell);
+  const fromBorder = style.borderColor;
+  const fromBackground = style.backgroundColor;
+  if (!status) {
+    const animation = cell.animate(
+      [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.72)', opacity: .35 }],
+      { duration: 220, easing: EASE_IN, fill: 'forwards' }
+    );
+    return animation.finished.catch(() => {});
+  }
+  const color = style.getPropertyValue(`--c-${status}`).trim() || fromBorder;
+  const toBackground = status === 'done' ? color : fromBackground;
+  const animation = cell.animate([
+    { transform: 'scale(1)', borderColor: fromBorder, backgroundColor: fromBackground },
+    { transform: 'scale(1.1)', borderColor: color, backgroundColor: toBackground, offset: .58 },
+    { transform: 'scale(1)', borderColor: color, backgroundColor: toBackground },
+  ], { duration: 260, easing: EASE, fill: 'forwards' });
+  return animation.finished.catch(() => {});
+}
 function openCellMenu(cell, id, day) {
   const task = getTask(id);
   if (!task) { closeCellMenu(); return; }
@@ -202,10 +224,22 @@ function openCellMenu(cell, id, day) {
   m.style.left = x + 'px';
   m.style.top = Math.max(8, y) + 'px';
   m.querySelectorAll('button').forEach(b => {
-    b.onclick = e => {
+    b.onclick = async e => {
       e.stopPropagation();
       if (!getTask(id)) { closeCellMenu(); return; }
-      setEntry(id, day, b.dataset.st || null).then(() => { closeCellMenu(); renderAll(); });
+      const key = `${id}|${day}`;
+      if (cellStatusBusy.has(key)) return;
+      cellStatusBusy.add(key);
+      m.querySelectorAll('button').forEach(button => { button.disabled = true; });
+      try {
+        const next = b.dataset.st || null;
+        if (next !== cur) await animateCellStatus(cell, next);
+        await setEntry(id, day, next);
+      } finally {
+        closeCellMenu();
+        renderAll();
+        cellStatusBusy.delete(key);
+      }
     };
   });
   setTimeout(() => {
@@ -704,7 +738,20 @@ function bindBigAsk() {
         renderAll();
         const tk = getTask(id);
         if (tk && !(tk.subtasks || []).length) openSheet(tk);   // сразу разбить на шаги
-      } else { await dismissBig(id); renderAll(); }
+      } else {
+        const ask = b.closest('.big-ask');
+        b.disabled = true;
+        if (ask && ask.animate && !reduced()) {
+          const animation = ask.animate(
+            [{ opacity: 1, transform: 'translateX(0) scale(1)' },
+             { opacity: 0, transform: 'translateX(8px) scale(.96)' }],
+            { duration: 200, easing: EASE_IN, fill: 'forwards' }
+          );
+          await animation.finished.catch(() => {});
+        }
+        await dismissBig(id);
+        renderAll();
+      }
       return;
     }
     const chip = e.target.closest('[data-waitpop]');
