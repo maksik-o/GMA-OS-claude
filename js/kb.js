@@ -1319,8 +1319,7 @@ function layoutBoard(board) {
   if (!wrap || !wrap.offsetWidth) return;
   const items = [...wrap.querySelectorAll('.kb-fi, .kb-loose')].sort((a, b) => a.dataset.i - b.dataset.i);
   if (!items.length) return;
-  const min = innerWidth <= 720 ? 160 : 230;
-  const n = Math.max(1, Math.floor((wrap.clientWidth + BOARD_GAP) / (min + BOARD_GAP)));
+  const n = isPhone() ? 1 : Math.max(1, Math.floor((wrap.clientWidth + BOARD_GAP) / (230 + BOARD_GAP)));
   const cols = Array.from({ length: n }, () => Object.assign(document.createElement('div'), { className: 'kb-mcol' }));
   /* все столбцы одной ширины — высоту меряем, поставив элементы в первый */
   wrap.replaceChildren(...cols);
