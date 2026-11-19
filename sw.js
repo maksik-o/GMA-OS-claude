@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'gma-os-' + new URL(self.registration.scope).pathname + '-';
-const CACHE = CACHE_PREFIX + 'v320';
+const CACHE = CACHE_PREFIX + 'v321';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает

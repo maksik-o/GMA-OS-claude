@@ -19,7 +19,7 @@ import {
   isoWeek, MONTHS, MONTHS_FULL, esc, fmtD, hapticLight,
 } from './store.js';
 import { openSheet } from './sheet.js';
-import { squaresMode, setSquaresMode, renderAll } from './week.js';
+import { renderAll } from './week.js';
 import { renderTimeline, setTimelineRange, timelineRange, shiftTimeline, toggleExpanded, timelineExpanded, setTimelineHooks, TL_RANGES } from './timeline.js';
 import { contentFade, morph, exit, enterDeep } from './anim.js';
 
@@ -422,18 +422,6 @@ function hideItemHTML() {
     ? '<button type="button" data-hide-done="0">' + ICON_EYE + '<span>Показать скрытые задачи</span></button>'
     : '<button type="button" data-hide-done="1">' + ICON_EYE_OFF + '<span>Скрыть выполненные задачи</span></button>';
 }
-/* Цикл: развёрнуто → полоски → убрано → развёрнуто */
-const SQ_NEXT = { full: 'bars', bars: 'hidden', hidden: 'full' };
-const SQ_ITEM = {
-  full:   ['Свернуть квадраты недели', () => ICON_BARS],
-  bars:   ['Убрать квадраты недели', () => ICON_GRID_OFF2],
-  hidden: ['Развернуть квадраты недели', () => ICON_EXPAND],
-};
-function squaresItemHTML() {
-  const cur = squaresMode();
-  const [label, ico] = SQ_ITEM[cur] || SQ_ITEM.full;
-  return '<button type="button" data-sq-next="' + SQ_NEXT[cur] + '"><span class="cm-ico">' + ico() + '</span><span>' + label + '</span></button>';
-}
 function bindHideItem(m) {
   const b = m.querySelector('[data-hide-done]');
   if (!b) return;
@@ -443,26 +431,13 @@ function bindHideItem(m) {
     setHideDone(b.dataset.hideDone === '1');
   };
 }
-function bindSquaresItem(m) {
-  const b = m.querySelector('[data-sq-next]');
-  if (!b) return;
-  b.onclick = e => {
-    e.stopPropagation();
-    closeAllMenus();
-    setSquaresMode(b.dataset.sqNext);
-  };
-}
 /* ── Меню троеточия в неделе ── */
 function openHideMenu(anchor) {
   const m = ensureMenu('hideMenu');
-  /* На ПК квадраты всегда развёрнуты — управлять нечем, остаётся
-     только показ выполненных. */
-  const mobile = matchMedia('(max-width: 720px)').matches;
-  m.innerHTML = hideItemHTML() + (mobile ? '<div class="cm-sep"></div>' + squaresItemHTML() : '');
+  m.innerHTML = hideItemHTML();
   showMenu(m);
   placeMenu(m, anchor);
   bindHideItem(m);
-  bindSquaresItem(m);
 }
 
 /* ── Селектор доски (троеточие в канбане) ── */

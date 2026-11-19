@@ -34,27 +34,7 @@ const MENU = [
   ['postponed', 'Перенесено', I.postponed],
   [null, 'Убрать квадрат', I.remove]
 ];
-/* ── Квадраты недели: три состояния ──
-   full  — все ряды раскрыты (по умолчанию)
-   bars  — свёрнуты до полосок, ряд раскрывается тапом
-   hidden — убраны совсем
-   Раньше состояний было два, и «свернуть» с «убрать» были одним и тем
-   же действием. */
-const SQ_MODES = ['full', 'bars', 'hidden'];
-let sqMode = SQ_MODES.includes(localStorage.getItem('rl_sq_mode'))
-  ? localStorage.getItem('rl_sq_mode')
-  : (localStorage.getItem('rl_hide_squares') === '1' ? 'hidden' : 'full');
-export const squaresMode = () => sqMode;
-export function setSquaresMode(m) {
-  if (!SQ_MODES.includes(m)) return;
-  sqMode = m;
-  try { localStorage.setItem('rl_sq_mode', m); } catch (e) {}
-  renderAll();
-}
-/* ── Иконки пункта «квадраты недели» ── */
-
 let expandedSub = null;
-let expandedSq = null; // мобилка: чьи квадраты раскрыты из полосок
 let inlineCalOpen = false;
 const hasWidget = id => (state.widgets || []).includes(id);
 
@@ -618,9 +598,8 @@ function toggleInlineCal(force) {
     close();
   }, { passive: true });
 })();
-function leftRowHTML(tk, t, mobile = false) {
+function leftRowHTML(tk, t) {
   let cells = '';
-  let captions = '';
   for (let i = 0; i < 7; i++) {
     const d = addDays(state.weekStart, i);
     const st = (tk.days || {})[d];
@@ -629,10 +608,9 @@ function leftRowHTML(tk, t, mobile = false) {
     const wt = !st && tk.waitLog && pausedOn(tk, d);
     const dayLabel = DAYS_FULL[(parseISO(d).getDay() + 6) % 7];
     const statusLabel = wt ? 'Ждали' : MENU.find(([key]) => key === st)?.[1] || 'Без отметки';
-    if (mobile) captions += `<span class="mobile-day-caption${d === t ? ' today' : ''}" aria-hidden="true">${dayLabel.slice(0, 2)}</span>`;
     cells += `<button type="button" class="cell ${st ? 'c-' + st : wt ? 'c-wait' : 'none'}${pp}${d === t ? ' tdy' : ''}" data-id="${esc(tk.id)}" data-day="${d}" aria-label="${dayLabel}, ${fmtD(d)}: ${statusLabel}" title="${fmtD(d)}${wt ? ' · ждали' : ''}">${tk.receivedAt === d ? '<i class="rd"></i>' : ''}</button>`;
   }
-  return `<div class="l-row${isBig(tk) && !isDone(tk) ? ' big' : ''}">${captions}${cells}</div>`;
+  return `<div class="l-row${isBig(tk) && !isDone(tk) ? ' big' : ''}">${cells}</div>`;
 }
 /* Строка задачи: таймеры и fp-eligible только если установлен виджет «Фокус» */
 function rightRowHTML(tk, t) {
@@ -836,7 +814,7 @@ function renderGrid() {
   const rows = weekRows(state.weekStart);
   const leftRows = rows.map(r => leftRowHTML(r, t)).join('');
   const rightRows = rows.map(r => rightRowHTML(r, t)).join('');
-  const mobileRows = rows.map(r => `<div class="m-task${(sqMode === 'full' || expandedSq === r.id) ? ' sq-open' : ''}">${rightRowHTML(r, t)}${sqMode === 'hidden' ? '' : leftRowHTML(r, t, true)}</div>`).join('');
+  const mobileRows = rows.map(r => `<div class="m-task">${rightRowHTML(r, t)}${leftRowHTML(r, t)}</div>`).join('');
   const empty = `<p class="empty">Пусто — добавьте задачу (кнопка «＋» или клавиша ${hk.pretty(hk.keyFor('new'))})</p>`;
   $('grid').innerHTML = `<section class="pane p-left glass">
     <div class="l-head">${headHTML(t)}</div>
@@ -864,7 +842,7 @@ function renderGrid() {
   refreshInlineCals();
   $('grid').querySelectorAll('.cell:not(.sub)').forEach(bindCell);
   bindSub();
-  bindSqOpen();
+  requestAnimationFrame(updateMobileDrum);
   $('grid').querySelectorAll('.r-row').forEach(row => {
     const id = row.dataset.id;
     const tsk = () => getTask(id);
@@ -935,29 +913,6 @@ const barsClosed = c => {
   const m = c.closest('.m-task');
   return !!m && !m.classList.contains('sq-open');
 };
-function openSqBars(cell) {
-  const m = cell.closest('.m-task');
-  if (!m) return;
-  if (expandedSq && expandedSq !== cell.dataset.id) {
-    document.querySelectorAll('.m-task.sq-open').forEach(x => x.classList.remove('sq-open'));
-  }
-  expandedSq = cell.dataset.id;
-  m.classList.add('sq-open');
-}
-/* ── Мобилка: тап по ряду полосок (включая промежутки) раскрывает квадраты ── */
-let sqClickBound = false;
-function bindSqOpen() {
-  if (sqClickBound) return;
-  sqClickBound = true;
-  document.addEventListener('click', e => {
-    const row = e.target.closest('.p-mobile .l-row');
-    if (!row) return;
-    const mt = row.closest('.m-task');
-    if (!mt || mt.classList.contains('sq-open')) return;
-    const first = row.querySelector('.cell');
-    if (first) openSqBars(first);
-  });
-}
 function bindCell(c) {
   const id = c.dataset.id;
   const day = c.dataset.day;
@@ -999,15 +954,56 @@ function bindCell(c) {
   });
   c.addEventListener('contextmenu', e => e.preventDefault());
 }
-/* ── Мобилка: любой скролл ленты плавно схлопывает квадраты в полоски ── */
-(function bindBarsCloseOnScroll() {
+/* Выбираем первую строку, ещё не ушедшую под шапку. */
+let drumRow = null, revealTimer, snapTimer, drumFrame;
+function updateMobileDrum() {
+  const panel = $('grid').querySelector('.p-mobile');
+  const head = panel?.querySelector('.m-head');
+  const edge = head?.getBoundingClientRect().bottom;
+  const rows = panel?.querySelectorAll('.m-task');
+  const next = mqMobileWeek.matches && state.view === 'week' && head?.offsetWidth && edge > 0
+    ? Array.from(rows).find(row => row.querySelector('.r-row').getBoundingClientRect().bottom > edge + 3)
+    : null;
+  if (next === drumRow) return;
+  clearTimeout(revealTimer);
+  drumRow?.classList.remove('drum-current', 'sq-open');
+  drumRow = next;
+  if (!next) return;
+  next.classList.add('drum-current');
+  revealTimer = setTimeout(() => {
+    if (next === drumRow && next.isConnected) next.classList.add('sq-open');
+  }, 500);
+}
+
+(function bindMobileDrum() {
   const app = $('app');
   if (!app) return;
+  let touching = false;
+  function settle() {
+    clearTimeout(snapTimer);
+    if (touching || !mqMobileWeek.matches || state.view !== 'week') return;
+    snapTimer = setTimeout(() => {
+      const row = drumRow;
+      const head = row?.closest('.p-mobile')?.querySelector('.m-head');
+      if (!row?.isConnected || !head?.offsetWidth || document.querySelector('#cellMenu.open')) return;
+      const pin = app.getBoundingClientRect().top + parseFloat(getComputedStyle(head).top);
+      if (head.getBoundingClientRect().top > pin + 3) return;
+      const delta = row.getBoundingClientRect().top - head.getBoundingClientRect().bottom + 4;
+      const target = Math.max(0, Math.min(app.scrollHeight - app.clientHeight, app.scrollTop + delta));
+      if (Math.abs(target - app.scrollTop) > 2) app.scrollTo({ top: target, behavior: 'instant' });
+    }, 135);
+  }
   app.addEventListener('scroll', () => {
-    if (!expandedSq && !document.querySelector('.m-task.sq-open')) return;
-    expandedSq = null;
-    document.querySelectorAll('.m-task.sq-open').forEach(x => x.classList.remove('sq-open'));
+    cancelAnimationFrame(drumFrame);
+    drumFrame = requestAnimationFrame(updateMobileDrum);
+    settle();
   }, { passive: true });
+  app.addEventListener('touchstart', () => { touching = true; clearTimeout(snapTimer); }, { passive: true });
+  for (const event of ['touchend', 'touchcancel']) app.addEventListener(event, e => {
+    touching = e.touches.length > 0;
+    settle();
+  }, { passive: true });
+  window.addEventListener('resize', updateMobileDrum);
 })();
 (function bindGridSwipe() {
   let sx = 0, sy = 0, active = false;
