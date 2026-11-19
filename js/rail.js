@@ -1,17 +1,4 @@
-/* ══════════════ МЕНЮ (iPhone) ══════════════
-   Полоса у правого края на середине высоты экрана, все разделы списком.
-   Края экрана плавно изгибаются вокруг неё «плечами»; фон — абсолютно
-   чёрный (#000), на OLED эти пиксели выключены.
-
-   Открытый раздел — в пилюле «Огонь» с иконкой и подписью; пилюля
-   по размеру содержимого и переезжает на выбранный пункт, соседние
-   пункты плавно расступаются.
-
-   Меню убирается само: стоит прокрутить экран, тапнуть или провести
-   пальцем по панелям — оно с анимацией уезжает вправо, у края остаётся
-   тонкий язычок. Вызвать — свайп от правого края влево (или тап по
-   язычку): меню выезжает справа, а блоки, которым оно мешает, плавно
-   сужаются и обтекают его. Пока меню спрятано, всё во всю ширину. */
+/* Постоянное меню поверх контента на узких экранах. */
 import { state, hapticLight } from './store.js';
 
 const mqMobile = matchMedia('(max-width: 720px)');
@@ -39,10 +26,10 @@ const ITEMS = [
 ];
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
 
-let rail = null, pill = null, label = null, pico = null, icons = [], capB = null, body = null, tab = null, meas = null;
+let rail = null, pill = null, label = null, pico = null, icons = [], capB = null, body = null, meas = null;
 let cur = 0;          // раздел в пилюле
 let navTarget = null; // раздел, к которому идём: пока экран меняется, пилюля не откатывается
-let shown = true;
+let drag = null;
 
 function build() {
   if (rail) return;
@@ -58,11 +45,6 @@ function build() {
     ITEMS.map((it, i) => `<button type="button" class="rl-it" data-i="${i}" aria-label="${it.label}" title="${it.label}">${svg(it.id)}</button>`).join('') +
     `<span class="rl-lab rl-meas" aria-hidden="true"></span>`;
   document.body.appendChild(rail);
-  tab = document.createElement('button');
-  tab.type = 'button';
-  tab.className = 'rail-tab';
-  tab.setAttribute('aria-label', 'Показать меню');
-  document.body.appendChild(tab);
   capB = rail.querySelector('.rl-cap-b');
   body = rail.querySelector('.rl-body');
   pill = rail.querySelector('.rl-pill');
@@ -72,12 +54,10 @@ function build() {
   icons = [...rail.querySelectorAll('.rl-it')];
   rail.addEventListener('click', e => {
     const b = e.target.closest('.rl-it');
-    if (b) choose(+b.dataset.i);
+    if (b && e.detail === 0) choose(+b.dataset.i);
   });
-  tab.addEventListener('click', () => setShown(true));
   addEventListener('resize', () => layout());
-  bindAutoHide();
-  bindWrap();
+  bindSelection();
 }
 
 /* ── Раскладка: пилюля по содержимому, пункты расступаются ── */
@@ -103,13 +83,11 @@ function layout() {
   capB.style.transform = `translateY(${S + bodyH}px)`;
   rail.style.height = h + 'px';
   rail.style.top = Math.round((innerHeight - h) / 2) + 'px';
-  tab.style.top = Math.round(innerHeight / 2 - 28) + 'px';
   if (label.textContent !== ITEMS[cur].label) { label.textContent = ITEMS[cur].label; pico.innerHTML = svg(ITEMS[cur].id); }
-  scheduleWrap(true);
 }
 function viewIndex() { const i = ITEMS.findIndex(x => x.view === state.view); return i < 0 ? cur : i; }
 function sync() {
-  if (!rail) return;
+  if (!rail || drag) return;
   if (navTarget) {
     /* экран ещё меняется: пилюля стоит на выбранном, а не откатывается */
     if (state.view === ITEMS[navTarget.i].view || Date.now() - navTarget.t > 2500) navTarget = null;
@@ -131,194 +109,54 @@ function choose(i) {
   }
 }
 
-/* ── Показать / спрятать ── */
-function setShown(on) {
-  if (!rail || on === shown) return;
-  shown = on;
-  rail.classList.toggle('rl-hidden', !on);
-  tab.classList.toggle('on', !on);
-  wrapOn = on;
-  scheduleWrap(true);   // спрятано — блоки во всю ширину, показано — обтекают
-  if (on) hapticLight();
-}
-function bindAutoHide() {
-  const app = document.getElementById('app');
-  /* прокрутка экрана — меню уезжает */
-  if (app) app.addEventListener('scroll', () => { if (shown && !swipe) setShown(false); }, { passive: true });
-  /* тап или жест по панелям — тоже */
-  document.addEventListener('pointerdown', e => {
-    if (!mqMobile.matches) return;
-    const edge = e.clientX > innerWidth - 24;
-    if (edge && !shown) { swipe = { x: e.clientX, y: e.clientY, id: e.pointerId }; return; }
-    if (shown && !rail.contains(e.target) && e.target !== tab) setShown(false);
-  }, true);
-  /* свайп от правого края влево — меню выезжает */
-  document.addEventListener('pointermove', e => {
-    if (!swipe || e.pointerId !== swipe.id) return;
-    const dx = swipe.x - e.clientX, dy = Math.abs(e.clientY - swipe.y);
-    if (dx > 26 && dx > dy * 1.4) { swipe = null; setShown(true); }
-    else if (dy > 40) swipe = null;
-  }, true);
-  const end = () => { swipe = null; };
-  document.addEventListener('pointerup', end, true);
-  document.addEventListener('pointercancel', end, true);
-}
-let swipe = null;
-
-/* ══ Обтекание ══
-   Блоки экрана во всю ширину. Те, что по высоте попадают в полосу меню,
-   плавно сужаются (margin-right с переходом). Высокие контейнеры (их
-   строки сужаются по отдельности) получают в правом крае выемку той же
-   формы, что и плечи полосы, — фон панели не уходит под меню. */
-const WRAP_ROOTS = '.topbar, #grid, #dockTop, #dockBottom, #homeView, #kbView, #financeView, #contactsView';
-const GAP = 6;
-let leaves = [], talls = [], wrapRaf = 0, collectT = 0, wrapOn = false;
-function railBand() {
-  if (!rail || !rail.offsetWidth || getComputedStyle(rail).visibility === 'hidden') return null;
-  const r = rail.getBoundingClientRect();
-  return { top: r.top + S * .35, bottom: r.bottom - S * .35, edge: r.right - W - GAP, r };
-}
-function collectWrap() {
-  const oldL = leaves, oldT = talls;
-  leaves = []; talls = [];
-  if (wrapOn) collectInto();
-  /* то, что выпало из списка, — обратно во всю ширину (уже сужённое
-     и оставшееся в списке не трогаем, чтобы не мигало) */
-  const keepL = new Set(leaves), keepT = new Set(talls);
-  oldL.forEach(el => { if (!keepL.has(el)) { clearTimeout(el._relT); ['margin-right', 'max-width', 'height'].forEach(k => el.style.removeProperty(k)); el._wm = 0; el.classList.remove('rl-wrap'); } });
-  oldT.forEach(el => { if (!keepT.has(el)) { el.style.clipPath = ''; el._wn = ''; } });
-}
-function collectInto() {
-  const tallLim = rail.offsetHeight * .9;
-  const visit = (el, depth) => {
-    const r = el.getBoundingClientRect();
-    if (!r.width || !r.height) return;
-    if (r.height > tallLim && depth < 5) {
-      /* обёртки без своей коробки (display: contents — колонки «Главной»
-         на телефоне) не блоки: берём их детей */
-      const flat = node => [...node.children].flatMap(c => (!c.hidden && getComputedStyle(c).display === 'contents' ? flat(c) : [c]));
-      const kids = flat(el).filter(c => {
-        if (c.hidden || !c.offsetWidth) return false;
-        const cs = getComputedStyle(c);
-        if (cs.position === 'absolute' || cs.position === 'fixed' || cs.display === 'none') return false;
-        const cr = c.getBoundingClientRect();
-        return cr.width > r.width * .55 && cr.height > 16;
-      });
-      if (kids.length) { talls.push(el); kids.forEach(k => visit(k, depth + 1)); return; }
+function bindSelection() {
+  function move(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const y = Math.min(drag.centers.at(-1), Math.max(drag.centers[0], e.clientY));
+    drag.index = drag.centers.reduce((best, center, i) =>
+      Math.abs(center - y) < Math.abs(drag.centers[best] - y) ? i : best, 0);
+    const item = ITEMS[drag.index];
+    if (label.textContent !== item.label) {
+      label.textContent = item.label;
+      pico.innerHTML = svg(item.id);
+      pill.style.height = pillH(drag.index) + 'px';
     }
-    leaves.push(el);
-  };
-  document.querySelectorAll(WRAP_ROOTS).forEach(el => { if (el.offsetWidth && !el.hidden) visit(el, 0); });
-  leaves.forEach(el => el.classList.add('rl-wrap'));
-}
-function updateWrap() {
-  wrapRaf = 0;
-  const band = wrapOn ? railBand() : null;
-  for (const el of leaves) {
-    let need = 0;
-    /* отступ мог затереть чужой код (раскладка виджетов) — берём фактический */
-    const applied = el.style.getPropertyPriority('margin-right') === 'important' ? parseFloat(el.style.marginRight) || 0 : 0;
-    if (band) {
-      const r = el.getBoundingClientRect();
-      const natR = r.right + applied;
-      /* зазор: сужённый блок отпускаем чуть позже, чем сужаем, — на границе
-         полосы он не переключается туда-сюда */
-      const pad = applied ? 14 : 0;
-      if (r.bottom > band.top - pad && r.top < band.bottom + pad) need = Math.max(0, Math.ceil(natR - band.edge));
-      /* высота при сужении не прыгает: блок держит свою высоту (папки
-         не укорачиваются и не выпадают из полосы туда-обратно), а если
-         тексту стало тесно — плавно дорастает */
-      if (need && !applied) lockHeight(el, r.height);
-    }
-    if (need !== applied) {
-      el._wm = need;
-      if (need) {
-        el.style.setProperty('margin-right', need + 'px', 'important');
-        /* и для блоков с жёсткой шириной (width: 100%) */
-        el.style.setProperty('max-width', `calc(100% - ${need}px)`, 'important');
-        requestAnimationFrame(() => growToFit(el));
-      } else {
-        el.style.removeProperty('margin-right');
-        el.style.removeProperty('max-width');
-        releaseHeight(el);
-      }
-    }
+    pill.style.transform = `translateY(${y - drag.top - pill.offsetHeight / 2}px)`;
   }
-  for (const el of talls) {
-    let cp = '';
-    if (band) {
-      const r = el.getBoundingClientRect();
-      if (r.bottom > band.r.top && r.top < band.r.bottom && r.right > band.edge) {
-        /* выемка: от верхнего плеча к нижнему, по форме полосы */
-        const x = Math.round(band.edge - r.left), w = Math.round(r.width), h = Math.round(r.height);
-        const y0 = Math.round(band.r.top - r.top), y1 = Math.round(band.r.bottom - r.top);
-        const yt = y0 + S, yb = y1 - S;
-        cp = `path('M0 -2H${w}V${y0}C${w} ${yt - S * .45} ${x} ${y0 + S * .42} ${x} ${yt}V${yb}C${x} ${y1 - S * .42} ${w} ${yb + S * .45} ${w} ${y1}V${h + 2}H0Z')`;
-      }
-    }
-    if (cp !== (el._wn || '')) { el._wn = cp; el.style.clipPath = cp; }
+  rail.addEventListener('pointerdown', e => {
+    if (!e.isPrimary || e.button !== 0 || drag) return;
+    const bounds = rail.getBoundingClientRect();
+    const centers = icons.map(button => {
+      const rect = button.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    });
+    drag = { id: e.pointerId, top: bounds.top, centers, index: cur };
+    rail.setPointerCapture(e.pointerId);
+    rail.classList.add('rl-selecting');
+    move(e);
+  });
+  rail.addEventListener('pointermove', move);
+  function finish(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const commit = e.type === 'pointerup';
+    if (commit) move(e);
+    const { index } = drag;
+    drag = null;
+    rail.classList.remove('rl-selecting');
+    if (commit) choose(index);
+    layout();
   }
-}
-function lockHeight(el, h) {
-  clearTimeout(el._relT);
-  el.style.setProperty('height', h + 'px', 'important');
-}
-function growToFit(el) {
-  if (!el._wm) return;
-  /* лишняя строка, которая помещается в нижний отступ блока, его не
-     растит — растём, только если текст вышел бы за край */
-  const slack = Math.max(0, (parseFloat(getComputedStyle(el).paddingBottom) || 0) - 4);
-  const over = el.scrollHeight - el.clientHeight - slack;
-  if (over > 1) el.style.setProperty('height', (el.offsetHeight + over) + 'px', 'important');
-}
-/* расширился — после перехода по ширине плавно к своей высоте */
-function releaseHeight(el) {
-  if (!el.style.getPropertyValue('height')) return;
-  clearTimeout(el._relT);
-  el._relT = setTimeout(() => {
-    if (el._wm) return;
-    const cur = el.offsetHeight;
-    el.style.removeProperty('height');
-    const nat = el.offsetHeight;
-    if (Math.abs(nat - cur) < 2) return;
-    el.style.setProperty('height', cur + 'px', 'important');
-    void el.offsetHeight;
-    el.style.setProperty('height', nat + 'px', 'important');
-    el._relT = setTimeout(() => { if (!el._wm) el.style.removeProperty('height'); }, 380);
-  }, 370);
-}
-function scheduleWrap(recollect) {
-  if (recollect) {
-    clearTimeout(collectT);
-    collectT = setTimeout(() => { collectWrap(); updateWrap(); }, 60);
-    return;
-  }
-  if (!wrapRaf) wrapRaf = requestAnimationFrame(updateWrap);
-}
-function bindWrap() {
-  const app = document.getElementById('app');
-  if (app) {
-    app.addEventListener('scroll', () => scheduleWrap(false), { passive: true });
-    /* перестроился экран — пересобрать список блоков */
-    new MutationObserver(muts => {
-      const blocks = m => [...m.addedNodes, ...m.removedNodes].some(n => n.nodeType === 1);
-      if (muts.some(m => m.attributeName === 'hidden' || (m.type === 'childList' && blocks(m)))) scheduleWrap(true);
-    }).observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
-  }
-  ['screen-entered', 'grid-rendered'].forEach(ev => document.addEventListener(ev, () => scheduleWrap(true)));
-  /* страховка: чужой код (раскладка виджетов, перерисовки) мог сбить
-     отступы без прокрутки — сверяемся пару раз в секунду */
-  setInterval(() => { if (wrapOn && !document.hidden) scheduleWrap(false); }, 450);
+  rail.addEventListener('pointerup', finish);
+  rail.addEventListener('pointercancel', finish);
+  rail.addEventListener('lostpointercapture', finish);
 }
 
 function apply() {
   const on = mqMobile.matches;
   document.body.classList.toggle('has-rail', on);
-  wrapOn = on && shown;
   if (on) { build(); cur = viewIndex(); layout(); }
-  else scheduleWrap(true);
 }
-export function railSync() { if (mqMobile.matches) { sync(); scheduleWrap(true); } }
+export function railSync() { if (mqMobile.matches) sync(); }
 export function railInit() {
   apply();
   if (mqMobile.addEventListener) mqMobile.addEventListener('change', apply);

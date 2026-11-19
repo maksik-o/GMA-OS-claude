@@ -6793,3 +6793,12 @@ body.wt-dragging, body.wt-dragging * { cursor: grabbing !important; user-select:
     transform: none;
   }
 }
+
+/* Мобильное меню лежит поверх карточек и проявляется при выборе. */
+body.has-rail .rail {
+  opacity: .42;
+  transition: opacity 180ms ease;
+}
+body.has-rail .rail.rl-selecting,
+body.has-rail .rail:has(:focus-visible) { opacity: 1; }
+body.has-rail .rail.rl-selecting .rl-pill { transition: none; }
