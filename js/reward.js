@@ -34,6 +34,22 @@ export async function previewEntry(id, day, status, source) {
       const adjacent = el.nextElementSibling;
       el.classList.add(adjacent?.matches('.cell.c-postponed') ? 'pp-dash' : 'pp-arrow');
     }
+    if (status === 'done' && el.matches('.cell') && !reduced() && el.animate) {
+      const mark = document.createElement('span');
+      mark.setAttribute('aria-hidden', 'true');
+      Object.assign(mark.style, {position: 'absolute', inset: '0', display: 'grid', placeItems: 'center', pointerEvents: 'none', zIndex: '1'});
+      mark.innerHTML = '<svg viewBox="0 0 24 24" width="90%" height="90%" fill="none" stroke="var(--text)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path pathLength="1" stroke-dasharray="1" d="M4 12l5 5L20 6"/></svg>';
+      el.append(mark);
+      try {
+        await mark.querySelector('path').animate(
+          [{strokeDashoffset: 1}, {strokeDashoffset: 0, offset: .55}, {strokeDashoffset: 0}],
+          {duration: 420, easing: EASE}
+        ).finished.catch(() => {});
+      } finally {
+        mark.remove();
+      }
+      return;
+    }
     if (!reduced() && el.animate) {
       await el.animate([{scale: '.92'}, {scale: '1'}], {duration: BASE, easing: EASE}).finished.catch(() => {});
     }
