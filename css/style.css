@@ -6163,7 +6163,7 @@ body.has-rail .rail.rl-hidden { transform: translateX(calc(100% + 12px)); pointe
 .rail .rl-cap-b { transition: transform var(--t-slow) var(--rl-ease); }
 .rail .rl-body { width: 46px; background: #000; transition: height var(--t-slow) var(--rl-ease); }
 .rail .rl-it {
-  position: absolute; left: 25px; top: 0; width: 40px; height: 38px; padding: 0;
+  position: absolute; left: 25px; top: 0; width: 40px; height: 46px; padding: 0;
   border: 0; background: none; color: #8e8f94;
   display: grid; place-items: center; cursor: pointer;
   transition: transform var(--t-slow) var(--rl-ease), opacity .25s, color .2s;
@@ -6187,9 +6187,9 @@ body.has-rail .rail-tab.on { opacity: .85; pointer-events: auto; }
    подпись белые; высота — по содержимому, переезд — transform/height.
    Фон и тень не анимируются: смена режима перекрашивает её сразу */
 .rail .rl-pill {
-  position: absolute; left: 25px; width: 38px; z-index: 2; pointer-events: none;
-  border-radius: 999px; display: grid; place-items: center;
-  box-sizing: border-box; overflow: hidden;
+  position: absolute; left: 25px; width: 38px; margin-left: -19px; z-index: 2; pointer-events: none;
+  border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 8px; padding-top: 11px; box-sizing: border-box; overflow: hidden;
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 78%, #fff), color-mix(in srgb, var(--accent) 80%, #000));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -2px 4px rgba(0, 0, 0, .18), 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent);
   top: 0;
@@ -6820,7 +6820,7 @@ body.wt-dragging, body.wt-dragging * { cursor: grabbing !important; user-select:
 /* Мобильное меню лежит поверх карточек и проявляется при выборе. */
 body.has-rail .rail {
   top: auto;
-  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   opacity: .42;
   transition: opacity 180ms ease;
 }
