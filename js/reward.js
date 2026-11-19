@@ -1,46 +1,41 @@
-/* ══════════════════════════════════════════════════════════════════
-   НАГРАДА ЗА ВЫПОЛНЕНИЕ. Когда задача отмечена «Выполнено»:
-   • квадрат дня / кружок статуса коротко «вздувается», от него
-     расходится кольцо цвета режима задачи;
-   • поверх рисуется галочка (штрих протягивается и гаснет);
-   • вибрация — hapticSuccess в store.setEntry;
-   • счётчик «N из M» на главной докручивается и подпрыгивает.
-   Движение — только transform и opacity (штрих галочки — SVG).
-   ══════════════════════════════════════════════════════════════════ */
-import { reduced, BASE, SLOW, EASE } from './anim.js';
+/* Показываем итоговую отметку до сортировки строк. */
+import { reduced, BASE, EASE } from './anim.js';
 
 const esc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : s;
 const shown = el => el && el.isConnected && el.getClientRects().length > 0;
-const marks = {
-  todo: 'M6 4H18Q20 4 20 6V18Q20 20 18 20H6Q4 20 4 18V6Q4 4 6 4Z',
-  started: 'M6 18L18 6',
-  done: 'M5 12.5L9.5 17L19 7.5',
-  skipped: 'M6 6L18 18M18 6L6 18',
-  postponed: 'M4 12H19M13 6L19 12L13 18'
-};
+const statuses = ['todo', 'started', 'done', 'skipped', 'postponed'];
 
 export async function previewEntry(id, day, status, source) {
-  if (reduced()) return;
   const key = '[data-id="' + esc(id) + '"]';
-  const targets = source ? [source] : document.querySelectorAll('.cell' + key + '[data-day="' + esc(day) + '"], ' + key + ' .hm-check, ' + key + ' .status');
+  const targets = source ? [source] : document.querySelectorAll(
+    '.cell' + key + '[data-day="' + esc(day) + '"], ' +
+    '.hm-check[data-toggle="' + esc(id) + '"], ' + key + ' .status'
+  );
   await Promise.all(Array.from(targets).filter(shown).map(async el => {
-    if (!el.animate) return;
-    if (!status) {
-      await el.animate([{opacity: 1}, {opacity: 0, transform: 'scale(.65)'}], {duration: BASE, easing: EASE}).finished.catch(() => {});
-      return;
+    if (el.matches('.cell')) {
+      el.classList.remove('none', 'c-wait', ...statuses.map(s => 'c-' + s));
+      el.classList.add(status ? 'c-' + status : 'none');
+    } else if (el.matches('.status')) {
+      const row = el.closest('.task');
+      if (!row) return;
+      row.classList.remove(...statuses.map(s => 'st-' + s));
+      row.classList.add('st-' + (status || 'todo'));
+    } else {
+      const done = status === 'done';
+      el.textContent = done ? '✓' : '';
+      if (done) {
+        el.style.setProperty('background', 'var(--c-done)', 'important');
+        el.style.setProperty('color', '#fff', 'important');
+        el.style.boxShadow = 'none';
+      }
     }
-    const host = document.createElement('span');
-    host.setAttribute('aria-hidden', 'true');
-    Object.assign(host.style, {position:'absolute', inset:'0', display:'grid', placeItems:'center', pointerEvents:'none', zIndex:'2', borderRadius:'inherit', background:'var(--panel-solid, #171719)', color:'var(--c-' + status + ', currentColor)'});
-    const position = el.style.position;
-    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
-    host.innerHTML = '<svg viewBox="0 0 24 24" width="90%" height="90%" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path pathLength="1" stroke-dasharray="1" d="' + marks[status] + '"/></svg>';
-    el.append(host);
-    try {
-      await host.querySelector('path').animate([{strokeDashoffset:1}, {strokeDashoffset:0, offset:.7}, {strokeDashoffset:0}], {duration:420, easing:EASE}).finished.catch(() => {});
-    } finally {
-      host.remove();
-      el.style.position = position;
+    el.classList.remove('pp-arrow', 'pp-dash');
+    if (status === 'postponed') {
+      const adjacent = el.nextElementSibling;
+      el.classList.add(adjacent?.matches('.cell.c-postponed') ? 'pp-dash' : 'pp-arrow');
+    }
+    if (!reduced() && el.animate) {
+      await el.animate([{scale: '.92'}, {scale: '1'}], {duration: BASE, easing: EASE}).finished.catch(() => {});
     }
   }));
 }
