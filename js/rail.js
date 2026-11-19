@@ -2,11 +2,11 @@
 import { state, hapticLight } from './store.js';
 
 const mqMobile = matchMedia('(max-width: 720px)');
-const STEP = 44;            // высота зоны нажатия
-const S = 28;               // высота изгиба
-const W = 38;               // ширина полосы
-const R = W + 2;            // ширина холста изгиба
-const PAD = 3;
+const STEP = 46;            // высота пункта
+const S = 54;               // высота «плеча» изгиба
+const W = 46;               // ширина полосы
+const R = W + 2;            // ширина холста плеча (край экрана — справа)
+const PAD = 8;              // запас внутри тела над первым и под последним пунктом
 const ICON = {
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   week: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L6.8 5M3.5 12l1.2 1.2 2.1-2.2M3.5 18l1.2 1.2 2.1-2.2"/>',
@@ -26,7 +26,7 @@ const ITEMS = [
 ];
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
 
-let rail = null, pill = null, icons = [], capB = null, body = null;
+let rail = null, pill = null, label = null, pico = null, icons = [], capB = null, body = null, meas = null;
 let cur = 0;          // раздел в пилюле
 let navTarget = null; // раздел, к которому идём: пока экран меняется, пилюля не откатывается
 let drag = null;
@@ -41,12 +41,16 @@ function build() {
     `<svg class="rl-cap rl-cap-t" width="${R}" height="${S}" viewBox="0 0 ${R} ${S}" aria-hidden="true"><path d="M${R} 0C${R} ${S * .55} ${R - W} ${S * .42} ${R - W} ${S}L${R} ${S}Z"/></svg>` +
     `<div class="rl-body" style="top:${S - .5}px"></div>` +
     `<svg class="rl-cap rl-cap-b" width="${R}" height="${S}" viewBox="0 0 ${R} ${S}" aria-hidden="true"><path d="M${R - W} 0C${R - W} ${S * .58} ${R} ${S * .45} ${R} ${S}L${R} 0Z"/></svg>` +
-    `<div class="rl-pill" aria-hidden="true"></div>` +
-    ITEMS.map((it, i) => `<button type="button" class="rl-it" data-i="${i}" aria-label="${it.label}" title="${it.label}">${svg(it.id)}</button>`).join('');
+    `<div class="rl-pill" aria-hidden="true"><span class="rl-pico"></span><span class="rl-lab"></span></div>` +
+    ITEMS.map((it, i) => `<button type="button" class="rl-it" data-i="${i}" aria-label="${it.label}" title="${it.label}">${svg(it.id)}</button>`).join('') +
+    `<span class="rl-lab rl-meas" aria-hidden="true"></span>`;
   document.body.appendChild(rail);
   capB = rail.querySelector('.rl-cap-b');
   body = rail.querySelector('.rl-body');
   pill = rail.querySelector('.rl-pill');
+  label = pill.querySelector('.rl-lab');
+  pico = pill.querySelector('.rl-pico');
+  meas = rail.querySelector('.rl-meas');
   icons = [...rail.querySelectorAll('.rl-it')];
   rail.addEventListener('click', e => {
     const b = e.target.closest('.rl-it');
@@ -56,28 +60,29 @@ function build() {
   bindSelection();
 }
 
-function showSelection(i, y) {
-  const id = ITEMS[i].id;
-  if (pill.dataset.item !== id) {
-    pill.dataset.item = id;
-    pill.innerHTML = svg(id);
-  }
-  pill.style.transform = `translate(-50%, ${y - pill.offsetHeight / 2}px)`;
-}
+/* ── Раскладка: пилюля по содержимому, пункты расступаются ── */
+const pillH = i => {
+  meas.textContent = ITEMS[i].label;
+  return Math.ceil(11 + 18 + 8 + meas.offsetHeight + 14);   // отступ, иконка, зазор, подпись, отступ
+};
 function layout() {
   if (!rail || !mqMobile.matches) return;
-  const bodyH = PAD * 2 + ITEMS.length * STEP;
-  const first = S + PAD;
-  icons.forEach((button, i) => {
-    button.style.transform = `translate(-50%, ${first + i * STEP}px)`;
-    button.classList.toggle('under', i === cur);
-    if (i === cur) button.setAttribute('aria-current', 'page');
-    else button.removeAttribute('aria-current');
+  const ph = pillH(cur);
+  const hs = ITEMS.map((_, i) => (i === cur ? ph + 6 : STEP));
+  const bodyH = PAD * 2 + hs.reduce((a, b) => a + b, 0);
+  const h = 2 * S + bodyH;
+  let y = S + PAD;
+  icons.forEach((b, i) => {
+    const mid = y + hs[i] / 2;
+    b.style.transform = `translate(-50%, ${(mid - STEP / 2).toFixed(1)}px)`;
+    b.classList.toggle('under', i === cur);
+    if (i === cur) { pill.style.transform = `translateY(${(mid - ph / 2).toFixed(1)}px)`; pill.style.height = ph + 'px'; }
+    y += hs[i];
   });
   body.style.height = (bodyH + 1) + 'px';
   capB.style.transform = `translateY(${S + bodyH}px)`;
-  rail.style.height = (2 * S + bodyH) + 'px';
-  showSelection(cur, first + (cur + .5) * STEP);
+  rail.style.height = h + 'px';
+  if (label.textContent !== ITEMS[cur].label) { label.textContent = ITEMS[cur].label; pico.innerHTML = svg(ITEMS[cur].id); }
 }
 function viewIndex() { const i = ITEMS.findIndex(x => x.view === state.view); return i < 0 ? cur : i; }
 function sync() {
@@ -109,7 +114,13 @@ function bindSelection() {
     const y = Math.min(drag.centers.at(-1), Math.max(drag.centers[0], e.clientY));
     drag.index = drag.centers.reduce((best, center, i) =>
       Math.abs(center - y) < Math.abs(drag.centers[best] - y) ? i : best, 0);
-    showSelection(drag.index, y - drag.top);
+    const item = ITEMS[drag.index];
+    if (label.textContent !== item.label) {
+      label.textContent = item.label;
+      pico.innerHTML = svg(item.id);
+      pill.style.height = pillH(drag.index) + 'px';
+    }
+    pill.style.transform = `translateY(${y - drag.top - pill.offsetHeight / 2}px)`;
   }
   rail.addEventListener('pointerdown', e => {
     if (!e.isPrimary || e.button !== 0 || drag) return;
