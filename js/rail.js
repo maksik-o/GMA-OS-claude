@@ -6,7 +6,10 @@ const STEP = 46;            // высота пункта
 const S = 54;               // высота «плеча» изгиба
 const W = 46;               // ширина полосы
 const R = W + 2;            // ширина холста плеча (край экрана — справа)
-const PAD = 8;              // запас внутри тела над первым и под последним пунктом
+const PAD = 8;
+const LABEL_MS = 3000;
+const ICON_HEIGHT = 38;
+const wrap = index => (index % ITEMS.length + ITEMS.length) % ITEMS.length;
 const ICON = {
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   week: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L6.8 5M3.5 12l1.2 1.2 2.1-2.2M3.5 18l1.2 1.2 2.1-2.2"/>',
@@ -27,9 +30,14 @@ const ITEMS = [
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
 
 let rail = null, pill = null, label = null, pico = null, icons = [], capB = null, body = null, meas = null;
-let cur = 0;          // раздел в пилюле
-let navTarget = null; // раздел, к которому идём: пока экран меняется, пилюля не откатывается
+let cur = 0;
+let lastView = state.view;
+let navTarget = null;
 let drag = null;
+let labelTimer, wheelTimer;
+let expanded = false;
+let wheelOffset = 0;
+let maxPillHeight = 0;
 
 function build() {
   if (rail) return;
@@ -56,54 +64,80 @@ function build() {
     const b = e.target.closest('.rl-it');
     if (b && e.detail === 0) choose(+b.dataset.i);
   });
-  addEventListener('resize', () => layout());
+  addEventListener('resize', () => {
+    maxPillHeight = 0;
+    layout();
+  });
   bindSelection();
 }
 
-/* ── Раскладка: пилюля по содержимому, пункты расступаются ── */
-const pillH = i => {
+/* Центральная точка остаётся на месте при прокрутке и смене высоты. */
+function pillHeight(i) {
   meas.textContent = ITEMS[i].label;
-  return Math.ceil(11 + 18 + 8 + meas.offsetHeight + 14);   // отступ, иконка, зазор, подпись, отступ
-};
-function layout() {
+  return 11 + 18 + 8 + meas.offsetHeight + 14;
+}
+function layout(index = cur, showLabel = expanded) {
   if (!rail || !mqMobile.matches) return;
-  const ph = pillH(cur);
-  const hs = ITEMS.map((_, i) => (i === cur ? ph + 6 : STEP));
-  const bodyH = PAD * 2 + hs.reduce((a, b) => a + b, 0);
-  const h = 2 * S + bodyH;
-  let y = S + PAD;
-  icons.forEach((b, i) => {
-    const mid = y + hs[i] / 2;
-    b.style.transform = `translate(-50%, ${(mid - STEP / 2).toFixed(1)}px)`;
-    b.classList.toggle('under', i === cur);
-    if (i === cur) { pill.style.transform = `translateY(${(mid - ph / 2).toFixed(1)}px)`; pill.style.height = ph + 'px'; }
-    y += hs[i];
+  if (!maxPillHeight) maxPillHeight = Math.max(...ITEMS.map((_, i) => pillHeight(i)));
+  const ph = showLabel ? pillHeight(index) : ICON_HEIGHT;
+  const bodyH = maxPillHeight + 4 * STEP + 2 * PAD;
+  const center = S + bodyH / 2;
+  icons.forEach((button, i) => {
+    const offset = wrap(i - index + 2) - 2;
+    const shown = Math.abs(offset) <= 2;
+    const y = offset ? Math.sign(offset) * (ph / 2 + (Math.abs(offset) - .5) * STEP) : 0;
+    button.style.transition = shown && button.style.visibility === 'visible' ? '' : 'none';
+    button.style.visibility = shown ? 'visible' : 'hidden';
+    button.tabIndex = shown ? 0 : -1;
+    button.style.transform = `translate(-50%, ${center + y - STEP / 2}px)`;
+    button.classList.toggle('under', offset === 0);
+    if (ITEMS[i].view === state.view) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
   });
   body.style.height = (bodyH + 1) + 'px';
   capB.style.transform = `translateY(${S + bodyH}px)`;
-  rail.style.height = h + 'px';
-  if (label.textContent !== ITEMS[cur].label) { label.textContent = ITEMS[cur].label; pico.innerHTML = svg(ITEMS[cur].id); }
-}
-function viewIndex() { const i = ITEMS.findIndex(x => x.view === state.view); return i < 0 ? cur : i; }
-function sync() {
-  if (!rail || drag) return;
-  if (navTarget) {
-    /* экран ещё меняется: пилюля стоит на выбранном, а не откатывается */
-    if (state.view === ITEMS[navTarget.i].view || Date.now() - navTarget.t > 2500) navTarget = null;
-    else return;
+  rail.style.height = (2 * S + bodyH) + 'px';
+  pill.style.top = center + 'px';
+  pill.style.transform = 'translateY(-50%)';
+  pill.style.height = ph + 'px';
+  label.style.visibility = showLabel ? 'visible' : 'hidden';
+  const item = ITEMS[index];
+  if (label.textContent !== item.label) {
+    label.textContent = item.label;
+    pico.innerHTML = svg(item.id);
   }
-  const i = viewIndex();
-  if (i !== cur) { cur = i; layout(); }
+}
+function showLabel(i) {
+  clearTimeout(labelTimer);
+  cur = i;
+  expanded = true;
+  layout();
+  labelTimer = setTimeout(() => {
+    expanded = false;
+    if (!drag && !wheelTimer) layout();
+  }, LABEL_MS);
+}
+function sync() {
+  if (!rail || drag || wheelTimer) return;
+  if (navTarget) {
+    if (state.view !== navTarget.view && Date.now() - navTarget.time <= 2500) return;
+    navTarget = null;
+  }
+  if (state.view === lastView) return;
+  lastView = state.view;
+  const i = ITEMS.findIndex(item => item.view === lastView);
+  if (i >= 0 && i !== cur) showLabel(i);
+  else layout();
 }
 function choose(i) {
   const it = ITEMS[i];
   hapticLight();
-  if (it.act) { it.act(); return; }   // поиск и настройки — действие, пилюля остаётся на разделе
-  if (i !== cur) { cur = i; layout(); }
+  showLabel(i);
+  if (it.act) { it.act(); return; }
   if (state.view !== it.view) {
-    navTarget = { i, t: Date.now() };
+    navTarget = { view: it.view, time: Date.now() };
     const sh = document.getElementById('sheet');
-    if (sh && sh.classList.contains('open')) document.getElementById('backdrop')?.click();
+    if (sh?.classList.contains('open')) document.getElementById('backdrop')?.click();
     document.dispatchEvent(new CustomEvent('go-view', { detail: it.view }));
   }
 }
@@ -111,49 +145,69 @@ function choose(i) {
 function bindSelection() {
   function move(e) {
     if (!drag || e.pointerId !== drag.id) return;
-    const y = Math.min(drag.centers.at(-1), Math.max(drag.centers[0], e.clientY));
-    drag.index = drag.centers.reduce((best, center, i) =>
-      Math.abs(center - y) < Math.abs(drag.centers[best] - y) ? i : best, 0);
-    const item = ITEMS[drag.index];
-    if (label.textContent !== item.label) {
-      label.textContent = item.label;
-      pico.innerHTML = svg(item.id);
-      pill.style.height = pillH(drag.index) + 'px';
+    const distance = drag.startY - e.clientY;
+    if (!drag.moved && Math.abs(distance) < 7) return;
+    drag.moved = true;
+    const next = wrap(cur + Math.round(distance / STEP));
+    if (next !== drag.index) {
+      drag.index = next;
+      layout(next, false);
     }
-    pill.style.transform = `translateY(${y - drag.top - pill.offsetHeight / 2}px)`;
   }
   rail.addEventListener('pointerdown', e => {
-    if (!e.isPrimary || e.button !== 0 || drag) return;
-    const bounds = rail.getBoundingClientRect();
-    const centers = icons.map(button => {
-      const rect = button.getBoundingClientRect();
-      return rect.top + rect.height / 2;
-    });
-    drag = { id: e.pointerId, top: bounds.top, centers, index: cur };
+    if (!e.isPrimary || e.button !== 0 || drag || wheelTimer) return;
+    const button = e.target.closest('.rl-it');
+    drag = { id: e.pointerId, startY: e.clientY, index: cur, tap: button ? +button.dataset.i : cur, moved: false };
     rail.setPointerCapture(e.pointerId);
     rail.classList.add('rl-selecting');
-    move(e);
   });
   rail.addEventListener('pointermove', move);
   function finish(e) {
     if (!drag || e.pointerId !== drag.id) return;
     const commit = e.type === 'pointerup';
     if (commit) move(e);
-    const { index } = drag;
+    const { index, tap, moved } = drag;
     drag = null;
     rail.classList.remove('rl-selecting');
-    if (commit) choose(index);
-    layout();
+    if (commit) choose(moved ? index : tap);
+    else { layout(); sync(); }
   }
   rail.addEventListener('pointerup', finish);
   rail.addEventListener('pointercancel', finish);
   rail.addEventListener('lostpointercapture', finish);
+
+  rail.addEventListener('wheel', e => {
+    if (drag || !e.deltaY) return;
+    e.preventDefault();
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? STEP : 1;
+    wheelOffset += e.deltaY * unit;
+    const index = wrap(cur + Math.round(wheelOffset / STEP));
+    layout(index, false);
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => {
+      wheelOffset = 0;
+      wheelTimer = undefined;
+      choose(index);
+    }, 160);
+  }, { passive: false });
 }
 
 function apply() {
   const on = mqMobile.matches;
   document.body.classList.toggle('has-rail', on);
-  if (on) { build(); cur = viewIndex(); layout(); }
+  if (!on) {
+    clearTimeout(wheelTimer);
+    wheelTimer = undefined;
+    wheelOffset = 0;
+    drag = null;
+    rail?.classList.remove('rl-selecting');
+    return;
+  }
+  build();
+  const index = ITEMS.findIndex(item => item.view === state.view);
+  if (index >= 0) cur = index;
+  lastView = state.view;
+  layout();
 }
 export function railSync() { if (mqMobile.matches) sync(); }
 export function railInit() {
