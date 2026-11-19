@@ -185,27 +185,6 @@ export function closeCellMenu() {
   if (m) m.classList.remove('open');
 }
 const cellStatusBusy = new Set();
-function animateCellStatus(cell, status) {
-  if (!cell || !cell.animate || reduced()) return Promise.resolve();
-  const style = getComputedStyle(cell);
-  const fromBorder = style.borderColor;
-  const fromBackground = style.backgroundColor;
-  if (!status) {
-    const animation = cell.animate(
-      [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.72)', opacity: .35 }],
-      { duration: 220, easing: EASE_IN, fill: 'forwards' }
-    );
-    return animation.finished.catch(() => {});
-  }
-  const color = style.getPropertyValue(`--c-${status}`).trim() || fromBorder;
-  const toBackground = status === 'done' ? color : fromBackground;
-  const animation = cell.animate([
-    { transform: 'scale(1)', borderColor: fromBorder, backgroundColor: fromBackground },
-    { transform: 'scale(1.1)', borderColor: color, backgroundColor: toBackground, offset: .58 },
-    { transform: 'scale(1)', borderColor: color, backgroundColor: toBackground },
-  ], { duration: 260, easing: EASE, fill: 'forwards' });
-  return animation.finished.catch(() => {});
-}
 function openCellMenu(cell, id, day) {
   const task = getTask(id);
   if (!task) { closeCellMenu(); return; }
@@ -233,8 +212,8 @@ function openCellMenu(cell, id, day) {
       m.querySelectorAll('button').forEach(button => { button.disabled = true; });
       try {
         const next = b.dataset.st || null;
-        if (next !== cur) await animateCellStatus(cell, next);
-        await setEntry(id, day, next);
+        closeCellMenu();
+        await setEntry(id, day, next, cell);
       } finally {
         closeCellMenu();
         renderAll();

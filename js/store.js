@@ -2,6 +2,8 @@ import { dbAll, dbPut, dbBulk, dbDel, dbGetKV, dbSetKV } from './db.js';
 import { applyRepeat } from './repeat.js';
 import { markFresh, animateGone } from './anim.js';
 
+import { previewEntry } from './reward.js';
+
 const DEFAULT_MODES = [
   { id: 'work', label: 'Работа' },
   { id: 'home', label: 'Дом' },
@@ -381,7 +383,8 @@ export function scheduleRollover(onDone) {
   }, wait);
 }
 
-export async function setEntry(id, day, status) {
+export async function setEntry(id, day, status, source) {
+  if (getTask(id) && (getTask(id).days?.[day] || null) !== status) await previewEntry(id, day, status, source);
   const t = getTask(id);
   if (!t) return;
   const days = { ...(t.days || {}) };
@@ -406,6 +409,7 @@ export async function setEntry(id, day, status) {
   else if (status) hapticLight();
 }
 export async function postponeFrom(id, day) {
+  await previewEntry(id, day, 'postponed');
   const t = getTask(id);
   if (!t) return;
   const days = { ...(t.days || {}) };

@@ -11,36 +11,38 @@ import { reduced, BASE, SLOW, EASE } from './anim.js';
 
 const esc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : s;
 const shown = el => el && el.isConnected && el.getClientRects().length > 0;
-const CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1"/></svg>';
+const marks = {
+  todo: 'M6 4H18Q20 4 20 6V18Q20 20 18 20H6Q4 20 4 18V6Q4 4 6 4Z',
+  started: 'M6 18L18 6',
+  done: 'M5 12.5L9.5 17L19 7.5',
+  skipped: 'M6 6L18 18M18 6L6 18',
+  postponed: 'M4 12H19M13 6L19 12L13 18'
+};
 
-function burst(el, color, find) {
-  el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.22)', offset: .3 }, { transform: 'scale(1)' }], { duration: SLOW, easing: EASE });
-  const host = document.createElement('span');
-  host.className = 'rw-fx';
-  host.style.setProperty('--rw', color);
-  host.innerHTML = '<i class="rw-ring"></i>' + CHECK;
-  const r = el.getBoundingClientRect();
-  Object.assign(host.style, { borderRadius: getComputedStyle(el).borderRadius, left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
-  document.body.appendChild(host);
-  host.querySelector('.rw-ring').animate(
-    [{ transform: 'scale(.7)', opacity: .9 }, { transform: 'scale(1.9)', opacity: 0 }],
-    { duration: SLOW + 140, easing: EASE, fill: 'forwards' });
-  const path = host.querySelector('path');
-  path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: BASE, delay: 60, easing: EASE, fill: 'both' });
-  host.querySelector('svg').animate(
-    [{ opacity: 1, transform: 'scale(1)' }, { opacity: 1, transform: 'scale(1)', offset: .6 }, { opacity: 0, transform: 'scale(1.1)' }],
-    { duration: 760, easing: 'linear', fill: 'forwards' }).finished.then(() => host.remove(), () => host.remove());
-  /* строка может переехать (выполненные уходят вниз) или перерисоваться —
-     эффект едет за ней */
-  const follow = () => {
-    if (!host.isConnected) return;
-    const cur = (el.isConnected ? el : find()) || el;
-    el = cur;
-    const q = cur.getBoundingClientRect();
-    if (q.width) host.style.transform = `translate(${q.left - r.left}px, ${q.top - r.top}px)`;
-    requestAnimationFrame(follow);
-  };
-  requestAnimationFrame(follow);
+export async function previewEntry(id, day, status, source) {
+  if (reduced()) return;
+  const key = '[data-id="' + esc(id) + '"]';
+  const targets = source ? [source] : document.querySelectorAll('.cell' + key + '[data-day="' + esc(day) + '"], ' + key + ' .hm-check, ' + key + ' .status');
+  await Promise.all(Array.from(targets).filter(shown).map(async el => {
+    if (!el.animate) return;
+    if (!status) {
+      await el.animate([{opacity: 1}, {opacity: 0, transform: 'scale(.65)'}], {duration: BASE, easing: EASE}).finished.catch(() => {});
+      return;
+    }
+    const host = document.createElement('span');
+    host.setAttribute('aria-hidden', 'true');
+    Object.assign(host.style, {position:'absolute', inset:'0', display:'grid', placeItems:'center', pointerEvents:'none', zIndex:'2', borderRadius:'inherit', background:'var(--panel-solid, #171719)', color:'var(--c-' + status + ', currentColor)'});
+    const position = el.style.position;
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    host.innerHTML = '<svg viewBox="0 0 24 24" width="90%" height="90%" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path pathLength="1" stroke-dasharray="1" d="' + marks[status] + '"/></svg>';
+    el.append(host);
+    try {
+      await host.querySelector('path').animate([{strokeDashoffset:1}, {strokeDashoffset:0, offset:.7}, {strokeDashoffset:0}], {duration:420, easing:EASE}).finished.catch(() => {});
+    } finally {
+      host.remove();
+      el.style.position = position;
+    }
+  }));
 }
 
 function bumpCounter(el, from) {
@@ -67,18 +69,9 @@ export function rewardInit() {
   });
   document.addEventListener('task-done', e => {
     if (reduced()) return;
-    const { id, day, mode } = e.detail || {};
-    const color = `var(--mode-${mode || 'all'}, var(--accent))`;
     const prev = before; before = null;
     /* ждём перерисовку экранов после сохранения */
     setTimeout(() => requestAnimationFrame(() => {
-      const sels = [`.cell[data-id="${esc(id)}"][data-day="${esc(day)}"]`, `[data-id="${esc(id)}"]:not([data-day]) .status`, `[data-id="${esc(id)}"]:not([data-day]) .hm-check`];
-      let n = 0;
-      for (const sel of sels) for (const el of document.querySelectorAll(sel)) {
-        if (n >= 3 || !shown(el)) continue;
-        n++;
-        burst(el, color, () => [...document.querySelectorAll(sel)].find(shown));
-      }
       if (prev) document.querySelectorAll('.hm-prog-t').forEach((el, i) => { if (Number.isFinite(prev[i])) bumpCounter(el, prev[i]); });
     }), 60);
   });
