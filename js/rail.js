@@ -37,7 +37,7 @@ let drag = null;
 let labelTimer, wheelTimer;
 let expanded = false;
 let wheelOffset = 0;
-let maxPillHeight = 0;
+let labelHeights = [];
 
 function build() {
   if (rail) return;
@@ -65,32 +65,39 @@ function build() {
     if (b && e.detail === 0) choose(+b.dataset.i);
   });
   addEventListener('resize', () => {
-    maxPillHeight = 0;
-    layout();
+    labelHeights = [];
+    layout(drag?.position ?? (wheelTimer ? cur + wheelOffset / STEP : cur), !!drag?.moved || !!wheelTimer || expanded);
   });
   bindSelection();
 }
 
-/* Центральная точка остаётся на месте при прокрутке и смене высоты. */
-function pillHeight(i) {
-  meas.textContent = ITEMS[i].label;
-  return 11 + 18 + 8 + meas.offsetHeight + 14;
-}
-function layout(index = cur, showLabel = expanded) {
+/* Пиктограммы идут за пальцем, а подпись меняется в неподвижной пилюле. */
+function layout(position = cur, showLabel = expanded, scrolling = false) {
   if (!rail || !mqMobile.matches) return;
-  if (!maxPillHeight) maxPillHeight = Math.max(...ITEMS.map((_, i) => pillHeight(i)));
-  const ph = showLabel ? pillHeight(index) : ICON_HEIGHT;
-  const bodyH = maxPillHeight + 4 * STEP + 2 * PAD;
+  if (!labelHeights.length) {
+    labelHeights = ITEMS.map(item => {
+      meas.textContent = item.label;
+      return Math.max(ICON_HEIGHT, meas.offsetHeight + 24);
+    });
+  }
+  const index = wrap(Math.round(position));
+  const ph = showLabel ? labelHeights[index] : ICON_HEIGHT;
+  const bodyH = Math.max(...labelHeights) + 4 * STEP + 2 * PAD;
   const center = S + bodyH / 2;
+  const half = ITEMS.length / 2;
   icons.forEach((button, i) => {
-    const offset = wrap(i - index + 2) - 2;
-    const shown = Math.abs(offset) <= 2;
-    const y = offset ? Math.sign(offset) * (ph / 2 + (Math.abs(offset) - .5) * STEP) : 0;
-    button.style.transition = shown && button.style.visibility === 'visible' ? '' : 'none';
-    button.style.visibility = shown ? 'visible' : 'hidden';
-    button.tabIndex = shown ? 0 : -1;
+    const offset = wrap(i - position + half) - half;
+    const distance = Math.abs(offset);
+    const visible = distance < 2.5;
+    const gap = (ph - STEP) / 2 * Math.min(1, distance);
+    const y = offset * STEP + Math.sign(offset) * gap;
+    const opacity = Math.max(0, Math.min(1, distance * 1.65, (2.5 - distance) * .9));
+    button.style.transition = !scrolling && visible && button.style.visibility === 'visible' ? '' : 'none';
+    button.style.visibility = visible ? 'visible' : 'hidden';
+    button.style.opacity = opacity;
+    button.tabIndex = visible ? 0 : -1;
     button.style.transform = `translate(-50%, ${center + y - STEP / 2}px)`;
-    button.classList.toggle('under', offset === 0);
+    button.classList.toggle('under', distance < .01);
     if (ITEMS[i].view === state.view) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   });
@@ -100,7 +107,10 @@ function layout(index = cur, showLabel = expanded) {
   pill.style.top = center + 'px';
   pill.style.transform = 'translateY(-50%)';
   pill.style.height = ph + 'px';
-  label.style.visibility = showLabel ? 'visible' : 'hidden';
+  pill.style.justifyContent = 'center';
+  pill.style.paddingTop = '0';
+  label.style.display = showLabel ? '' : 'none';
+  pico.style.display = showLabel ? 'none' : '';
   const item = ITEMS[index];
   if (label.textContent !== item.label) {
     label.textContent = item.label;
@@ -148,16 +158,13 @@ function bindSelection() {
     const distance = drag.startY - e.clientY;
     if (!drag.moved && Math.abs(distance) < 7) return;
     drag.moved = true;
-    const next = wrap(cur + Math.round(distance / STEP));
-    if (next !== drag.index) {
-      drag.index = next;
-      layout(next, false);
-    }
+    drag.position = cur + distance / STEP;
+    layout(drag.position, true, true);
   }
   rail.addEventListener('pointerdown', e => {
     if (!e.isPrimary || e.button !== 0 || drag || wheelTimer) return;
     const button = e.target.closest('.rl-it');
-    drag = { id: e.pointerId, startY: e.clientY, index: cur, tap: button ? +button.dataset.i : cur, moved: false };
+    drag = { id: e.pointerId, startY: e.clientY, position: cur, tap: button ? +button.dataset.i : cur, moved: false };
     rail.setPointerCapture(e.pointerId);
     rail.classList.add('rl-selecting');
   });
@@ -166,10 +173,10 @@ function bindSelection() {
     if (!drag || e.pointerId !== drag.id) return;
     const commit = e.type === 'pointerup';
     if (commit) move(e);
-    const { index, tap, moved } = drag;
+    const { position, tap, moved } = drag;
     drag = null;
     rail.classList.remove('rl-selecting');
-    if (commit) choose(moved ? index : tap);
+    if (commit) choose(moved ? wrap(Math.round(position)) : tap);
     else { layout(); sync(); }
   }
   rail.addEventListener('pointerup', finish);
@@ -181,8 +188,9 @@ function bindSelection() {
     e.preventDefault();
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? STEP : 1;
     wheelOffset += e.deltaY * unit;
-    const index = wrap(cur + Math.round(wheelOffset / STEP));
-    layout(index, false);
+    const position = cur + wheelOffset / STEP;
+    const index = wrap(Math.round(position));
+    layout(position, true, true);
     clearTimeout(wheelTimer);
     wheelTimer = setTimeout(() => {
       wheelOffset = 0;
