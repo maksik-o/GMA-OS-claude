@@ -6817,14 +6817,40 @@ body.wt-dragging, body.wt-dragging * { cursor: grabbing !important; user-select:
   }
 }
 
-/* Мобильное меню лежит поверх карточек и проявляется при выборе. */
+/* Светлая полоса у правого края, над мобильной кнопкой «+». */
 body.has-rail .rail {
-  opacity: .42;
+  --rl-surface: #f6f2ec;
+  top: auto;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  width: 44px;
+  opacity: .94;
   transition: opacity 180ms ease;
 }
 body.has-rail .rail.rl-selecting,
 body.has-rail .rail:has(:focus-visible) { opacity: 1; }
+.rail .rl-cap path { fill: var(--rl-surface); }
+.rail .rl-body { width: 38px; background: var(--rl-surface); }
+.rail .rl-it {
+  left: 24px;
+  width: 40px;
+  height: 44px;
+  color: #545057;
+}
+.rail .rl-it svg, .rail .rl-pill svg { width: 17px; height: 17px; }
+.rail .rl-pill {
+  left: 24px;
+  width: 29px;
+  height: 34px;
+  margin-left: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
 body.has-rail .rail.rl-selecting .rl-pill { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  body.has-rail .rail, .rail .rl-pill { transition: none; }
+}
 
 /* Мобильная неделя: компактные строки, квадраты только у шапки. */
 @media (max-width: 720px) {
