@@ -377,9 +377,8 @@ export function scheduleRollover(onDone) {
   const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 3);
   const wait = Math.max(1000, next - now);
   setTimeout(async () => {
-    const n = await rolloverDay();
-    if (onDone) onDone(n);
-    scheduleRollover(onDone);
+    try { await onDone(); }
+    finally { scheduleRollover(onDone); }
   }, wait);
 }
 

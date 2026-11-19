@@ -1,4 +1,5 @@
 import { API_URL, CLIENT_ID, OWNER_EMAIL } from './config.js';
+import { rolloverDay } from './store.js';
 import { PARTS, partPayload, applyPart } from './snapshot.js';
 
 const TOKEN_KEY = 'rl_token';
@@ -221,6 +222,11 @@ export async function syncNow(manual) {
   try {
     for (const part of PARTS) {
       const from = since[part] || '';
+      if (part === 'tasks') {
+        const remote = await apiCall('sync', { parts: [part], since: from, pull: true });
+        await applyPart(part, remote);
+        await rolloverDay();
+      }
       const payload = partPayload(part, from);
       /* Даже когда локально ничего не менялось, раз в цикл спрашиваем
          сервер: на другом устройстве могло появиться новое. */

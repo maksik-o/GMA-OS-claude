@@ -21,7 +21,7 @@
 import { fadeRemove } from './anim.js';
 import { buildSnapshot, applySnapshot, isSnapshot } from './snapshot.js';
 import { dbGetKV, dbSetKV } from './db.js';
-import { esc } from './store.js';
+import { esc, rolloverDay } from './store.js';
 import * as legacy from './sync.js';
 import { YANDEX_CLIENT_ID, YANDEX_PROXY } from './config.js';
 import { setupAttachments, flushAttachments } from './attach.js';
@@ -316,6 +316,7 @@ async function vaultSync(manual) {
         if (!isSnapshot(data)) throw corrupt('В хранилище лежат не данные Essential OS');
         await applySnapshot(data);
       }
+      await rolloverDay();
       const res = await pv.write(buildSnapshot(), rev);
       written = !res.conflict;   // файл изменили между чтением и записью — повторяем
     }
@@ -388,6 +389,11 @@ export function schedule() {
   clearTimeout(timer);
   timer = setTimeout(() => vaultSync(false), 2000);
 }
+export function refreshTaskDay() {
+  const mode = getMode();
+  if (syncable(mode) || (mode === 'legacy' && legacy.signedIn())) return syncNow();
+  return rolloverDay();
+}
 export function syncInit() {
   document.addEventListener('user-change', schedule);
   window.addEventListener('online', () => {
@@ -397,7 +403,7 @@ export function syncInit() {
   window.addEventListener('offline', () => { if (getMode() === 'legacy') status('offline'); });
   /* Файл мог изменить другой компьютер через папку облака — подтягиваем,
      когда приложение снова на экране */
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && syncable(getMode())) vaultSync(false); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshTaskDay(); });
   /* Вернулись из окна входа Яндекса — забираем токен из адреса */
   if (YANDEX_CLIENT_ID) yandexStore.takeTokenFromUrl();
   const m = getMode();
@@ -408,6 +414,7 @@ export function syncInit() {
     setTimeout(() => vaultSync(false), 300);
   } else {
     status('local');
+    refreshTaskDay();
     if (!m) setTimeout(openStorageChooser, 900);
   }
 }

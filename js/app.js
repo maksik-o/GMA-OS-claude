@@ -2,13 +2,13 @@ import {
   init, state, addDays, today, MODES,
   getTagsDict, addTagsToDict, setTagColor, renameTag, deleteTag,
   loadModeColors, getModeColors, setModeColor, resetModeColor, resetModeColors,
-  subscribe, getTimeAtmosphere, checkDayRollover,
+  subscribe, getTimeAtmosphere,
   setModeLabel, resetModeLabel, resetAllModeLabels,
-  rolloverDay, scheduleRollover, getTombstonesFull,
+  scheduleRollover, getTombstonesFull,
 } from './store.js';
 import { renderAll, shiftWeek, goToday, dayOpen, openDay, closeDay, closeCellMenu, refreshRunning, blockSwap } from './week.js';
 import { openSheet, closeSheet, sheetOpen, refreshBackdrop } from './sheet.js';
-import { syncInit, syncNow, renderSyncPanel } from './vault.js';
+import { syncInit, syncNow, renderSyncPanel, refreshTaskDay } from './vault.js';
 import { searchInit, openSearch, closeSearch, searchOpen } from './search.js';
 import { dbGetKV, dbSetKV } from './db.js';
 import * as hk from './hotkeys.js';
@@ -802,10 +802,6 @@ async function boot() {
   applyFont();
   updateTimeAtmosphere();
   setInterval(updateTimeAtmosphere, 60000);
-  setInterval(checkDayRollover, 30000);
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) checkDayRollover();
-  });
   addEventListener('load', () => window.scrollTo(0, 0));
   addEventListener('pageshow', () => window.scrollTo(0, 0));
   document.addEventListener('hotkeys-changed', renderCurrent);
@@ -813,13 +809,7 @@ async function boot() {
   document.addEventListener('sync-done', renderCurrent);
   document.addEventListener('mode-labels-changed', renderCurrent);
   contactsSubscribe(renderCurrent);
-  /* Сутки могли смениться, пока приложение было закрыто или висело
-     в фоне: догоняем перенос на старте и дальше ровно в полночь. */
-  rolloverDay().then(n => { if (n) renderCurrent(); });
-  scheduleRollover(n => { if (n) renderCurrent(); });
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) rolloverDay().then(n => { if (n) renderCurrent(); });
-  });
+  scheduleRollover(refreshTaskDay);
   document.addEventListener('go-view', e => setView(e.detail));
   document.addEventListener('render-now', renderCurrent);
   financeSubscribe(renderCurrent);
