@@ -956,13 +956,17 @@ function bindCell(c) {
 }
 /* Выбираем первую строку, ещё не ушедшую под шапку. */
 let drumRow = null, revealTimer, snapTimer, drumFrame;
+// Измеряем исходное положение строки, независимо от анимации подъёма.
+function drumLift(row) {
+  return parseFloat(getComputedStyle(row).translate.split(' ')[1]) || 0;
+}
 function updateMobileDrum() {
   const panel = $('grid').querySelector('.p-mobile');
   const head = panel?.querySelector('.m-head');
   const edge = head?.getBoundingClientRect().bottom;
   const rows = panel?.querySelectorAll('.m-task');
   const next = mqMobileWeek.matches && state.view === 'week' && head?.offsetWidth && edge > 0
-    ? Array.from(rows).find(row => row.querySelector('.r-row').getBoundingClientRect().bottom > edge + 3)
+    ? Array.from(rows).find(row => row.getBoundingClientRect().bottom - drumLift(row) > edge + 3)
     : null;
   if (next === drumRow) return;
   clearTimeout(revealTimer);
@@ -971,7 +975,7 @@ function updateMobileDrum() {
   if (!next) return;
   next.classList.add('drum-current');
   revealTimer = setTimeout(() => {
-    if (next === drumRow && next.isConnected) next.classList.add('sq-open');
+    if (next === drumRow && next.isConnected && state.view === 'week') next.classList.add('sq-open');
   }, 500);
 }
 
@@ -987,10 +991,10 @@ function updateMobileDrum() {
       const head = row?.closest('.p-mobile')?.querySelector('.m-head');
       if (!row?.isConnected || !head?.offsetWidth || document.querySelector('#cellMenu.open')) return;
       const pin = app.getBoundingClientRect().top + parseFloat(getComputedStyle(head).top);
-      if (head.getBoundingClientRect().top > pin + 3) return;
-      const delta = row.getBoundingClientRect().top - head.getBoundingClientRect().bottom + 4;
+      if (!Number.isFinite(pin) || Math.abs(head.getBoundingClientRect().top - pin) > 4) return;
+      const delta = row.getBoundingClientRect().top - drumLift(row) - head.getBoundingClientRect().bottom;
       const target = Math.max(0, Math.min(app.scrollHeight - app.clientHeight, app.scrollTop + delta));
-      if (Math.abs(target - app.scrollTop) > 2) app.scrollTo({ top: target, behavior: 'instant' });
+      if (Math.abs(target - app.scrollTop) > 2) app.scrollTo({ top: target, behavior: reduced() ? 'instant' : 'smooth' });
     }, 135);
   }
   app.addEventListener('scroll', () => {

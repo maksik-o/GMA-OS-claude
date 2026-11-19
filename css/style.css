@@ -6836,19 +6836,40 @@ body.has-rail .rail.rl-selecting .rl-pill { transition: none; }
     padding: 4px 8px;
     border: 1px solid transparent;
     border-radius: 10px;
-    transition: translate 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+    translate: 0 0;
+    transition: translate 220ms cubic-bezier(.22, .61, .36, 1), box-shadow 220ms ease, background-color 220ms ease, border-color 220ms ease;
   }
   .p-mobile .m-task .r-row { padding: 3px 2px; }
   .p-mobile .m-task .g-title { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
   .p-mobile .m-task .l-row { display: none; }
-  .p-mobile .m-task.sq-open .l-row { display: grid; gap: 4px; margin: 4px 0 0; }
+  /* Квадраты раскрываются поверх списка, не меняя шаг прокрутки. */
+  .p-mobile .m-task.sq-open .l-row {
+    display: grid;
+    position: absolute;
+    inset: 100% -1px auto;
+    gap: 4px;
+    margin: 0;
+    padding: 3px 8px 8px;
+    border: 1px solid var(--brd);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: var(--panel-solid, var(--bg));
+    box-shadow: 0 8px 12px #0004;
+    animation: drum-squares-in 160ms ease-out both;
+  }
+  .p-mobile .m-task.drum-current.sq-open { border-radius: 10px 10px 0 0; }
   .p-mobile .m-task.sq-open .cell { height: 44px; border-radius: 8px; }
   .p-mobile .m-task.sq-open .cell.tdy { outline: 1px solid var(--accent); }
   .p-mobile .m-task.drum-current {
     translate: 0 -4px;
     z-index: 2;
-    background: var(--panel-solid);
+    background: var(--panel-solid, var(--bg));
     border-color: var(--brd);
     box-shadow: 0 6px 12px #0005;
   }
+}
+
+@keyframes drum-squares-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
 }
