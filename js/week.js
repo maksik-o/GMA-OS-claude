@@ -618,17 +618,21 @@ function toggleInlineCal(force) {
     close();
   }, { passive: true });
 })();
-function leftRowHTML(tk, t) {
+function leftRowHTML(tk, t, mobile = false) {
   let cells = '';
+  let captions = '';
   for (let i = 0; i < 7; i++) {
     const d = addDays(state.weekStart, i);
     const st = (tk.days || {})[d];
     const pp = st === 'postponed' ? ((tk.days || {})[addDays(d, 1)] === 'postponed' ? ' pp-dash' : ' pp-arrow') : '';
     /* день внутри прошлого ожидания — пауза, а не пропуск */
     const wt = !st && tk.waitLog && pausedOn(tk, d);
-    cells += `<button type="button" class="cell ${st ? 'c-' + st : wt ? 'c-wait' : 'none'}${pp}${d === t ? ' tdy' : ''}" data-id="${esc(tk.id)}" data-day="${d}" title="${fmtD(d)}${wt ? ' · ждали' : ''}">${tk.receivedAt === d ? '<i class="rd"></i>' : ''}</button>`;
+    const dayLabel = DAYS_FULL[(parseISO(d).getDay() + 6) % 7];
+    const statusLabel = wt ? 'Ждали' : MENU.find(([key]) => key === st)?.[1] || 'Без отметки';
+    if (mobile) captions += `<span class="mobile-day-caption${d === t ? ' today' : ''}" aria-hidden="true">${dayLabel.slice(0, 2)}</span>`;
+    cells += `<button type="button" class="cell ${st ? 'c-' + st : wt ? 'c-wait' : 'none'}${pp}${d === t ? ' tdy' : ''}" data-id="${esc(tk.id)}" data-day="${d}" aria-label="${dayLabel}, ${fmtD(d)}: ${statusLabel}" title="${fmtD(d)}${wt ? ' · ждали' : ''}">${tk.receivedAt === d ? '<i class="rd"></i>' : ''}</button>`;
   }
-  return `<div class="l-row${isBig(tk) && !isDone(tk) ? ' big' : ''}">${cells}</div>`;
+  return `<div class="l-row${isBig(tk) && !isDone(tk) ? ' big' : ''}">${captions}${cells}</div>`;
 }
 /* Строка задачи: таймеры и fp-eligible только если установлен виджет «Фокус» */
 function rightRowHTML(tk, t) {
@@ -832,7 +836,7 @@ function renderGrid() {
   const rows = weekRows(state.weekStart);
   const leftRows = rows.map(r => leftRowHTML(r, t)).join('');
   const rightRows = rows.map(r => rightRowHTML(r, t)).join('');
-  const mobileRows = rows.map(r => `<div class="m-task${(sqMode === 'full' || expandedSq === r.id) ? ' sq-open' : ''}">${rightRowHTML(r, t)}${sqMode === 'hidden' ? '' : leftRowHTML(r, t)}</div>`).join('');
+  const mobileRows = rows.map(r => `<div class="m-task${(sqMode === 'full' || expandedSq === r.id) ? ' sq-open' : ''}">${rightRowHTML(r, t)}${sqMode === 'hidden' ? '' : leftRowHTML(r, t, true)}</div>`).join('');
   const empty = `<p class="empty">Пусто — добавьте задачу (кнопка «＋» или клавиша ${hk.pretty(hk.keyFor('new'))})</p>`;
   $('grid').innerHTML = `<section class="pane p-left glass">
     <div class="l-head">${headHTML(t)}</div>
