@@ -9,6 +9,7 @@ import {
 import { renderAll, shiftWeek, goToday, dayOpen, openDay, closeDay, closeCellMenu, refreshRunning, blockSwap } from './week.js';
 import { openSheet, closeSheet, sheetOpen, refreshBackdrop } from './sheet.js';
 import { syncInit, syncNow, renderSyncPanel, refreshTaskDay } from './vault.js';
+import { PARTS, partPayload } from './snapshot.js';
 import { searchInit, openSearch, closeSearch, searchOpen } from './search.js';
 import { dbGetKV, dbSetKV } from './db.js';
 import * as hk from './hotkeys.js';
@@ -654,6 +655,24 @@ function applyView(v) {
 /* Перерисовка по изменению данных — «на месте»: переехавшее плавно
    переезжает, новое проявляется, удалённое растворяется (anim.morph) */
 let renderLater = false;
+let lastDataSignature, dataRenderFrame;
+function dataSignature() {
+  const { mode, widgets, hideDone } = state;
+  return JSON.stringify([today(), mode, widgets, hideDone, PARTS.map(part => partPayload(part, ''))], (_, value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]]));
+  });
+}
+function queueDataRender() {
+  if (dataRenderFrame !== undefined) return;
+  dataRenderFrame = requestAnimationFrame(() => {
+    dataRenderFrame = undefined;
+    const signature = dataSignature();
+    if (signature === lastDataSignature) return;
+    lastDataSignature = signature;
+    renderCurrent();
+  });
+}
 function renderCurrent() {
   /* Пока открыт редактор задачи, экран за ним не перестраиваем: тяжёлая
      перерисовка недели рвала анимации внутри редактора. Догоним после
@@ -806,15 +825,15 @@ async function boot() {
   addEventListener('pageshow', () => window.scrollTo(0, 0));
   document.addEventListener('hotkeys-changed', renderCurrent);
   document.addEventListener('timer-changed', refreshRunning);
-  document.addEventListener('sync-done', renderCurrent);
+  document.addEventListener('sync-done', queueDataRender);
   document.addEventListener('mode-labels-changed', renderCurrent);
-  contactsSubscribe(renderCurrent);
+  contactsSubscribe(queueDataRender);
   scheduleRollover(refreshTaskDay);
   document.addEventListener('go-view', e => setView(e.detail));
   document.addEventListener('render-now', renderCurrent);
-  financeSubscribe(renderCurrent);
-  kbSubscribe(renderCurrent);
-  subscribe(renderCurrent);
+  financeSubscribe(queueDataRender);
+  kbSubscribe(queueDataRender);
+  subscribe(queueDataRender);
   document.addEventListener('goto-week', e => {
     if (e.detail) {
       state.weekStart = e.detail;
@@ -834,6 +853,7 @@ async function boot() {
   /* Запуск всегда с «Главной»: экран собирается невидимым (html.booting),
      затем всё проявляется одним каскадом */
   applyView('home');
+  lastDataSignature = dataSignature();
   revealApp();
   syncInit();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
