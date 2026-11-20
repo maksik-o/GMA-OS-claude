@@ -1,9 +1,44 @@
 /* Показываем итоговую отметку до сортировки строк. */
-import { reduced, BASE, EASE } from './anim.js';
+import { reduced, BASE, SLOW, EASE } from './anim.js';
 
 const esc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : s;
 const shown = el => el && el.isConnected && el.getClientRects().length > 0;
 const statuses = ['todo', 'started', 'done', 'skipped', 'postponed'];
+
+/* Свет проходит по видимой строке одновременно с анимацией отметки. */
+async function sweepDone(row) {
+  if (!row.animate || row.querySelector('.task-completion-light')) return;
+  const layer = document.createElement('span');
+  const beam = document.createElement('span');
+  layer.className = 'task-completion-light';
+  layer.setAttribute('aria-hidden', 'true');
+  Object.assign(layer.style, {
+    position: 'absolute', inset: '0', borderRadius: 'inherit',
+    overflow: 'hidden', pointerEvents: 'none', zIndex: '3',
+  });
+  Object.assign(beam.style, {
+    position: 'absolute', inset: '0 auto 0 0', width: '56%',
+    background:
+      'radial-gradient(ellipse at 58% 0%, rgba(184, 225, 255, .36), transparent 61%), ' +
+      'linear-gradient(108deg, transparent 7%, rgba(47, 123, 255, .15) 32%, rgba(125, 198, 255, .34) 48%, rgba(202, 244, 255, .23) 56%, rgba(96, 130, 255, .12) 71%, transparent 94%)',
+  });
+  const positioned = getComputedStyle(row).position !== 'static';
+  const position = row.style.position;
+  if (!positioned) row.style.position = 'relative';
+  layer.append(beam);
+  row.append(layer);
+  try {
+    await beam.animate([
+      { transform: 'translateX(-100%)', opacity: 0 },
+      { opacity: 1, offset: .18 },
+      { opacity: 1, offset: .74 },
+      { transform: 'translateX(180%)', opacity: 0 },
+    ], { duration: 620, easing: 'ease-in-out' }).finished.catch(() => {});
+  } finally {
+    layer.remove();
+    if (!positioned) row.style.position = position;
+  }
+}
 
 export async function previewEntry(id, day, status, source) {
   const key = '[data-id="' + esc(id) + '"]';
@@ -11,7 +46,7 @@ export async function previewEntry(id, day, status, source) {
     '.cell' + key + '[data-day="' + esc(day) + '"], ' +
     '.hm-check[data-toggle="' + esc(id) + '"], ' + key + ' .status'
   );
-  await Promise.all(Array.from(targets).filter(shown).map(async el => {
+  const marks = Array.from(targets).filter(shown).map(async el => {
     if (el.matches('.cell')) {
       el.classList.remove('none', 'c-wait', ...statuses.map(s => 'c-' + s));
       el.classList.add(status ? 'c-' + status : 'none');
@@ -53,7 +88,13 @@ export async function previewEntry(id, day, status, source) {
     if (!reduced() && el.animate) {
       await el.animate([{scale: '.92'}, {scale: '1'}], {duration: BASE, easing: EASE}).finished.catch(() => {});
     }
-  }));
+  });
+  const rows = status === 'done' && !reduced()
+    ? [...document.querySelectorAll(
+      ['.r-row', '.task', '.hm-row', '.kb-card', '.tl-block'].map(selector => selector + key).join(', ')
+    )].filter(shown)
+    : [];
+  await Promise.all([...marks, ...rows.map(sweepDone)]);
 }
 
 function bumpCounter(el, from) {
