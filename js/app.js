@@ -43,7 +43,7 @@ const BG_GRADIENT_PRESETS = [
 ];
 const BG_PRESETS = ['#000000', '#0a0a0a', '#141414', '#202020', '#303030'];
 const FONTS = [{ id: 's', label: 'S' }, { id: 'm', label: 'M' }, { id: 'l', label: 'L' }];
-const TAG_COLORS = ['#ffffff', '#d8d8d8', '#b0b0b0', '#909090', '#707070', '#505050'];
+const TAG_COLORS = ['#ef4444', '#f59e0b', '#10b981', '#2563eb', '#8b5cf6', '#ec4899'];
 
 let storedBg = '';
 let storedBgImage = '';
@@ -107,10 +107,11 @@ function applyBgImage() {
   }
   // Явный слой вместо body::before. При отсутствии личного изображения
   // мобильное оформление автоматически получает встроенные обои из CSS.
-  const fallback = new URL('assets/obsidian-iphone-preview.svg', document.baseURI).href;
+  const fallback = new URL('assets/GMA-OS-iPhone-option-3.png', document.baseURI).href;
+  const previousFallback = new URL('assets/obsidian-iphone-preview.svg', document.baseURI).href;
   const mobile = matchMedia('(max-width: 720px), (pointer: coarse) and (max-width: 950px)').matches;
   layer.style.backgroundImage = url
-    ? (mobile ? `url("${url}"), url("${fallback}")` : `url("${url}")`)
+    ? (mobile ? `url("${url}"), url("${fallback}"), url("${previousFallback}")` : `url("${url}")`)
     : '';
   layer.style.opacity = String(storedBgOpacity);
 }
@@ -325,14 +326,12 @@ function renderLookPanel() {
         colorWrap.className = 'mode-color-wrap';
         const colorInput = document.createElement('input');
         colorInput.type = 'color';
-        colorInput.disabled = true;
-        colorInput.title = 'Монохромная тема';
         colorInput.className = 'mode-color-input';
         colorInput.id = 'modeColor_' + m.id;
         colorInput.name = 'modeColor_' + m.id;
         colorInput.autocomplete = 'off';
-        colorInput.value = '#ffffff';
-        colorInput.title = 'Белый акцент монохромной темы';
+        colorInput.value = colors[m.id] || '#888888';
+        colorInput.title = 'Цвет режима';
         colorInput.onchange = async () => {
           await setModeColor(m.id, colorInput.value);
           renderLookPanel();
