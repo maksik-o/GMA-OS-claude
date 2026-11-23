@@ -97,21 +97,22 @@ function applyTheme() {
   });
 }
 function applyBgImage() {
+  const layer = document.getElementById('appWallpaper');
+  if (!layer) return;
   const img = storedBgImage;
-  /* Относительный путь внутри var() Chrome разрешает относительно
-     таблицы стилей (css/style.css), а не документа — отсюда были
-     запросы вида css/images/sunset.jpg. Отдаём абсолютный URL. */
   let url = '';
   if (img) {
     try { url = /^(data:|blob:|https?:)/.test(img) ? img : new URL(img, document.baseURI).href; }
     catch { url = img; }
   }
-  /* Своя картинка заменяет узор темы; без неё ползунок «Фон» меняет
-     яркость узора (body::before в style.css) */
-  const r = document.documentElement.style;
-  if (url) r.setProperty('--bg-layer', `url("${url}") center / cover no-repeat`);
-  else r.removeProperty('--bg-layer');
-  r.setProperty('--bg-image-opacity', storedBgOpacity);
+  // Явный слой вместо body::before. При отсутствии личного изображения
+  // мобильное оформление автоматически получает встроенные обои из CSS.
+  const fallback = new URL('assets/obsidian-iphone-preview.svg', document.baseURI).href;
+  const mobile = matchMedia('(max-width: 720px), (pointer: coarse) and (max-width: 950px)').matches;
+  layer.style.backgroundImage = url
+    ? (mobile ? `url("${url}"), url("${fallback}")` : `url("${url}")`)
+    : '';
+  layer.style.opacity = String(storedBgOpacity);
 }
 function applyFont() { document.body.dataset.font = storedFont; }
 function updateTimeAtmosphere() {
@@ -808,7 +809,12 @@ async function boot() {
     await dbSetKV('obsidianV1', 1);
   }
   const bo = parseFloat(await dbGetKV('bgLayerOpacity'));
-  storedBgOpacity = Number.isFinite(bo) ? bo : 1;
+  storedBgOpacity = Number.isFinite(bo) ? Math.min(1, Math.max(0, bo)) : 1;
+  if (!(await dbGetKV('obsidianWallpaperV2'))) {
+    storedBgOpacity = 1;
+    await dbSetKV('bgLayerOpacity', 1);
+    await dbSetKV('obsidianWallpaperV2', 1);
+  }
   /* Стеклянные панели стали оформлением по умолчанию: прежняя «плотность
      100%» сбрасывается один раз; дальше — как выставит пользователь */
   if (!(await dbGetKV('glassV1'))) { await dbSetKV('glassV1', 1); await dbSetKV('panelAlpha', panelAlpha); }
