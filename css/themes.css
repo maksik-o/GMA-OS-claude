@@ -200,7 +200,6 @@ html[data-theme] {
 
 /* ── OBSIDIAN / монохромное стекло ── */
 :root[data-theme="coral"], :root[data-theme="coral"] body {
-  --bg: #000000;
   --bg-mesh: none;
   --text: #fafafa;
   --dim: #a8a8a8;
@@ -229,8 +228,8 @@ html[data-theme] {
   --c-tag: #a8a8a8;
   --p1: #ffffff; --p2: #b5b5b5; --p3: #808080;
 }
-html[data-theme="coral"] { background: #000; }
-:root[data-theme="coral"] body { background: #000; }
+html[data-theme="coral"] { background: var(--bg); }
+:root[data-theme="coral"] body { background: var(--bg); }
 :root[data-theme="coral"] .glass:not(.pskinned) {
   -webkit-backdrop-filter: blur(calc(16px * var(--panel-blur-k, 1))) saturate(0);
   backdrop-filter: blur(calc(16px * var(--panel-blur-k, 1))) saturate(0);
@@ -266,4 +265,22 @@ html[data-theme="coral"] { background: #000; }
     -webkit-backdrop-filter: blur(calc(10px * var(--panel-blur-k,1)));
     backdrop-filter: blur(calc(10px * var(--panel-blur-k,1)));
   }
+}
+
+/* Contrast: filled white completed controls need dark checkmarks. */
+:root[data-theme="coral"] :is(.st-done .status,.a-status.a-done)::after { border-color: #080808; }
+:root[data-theme="coral"] :is(.hm-row.done .hm-check,.tl-block.done .tlb-check,.hint-done) { color: #080808 !important; }
+:root[data-theme="coral"] .cell.c-done { background: #fff; border-color: #fff; }
+:root[data-theme="coral"] .cell.c-done::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 7px; height: 12px;
+  border: solid #080808; border-width: 0 2px 2px 0;
+  transform: translate(-50%,-60%) rotate(45deg);
+}
+@media (max-width: 720px) {
+  :root[data-theme="coral"] .p-mobile .cell.c-todo { background: #555; }
+  :root[data-theme="coral"] .p-mobile .cell.c-postponed { background: #888; }
+  :root[data-theme="coral"] .p-mobile .cell.c-started { background: #bcbcbc; }
+  :root[data-theme="coral"] .p-mobile .cell.c-skipped { background: #333; }
+  :root[data-theme="coral"] .p-mobile .m-task.sq-open .cell.c-todo { background: transparent; border: 2px solid #888; }
+  :root[data-theme="coral"] .p-mobile .m-task.sq-open .cell.c-done { background: #fff; border-color: #fff; }
 }
