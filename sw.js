@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'gma-os-' + new URL(self.registration.scope).pathname + '-';
-const CACHE = CACHE_PREFIX + 'v327';
+const CACHE = CACHE_PREFIX + 'v328';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает
@@ -33,6 +33,8 @@ self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
     await Promise.all(SHELL.map(u => c.add(u)));
+    // The full-quality wallpaper is optional until the PNG asset is uploaded.
+    await c.add('./assets/GMA-OS-iPhone-option-3.png').catch(() => {});
     self.skipWaiting();
   })());
 });
