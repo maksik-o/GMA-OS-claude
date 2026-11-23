@@ -105,14 +105,9 @@ function applyBgImage() {
     try { url = /^(data:|blob:|https?:)/.test(img) ? img : new URL(img, document.baseURI).href; }
     catch { url = img; }
   }
-  // Явный слой вместо body::before. При отсутствии личного изображения
-  // мобильное оформление автоматически получает встроенные обои из CSS.
-  const fallback = new URL('assets/GMA-OS-iPhone-option-3.png', document.baseURI).href;
-  const previousFallback = new URL('assets/obsidian-iphone-preview.svg', document.baseURI).href;
-  const mobile = matchMedia('(max-width: 720px), (pointer: coarse) and (max-width: 950px)').matches;
-  layer.style.backgroundImage = url
-    ? (mobile ? `url("${url}"), url("${fallback}"), url("${previousFallback}")` : `url("${url}")`)
-    : '';
+  // Use the original uploaded image or the full-resolution bundled PNG.
+  // No preview fallback, resizing, canvas conversion or JPEG encoding.
+  layer.style.backgroundImage = url ? `url("${url}")` : '';
   layer.style.opacity = String(storedBgOpacity);
 }
 function applyFont() { document.body.dataset.font = storedFont; }
