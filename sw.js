@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'gma-os-' + new URL(self.registration.scope).pathname + '-';
-const CACHE = CACHE_PREFIX + 'v328';
+const CACHE = CACHE_PREFIX + 'v329';
 
 /* В кэш кладём только целые ответы.
    Видео и аудио браузер тянет диапазонами (Range), сервер отвечает
@@ -23,7 +23,7 @@ const SHELL = [
   './js/widgets.js', './js/cal.js', './js/contacts.js', './js/kanban.js',
   './js/finance.js', './js/finimport.js', './js/anim.js',
   './js/timeline.js', './js/kb.js', './js/snapshot.js', './js/vault.js', './js/kbgraph.js', './js/charts.js', './js/home.js', './js/sidebar.js', './js/repeat.js', './js/edsched.js', './js/rail.js', './js/reward.js', './js/wait.js',
-  './css/fonts.css', './css/themes.css', './assets/obsidian-iphone-preview.svg',
+  './css/fonts.css', './css/themes.css',
   './fonts/inter-cyrillic.woff2', './fonts/inter-latin.woff2',
   './fonts/jetbrains-mono-cyrillic.woff2', './fonts/jetbrains-mono-latin.woff2',
   './fonts/comfortaa-cyrillic.woff2', './fonts/comfortaa-latin.woff2'
@@ -33,8 +33,8 @@ self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
     await Promise.all(SHELL.map(u => c.add(u)));
-    // The full-quality wallpaper is optional until the PNG asset is uploaded.
-    await c.add('./assets/GMA-OS-iPhone-option-3.png').catch(() => {});
+    // Never cache a low-resolution wallpaper as a fallback.
+    await c.add('./assets/GMA-OS-iPhone-HQ.png').catch(() => {});
     self.skipWaiting();
   })());
 });
