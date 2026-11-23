@@ -37,20 +37,13 @@ const $ = id => document.getElementById(id);
 const THEME = { id: 'coral', surf: 'dark' };
 /* Только тёмные подложки: текст и панели темы рассчитаны на тёмный фон */
 const BG_GRADIENT_PRESETS = [
-  /* под стеклянные панели: «Коралловый закат», «Северное сияние», «Боке» */
-  'radial-gradient(42% 55% at 12% 18%,rgba(255,92,80,.55),transparent 70%),radial-gradient(38% 50% at 88% 85%,rgba(255,150,60,.45),transparent 70%),radial-gradient(50% 45% at 60% 40%,rgba(120,40,120,.35),transparent 75%),radial-gradient(30% 30% at 75% 15%,rgba(255,60,90,.25),transparent 70%),linear-gradient(160deg,#120808,#0b0507 50%,#140a06)',
-  'radial-gradient(60% 35% at 30% 0%,rgba(40,220,170,.45),transparent 70%),radial-gradient(45% 40% at 85% 10%,rgba(120,80,255,.45),transparent 70%),radial-gradient(55% 45% at 50% 100%,rgba(40,90,200,.35),transparent 75%),linear-gradient(180deg,#050b14,#070712)',
-  'radial-gradient(14% 18% at 18% 30%,rgba(255,99,99,.55),transparent 70%),radial-gradient(18% 22% at 80% 22%,rgba(86,194,255,.45),transparent 70%),radial-gradient(16% 20% at 65% 78%,rgba(255,192,98,.45),transparent 70%),radial-gradient(22% 26% at 30% 85%,rgba(140,90,255,.35),transparent 70%),radial-gradient(10% 12% at 48% 48%,rgba(89,212,153,.3),transparent 70%),linear-gradient(160deg,#15161a,#0a0b0d)',
-  'linear-gradient(160deg,#0f2027,#203a43,#2c5364)',
-  'linear-gradient(160deg,#141e30,#243b55)',
-  'linear-gradient(160deg,#0b0f1a,#2a0f1e)',
-  'linear-gradient(160deg,#071a14,#134e5e)',
-  'linear-gradient(160deg,#1a1022,#3a1c32)',
-  'linear-gradient(160deg,#050608,#1c1f26)',
+  'linear-gradient(145deg,#000000,#171717)',
+  'radial-gradient(ellipse at 25% 15%,#303030,transparent 70%),#000000',
+  'radial-gradient(ellipse at 80% 80%,#333333,transparent 65%),#050505',
 ];
-const BG_PRESETS = ['#040506', '#0b1220', '#04222e', '#221129', '#101c10', '#1a1013'];
+const BG_PRESETS = ['#000000', '#0a0a0a', '#141414', '#202020', '#303030'];
 const FONTS = [{ id: 's', label: 'S' }, { id: 'm', label: 'M' }, { id: 'l', label: 'L' }];
-const TAG_COLORS = ['#ef4444', '#f59e0b', '#10b981', '#2563eb', '#8b5cf6', '#ec4899'];
+const TAG_COLORS = ['#ffffff', '#d8d8d8', '#b0b0b0', '#909090', '#707070', '#505050'];
 
 let storedBg = '';
 let storedBgImage = '';
@@ -177,21 +170,24 @@ async function setFont(id) {
 async function handleBgImageUpload(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { alert('Выберите изображение'); return; }
-  /* Фото с телефона весит мегабайты и целиком лежало бы в базе и в
-     памяти как data:URL. Ужимаем до 2048 px по длинной стороне. */
-  const url = URL.createObjectURL(file);
+  /* Сохраняем исходный файл без ресайза и перекодирования. */
   try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-    const k = Math.min(1, 2048 / Math.max(img.naturalWidth, img.naturalHeight));
-    const c = document.createElement('canvas');
-    c.width = Math.round(img.naturalWidth * k);
-    c.height = Math.round(img.naturalHeight * k);
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    storedBgImage = c.toDataURL('image/jpeg', 0.82);
-  } catch { alert('Не удалось открыть изображение'); return; }
-  finally { URL.revokeObjectURL(url); }
-  if (storedBgOpacity < 0.2) storedBgOpacity = 1;
-  await dbSetKV('bgImage', storedBgImage);
+    const original = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = original;
+    });
+    await dbSetKV('bgImage', original);
+    storedBgImage = original;
+  } catch { alert('Не удалось открыть или сохранить изображение'); return; }
+  storedBgOpacity = 1;
   await dbSetKV('bgLayerOpacity', storedBgOpacity);
   applyBgImage();
   renderLookPanel();
@@ -328,12 +324,14 @@ function renderLookPanel() {
         colorWrap.className = 'mode-color-wrap';
         const colorInput = document.createElement('input');
         colorInput.type = 'color';
+        colorInput.disabled = true;
+        colorInput.title = 'Монохромная тема';
         colorInput.className = 'mode-color-input';
         colorInput.id = 'modeColor_' + m.id;
         colorInput.name = 'modeColor_' + m.id;
         colorInput.autocomplete = 'off';
-        colorInput.value = colors[m.id] || '#888888';
-        colorInput.title = 'Цвет режима';
+        colorInput.value = '#ffffff';
+        colorInput.title = 'Белый акцент монохромной темы';
         colorInput.onchange = async () => {
           await setModeColor(m.id, colorInput.value);
           renderLookPanel();
@@ -802,11 +800,12 @@ async function boot() {
   /* Светлая подложка от прежних тем под белым текстом не читается */
   if (storedBg && !BG_PRESETS.includes(storedBg) && !BG_GRADIENT_PRESETS.includes(storedBg) && !isDarkHex(storedBg)) storedBg = '';
   storedBgImage = (await dbGetKV('bgImage')) || '';
-  /* Фон под стекло по умолчанию — «Коралловый закат»: один раз, если
-     пользователь сам ничего не выбирал */
-  if (!(await dbGetKV('bgV1'))) {
-    await dbSetKV('bgV1', 1);
-    if (!storedBg && !storedBgImage) { storedBg = BG_GRADIENT_PRESETS[0]; await dbSetKV('bg', storedBg); }
+  /* Миграция на нейтральный фон; персональные обои сохраняются. */
+  if (!(await dbGetKV('obsidianV1'))) {
+    storedBg = '#000000';
+    await dbSetKV('bg', storedBg);
+    await dbSetKV('panelAlpha', .65);
+    await dbSetKV('obsidianV1', 1);
   }
   const bo = parseFloat(await dbGetKV('bgLayerOpacity'));
   storedBgOpacity = Number.isFinite(bo) ? bo : 1;
