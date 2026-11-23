@@ -249,7 +249,7 @@ body::before { display: none !important; }
 }
 @media (max-width: 720px), (pointer: coarse) and (max-width: 950px) {
   #appWallpaper {
-    background-image: url('../assets/GMA-OS-iPhone-option-3.png'), url('../assets/obsidian-iphone-preview.svg');
+    background-image: url('../assets/GMA-OS-iPhone-HQ.png');
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
