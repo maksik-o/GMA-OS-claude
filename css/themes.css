@@ -254,7 +254,7 @@ html[data-theme="coral"] { background: var(--bg); }
 :root[data-theme="coral"] .task-completion-light { filter: grayscale(1); }
 :root[data-theme="coral"] .cell.c-done { color: #080808; }
 :root[data-theme="coral"] .cell.c-done .rd { color: #080808; }
-:root[data-theme="coral"] :is(.tag-pill,.sub-chip,.kf-front,.kf-back) { filter: grayscale(1); }
+:root[data-theme="coral"] :is(.tag-pill,.sub-chip) { filter: grayscale(1); }
 :root[data-theme="coral"] .kb-board .btn.danger.kb-trash {
   background: #333; color: #fff; box-shadow: inset 0 0 0 1px #777;
 }
@@ -270,17 +270,58 @@ html[data-theme="coral"] { background: var(--bg); }
 /* Contrast: filled white completed controls need dark checkmarks. */
 :root[data-theme="coral"] :is(.st-done .status,.a-status.a-done)::after { border-color: #080808; }
 :root[data-theme="coral"] :is(.hm-row.done .hm-check,.tl-block.done .tlb-check,.hint-done) { color: #080808 !important; }
-:root[data-theme="coral"] .cell.c-done { background: #fff; border-color: #fff; }
+:root[data-theme="coral"] .cell.c-done { background: var(--c-done); border-color: var(--c-done); }
 :root[data-theme="coral"] .cell.c-done::after {
   content: ""; position: absolute; left: 50%; top: 50%; width: 7px; height: 12px;
   border: solid #080808; border-width: 0 2px 2px 0;
   transform: translate(-50%,-60%) rotate(45deg);
 }
 @media (max-width: 720px) {
-  :root[data-theme="coral"] .p-mobile .cell.c-todo { background: #555; }
-  :root[data-theme="coral"] .p-mobile .cell.c-postponed { background: #888; }
-  :root[data-theme="coral"] .p-mobile .cell.c-started { background: #bcbcbc; }
-  :root[data-theme="coral"] .p-mobile .cell.c-skipped { background: #333; }
-  :root[data-theme="coral"] .p-mobile .m-task.sq-open .cell.c-todo { background: transparent; border: 2px solid #888; }
-  :root[data-theme="coral"] .p-mobile .m-task.sq-open .cell.c-done { background: #fff; border-color: #fff; }
+  :root[data-theme="coral"] .p-mobile .cell.c-todo { background: #fff; }
+  :root[data-theme="coral"] .p-mobile .cell.c-postponed { background: var(--c-postponed); }
+  :root[data-theme="coral"] .p-mobile .cell.c-started { background: var(--c-started); }
+  :root[data-theme="coral"] .p-mobile .cell.c-skipped { background: var(--c-skipped); }
+  :root[data-theme="coral"] .p-mobile .m-task.sq-open .cell.c-todo { background: #fff; border: 2px solid transparent; }
+  :root[data-theme="coral"] .p-mobile .m-task.sq-open .cell.c-done { background: var(--c-done); border-color: var(--c-done); }
+}
+
+
+/* Исключения из монохромной темы: цвета папок и календарных отметок. */
+:root[data-theme="coral"] .cell {
+  --c-todo: rgba(255, 255, 255, .42);
+  --c-done: #59d499;
+  --c-started: #ffc062;
+  --c-skipped: #ff6363;
+  --c-postponed: #56c2ff;
+}
+:root[data-theme="coral"] .cell.c-postponed {
+  border-color: var(--c-postponed);
+}
+:root[data-theme="coral"] .p-mobile .m-task.sq-open .cell.c-postponed {
+  border-color: var(--c-postponed);
+}
+:root[data-theme="coral"] .cell.c-done::after { border-color: #080808; }
+
+/* Отдельный неподвижный DOM-слой под приложением — над непрозрачным
+   body и без отрицательного z-index / псевдоэлемента WebKit. */
+body::before { display: none !important; }
+#appWallpaper {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background: var(--bg-mesh, none);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 1;
+}
+@media (max-width: 720px), (pointer: coarse) and (max-width: 950px) {
+  #appWallpaper {
+    background-image: url('../assets/obsidian-iphone-preview.svg');
+    background-position: center;
+    background-size: cover;
+  }
 }
